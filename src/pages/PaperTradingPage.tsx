@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScoreBadge } from "@/components/ui/score-badge";
-import { TrendingUp, TrendingDown, Loader2, Target, LogOut, Trash2, X } from "lucide-react";
+import { TrendingUp, TrendingDown, Loader2, Target, LogOut, Trash2 } from "lucide-react";
 import { usePaperTrades, useClosePaperTrade, useDeletePaperTrade } from "@/hooks/use-paper-trades";
 import { useTickers } from "@/hooks/use-bybit";
 import { cn } from "@/lib/utils";
