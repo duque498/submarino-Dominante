@@ -202,6 +202,17 @@ export default function ChartPage() {
           strategyName: sig.strategyName,
           onClick: () => setEntryHubOpen(true),
         });
+        // Server-side Web Push (works even when app is closed)
+        if (user?.id) {
+          const pFmt = (n: number) => n < 1 ? n.toFixed(6) : n < 100 ? n.toFixed(4) : n.toFixed(2);
+          triggerPushNotification({
+            userId: user.id,
+            title: `🎯 ${sig.symbol} — ${sig.direction === "long" ? "🟢 LONG" : "🔴 SHORT"} (Score ${sig.score})`,
+            body: `Entrada: $${pFmt(sig.entryPrice)} | SL: $${pFmt(sig.stopPrice)} | TP: $${pFmt(sig.target1Price)}\n${sig.passedConditions}/${sig.totalConditions} condições — ${sig.strategyName}`,
+            tag: `entry-${sig.symbol}-${Date.now()}`,
+            data: { url: `/chart?symbol=${sig.symbol}` },
+          });
+        }
       }
     } else if (!triggered) {
       entryAlertFiredRef.current = false;
