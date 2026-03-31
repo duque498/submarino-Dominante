@@ -290,7 +290,7 @@ export default function ChartPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
         {/* TradingView Chart */}
         <div>
           <TradingViewChart
