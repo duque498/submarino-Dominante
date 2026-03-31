@@ -24,17 +24,17 @@ export default function HistoryPage() {
         <p className="text-sm text-muted-foreground">Todos os sinais gerados e seus resultados</p>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border border-border -mx-3 md:mx-0">
+        <table className="w-full text-xs md:text-sm">
           <thead>
             <tr className="border-b border-border bg-card">
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ativo</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dir.</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">TF</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">Score</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">Resultado</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">P&L</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium text-muted-foreground">Data</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium text-muted-foreground">Ativo</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium text-muted-foreground">Dir.</th>
+              <th className="hidden sm:table-cell px-2 md:px-4 py-2 md:py-3 text-left font-medium text-muted-foreground">TF</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-center font-medium text-muted-foreground">Score</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-center font-medium text-muted-foreground">Res.</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-right font-medium text-muted-foreground">P&L</th>
             </tr>
           </thead>
           <tbody>
