@@ -97,5 +97,5 @@ export function useTradeMonitor() {
         }
       }
     }
-  }, [openTrades, tickers, closeTrade]);
+  }, [openTrades, tickers, closeTrade, user]);
 }
