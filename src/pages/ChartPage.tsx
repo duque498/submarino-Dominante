@@ -6,6 +6,7 @@ import { TradingViewChart } from "@/components/chart/TradingViewChart";
 import { EntryHubModal, type EntrySignalData } from "@/components/chart/EntryHubModal";
 import { LiveConditionsPanel } from "@/components/chart/LiveConditionsPanel";
 import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useStrategies } from "@/hooks/use-strategies";
 import { TrendingUp, TrendingDown, Puzzle, Volume2 } from "lucide-react";
 import { MarketAIPanel } from "@/components/chart/MarketAIPanel";
@@ -35,6 +36,7 @@ export default function ChartPage() {
   const [entrySignal, setEntrySignal] = useState<EntrySignalData | null>(null);
   const [isTestEntry, setIsTestEntry] = useState(false);
   const timeframes = ["1m", "5m", "15m", "1h", "4h"];
+  const isMobile = useIsMobile();
 
   const { data: tickers } = useTickers(category, symbol);
   const { data: oiData } = useOpenInterest(symbol, category);
@@ -207,11 +209,11 @@ export default function ChartPage() {
   }, [longResults, shortResults, longSummary, shortSummary, buildEntrySignal]);
 
   return (
-    <div className="space-y-4 animate-slide-in">
+    <div className="space-y-3 md:space-y-4 animate-slide-in">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold font-mono text-foreground">{symbol}</h1>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-lg md:text-2xl font-bold font-mono text-foreground">{symbol}</h1>
           {ticker && (
             <>
               <span className="font-mono text-lg text-foreground">${ticker.lastPrice.toLocaleString()}</span>
@@ -225,13 +227,13 @@ export default function ChartPage() {
         </div>
         <div className="flex items-center gap-1 flex-wrap">
           {["BTCUSDT", "ETHUSDT", "SOLUSDT"].map((s) => (
-            <Button key={s} variant={symbol === s ? "default" : "ghost"} size="sm" className="font-mono text-xs" onClick={() => setSymbol(s)}>
+            <Button key={s} variant={symbol === s ? "default" : "ghost"} size="sm" className="font-mono text-[10px] md:text-xs h-7 px-2 md:h-8 md:px-3" onClick={() => setSymbol(s)}>
               {s.replace("USDT", "")}
             </Button>
           ))}
-          <div className="mx-2 h-4 w-px bg-border" />
+          <div className="mx-1 md:mx-2 h-4 w-px bg-border" />
           {timeframes.map((tf) => (
-            <Button key={tf} variant={timeframe === tf ? "default" : "secondary"} size="sm" className="font-mono text-xs" onClick={() => setTimeframe(tf)}>
+            <Button key={tf} variant={timeframe === tf ? "default" : "secondary"} size="sm" className="font-mono text-[10px] md:text-xs h-7 px-2 md:h-8 md:px-3" onClick={() => setTimeframe(tf)}>
               {tf}
             </Button>
           ))}
@@ -239,11 +241,11 @@ export default function ChartPage() {
       </div>
 
       {/* Strategy selector */}
-      <div className="flex items-center gap-2">
-        <Puzzle className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Estratégia:</span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Puzzle className="h-4 w-4 text-muted-foreground hidden sm:block" />
+        <span className="text-xs text-muted-foreground hidden sm:block">Estratégia:</span>
         <Select value={selectedStrategyId} onValueChange={setSelectedStrategyId}>
-          <SelectTrigger className="w-64 h-8 text-xs">
+          <SelectTrigger className="w-44 md:w-64 h-7 md:h-8 text-[10px] md:text-xs">
             <SelectValue placeholder="Selecione uma estratégia" />
           </SelectTrigger>
           <SelectContent>
@@ -256,14 +258,14 @@ export default function ChartPage() {
           </SelectContent>
         </Select>
         {activeStrategy && (
-          <Badge variant="outline" className="text-[10px]">
-            {activeStrategy.indicators.filter((i) => i.enabled).length} indicadores · {activeStrategy.conditions.length} condições
+          <Badge variant="outline" className="text-[8px] md:text-[10px] hidden sm:inline-flex">
+            {activeStrategy.indicators.filter((i) => i.enabled).length} ind · {activeStrategy.conditions.length} cond
           </Badge>
         )}
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto text-xs gap-1.5"
+          className="ml-auto text-[10px] md:text-xs gap-1 h-7 md:h-8"
           onClick={() => {
             playEntryAlert();
             const sig = buildEntrySignal("long", true);
@@ -285,19 +287,20 @@ export default function ChartPage() {
             }
           }}
         >
-          <Volume2 className="h-3.5 w-3.5" />
-          Testar Alerta
+          <Volume2 className="h-3 w-3 md:h-3.5 md:w-3.5" />
+          <span className="hidden sm:inline">Testar Alerta</span>
+          <span className="sm:hidden">Teste</span>
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-3 md:gap-4 lg:grid-cols-[1fr_380px]">
         {/* TradingView Chart */}
         <div>
           <TradingViewChart
             symbol={symbol}
             timeframe={timeframe}
             category={category}
-            height={520}
+            height={isMobile ? 300 : 520}
             indicators={chartIndicators}
           />
         </div>
