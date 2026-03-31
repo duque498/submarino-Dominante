@@ -13,7 +13,7 @@ export function useBybitConnection(category: string = "linear") {
   useEffect(() => {
     const ws = getBybitWS(category);
     const unsub = ws.onStatusChange(setStatus);
-    return unsub;
+    return () => { unsub(); };
   }, [category]);
 
   return status;
