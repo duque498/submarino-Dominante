@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Search, Play, Pause, Trash2, Settings2, Copy, Sparkles } from "lucide-react";
 import { StrategyPresetsDialog } from "./StrategyPresetsDialog";
 import type { FullStrategy } from "@/hooks/use-strategies";
