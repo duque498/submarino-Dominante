@@ -137,7 +137,7 @@ export function TradingChart({
       if (stopPrice) {
         series.createPriceLine({
           price: stopPrice,
-          color: "hsl(0, 72%, 51%)",
+          color: "#ef4444",
           lineWidth: 1,
           lineStyle: 2,
           title: "Stop",
