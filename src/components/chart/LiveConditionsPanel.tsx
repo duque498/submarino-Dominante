@@ -185,37 +185,38 @@ function DirectionBlock({
 
 export function LiveConditionsPanel({ strategy, symbol, timeframe, ctx }: LiveConditionsPanelProps) {
   const parsed = useMemo(
-    () => parseConditions(strategy.conditions, strategy.indicators),
-    [strategy.conditions, strategy.indicators]
+    () => parseConditions(strategy.conditions, strategy.indicators, strategy.direction),
+    [strategy.conditions, strategy.indicators, strategy.direction]
   );
 
-  const validCount = parsed.filter((p) => p.validation.valid).length;
-  const invalidCount = parsed.length - validCount;
+  const longParsed = useMemo(() => filterConditionsByDirection(parsed, "long"), [parsed]);
+  const shortParsed = useMemo(() => filterConditionsByDirection(parsed, "short"), [parsed]);
+
+  const invalidCount = parsed.filter((p) => !p.validation.valid).length;
 
   const longResults = useMemo(
-    () => evaluateConditions(parsed, ctx, "long"),
-    [parsed, ctx]
+    () => evaluateConditions(longParsed, ctx, "long"),
+    [longParsed, ctx]
   );
 
   const shortResults = useMemo(
-    () => evaluateConditions(parsed, ctx, "short"),
-    [parsed, ctx]
+    () => evaluateConditions(shortParsed, ctx, "short"),
+    [shortParsed, ctx]
   );
 
   const longSummary = useMemo(
-    () => summarizeDirection(parsed, longResults, "long"),
-    [parsed, longResults]
+    () => summarizeDirection(longParsed, longResults, "long"),
+    [longParsed, longResults]
   );
 
   const shortSummary = useMemo(
-    () => summarizeDirection(parsed, shortResults, "short"),
-    [parsed, shortResults]
+    () => summarizeDirection(shortParsed, shortResults, "short"),
+    [shortParsed, shortResults]
   );
 
-  const showLong = strategy.direction === "long" || strategy.direction === "both";
-  const showShort = strategy.direction === "short" || strategy.direction === "both";
+  const showLong = (strategy.direction === "long" || strategy.direction === "both") && longParsed.length > 0;
+  const showShort = (strategy.direction === "short" || strategy.direction === "both") && shortParsed.length > 0;
 
-  // Overall status
   const overallStatus =
     longSummary.status === "confirmed" || shortSummary.status === "confirmed"
       ? "confirmed"
