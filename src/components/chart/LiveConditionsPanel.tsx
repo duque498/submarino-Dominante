@@ -17,6 +17,7 @@ import {
   parseConditions,
   evaluateConditions,
   summarizeDirection,
+  filterConditionsByDirection,
 } from "@/lib/condition-evaluator";
 
 interface LiveConditionsPanelProps {
@@ -184,37 +185,38 @@ function DirectionBlock({
 
 export function LiveConditionsPanel({ strategy, symbol, timeframe, ctx }: LiveConditionsPanelProps) {
   const parsed = useMemo(
-    () => parseConditions(strategy.conditions, strategy.indicators),
-    [strategy.conditions, strategy.indicators]
+    () => parseConditions(strategy.conditions, strategy.indicators, strategy.direction),
+    [strategy.conditions, strategy.indicators, strategy.direction]
   );
 
-  const validCount = parsed.filter((p) => p.validation.valid).length;
-  const invalidCount = parsed.length - validCount;
+  const longParsed = useMemo(() => filterConditionsByDirection(parsed, "long"), [parsed]);
+  const shortParsed = useMemo(() => filterConditionsByDirection(parsed, "short"), [parsed]);
+
+  const invalidCount = parsed.filter((p) => !p.validation.valid).length;
 
   const longResults = useMemo(
-    () => evaluateConditions(parsed, ctx, "long"),
-    [parsed, ctx]
+    () => evaluateConditions(longParsed, ctx, "long"),
+    [longParsed, ctx]
   );
 
   const shortResults = useMemo(
-    () => evaluateConditions(parsed, ctx, "short"),
-    [parsed, ctx]
+    () => evaluateConditions(shortParsed, ctx, "short"),
+    [shortParsed, ctx]
   );
 
   const longSummary = useMemo(
-    () => summarizeDirection(parsed, longResults, "long"),
-    [parsed, longResults]
+    () => summarizeDirection(longParsed, longResults, "long"),
+    [longParsed, longResults]
   );
 
   const shortSummary = useMemo(
-    () => summarizeDirection(parsed, shortResults, "short"),
-    [parsed, shortResults]
+    () => summarizeDirection(shortParsed, shortResults, "short"),
+    [shortParsed, shortResults]
   );
 
-  const showLong = strategy.direction === "long" || strategy.direction === "both";
-  const showShort = strategy.direction === "short" || strategy.direction === "both";
+  const showLong = (strategy.direction === "long" || strategy.direction === "both") && longParsed.length > 0;
+  const showShort = (strategy.direction === "short" || strategy.direction === "both") && shortParsed.length > 0;
 
-  // Overall status
   const overallStatus =
     longSummary.status === "confirmed" || shortSummary.status === "confirmed"
       ? "confirmed"
@@ -289,30 +291,35 @@ export function LiveConditionsPanel({ strategy, symbol, timeframe, ctx }: LiveCo
         </div>
       )}
 
-      {/* LONG block */}
-      {showLong && parsed.length > 0 && (
+      {!showLong && !showShort && parsed.length > 0 && (
+        <div className="rounded border border-border bg-muted/20 px-3 py-2">
+          <p className="text-[10px] text-muted-foreground">
+            Nenhuma condição válida foi classificada para LONG ou SHORT.
+          </p>
+        </div>
+      )}
+
+      {showLong && (
         <DirectionBlock
           label="LONG"
           icon={TrendingUp}
           iconColor="text-bull"
-          parsed={parsed}
+          parsed={longParsed}
           results={longResults}
           summary={longSummary}
         />
       )}
 
-      {/* Separator */}
-      {showLong && showShort && parsed.length > 0 && (
+      {showLong && showShort && (
         <div className="border-t border-border" />
       )}
 
-      {/* SHORT block */}
-      {showShort && parsed.length > 0 && (
+      {showShort && (
         <DirectionBlock
           label="SHORT"
           icon={TrendingDown}
           iconColor="text-bear"
-          parsed={parsed}
+          parsed={shortParsed}
           results={shortResults}
           summary={shortSummary}
         />

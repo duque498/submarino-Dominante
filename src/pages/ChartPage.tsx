@@ -15,6 +15,7 @@ import {
   parseConditions,
   evaluateConditions,
   summarizeDirection,
+  filterConditionsByDirection,
   resolveIndicatorValue,
   calcATR,
   getPrice,
@@ -72,25 +73,27 @@ export default function ChartPage() {
   // ─── Parsed conditions from strategy ──────────────────────────────
   const parsed = useMemo(() => {
     if (!activeStrategy) return [];
-    return parseConditions(activeStrategy.conditions || [], activeStrategy.indicators || []);
+    return parseConditions(activeStrategy.conditions || [], activeStrategy.indicators || [], activeStrategy.direction);
   }, [activeStrategy]);
 
-  // ─── Evaluate for both directions ─────────────────────────────────
+  const longParsed = useMemo(() => filterConditionsByDirection(parsed, "long"), [parsed]);
+  const shortParsed = useMemo(() => filterConditionsByDirection(parsed, "short"), [parsed]);
+
   const longResults = useMemo(
-    () => evaluateConditions(parsed, marketCtx, "long"),
-    [parsed, marketCtx]
+    () => evaluateConditions(longParsed, marketCtx, "long"),
+    [longParsed, marketCtx]
   );
   const shortResults = useMemo(
-    () => evaluateConditions(parsed, marketCtx, "short"),
-    [parsed, marketCtx]
+    () => evaluateConditions(shortParsed, marketCtx, "short"),
+    [shortParsed, marketCtx]
   );
   const longSummary = useMemo(
-    () => summarizeDirection(parsed, longResults, "long"),
-    [parsed, longResults]
+    () => summarizeDirection(longParsed, longResults, "long"),
+    [longParsed, longResults]
   );
   const shortSummary = useMemo(
-    () => summarizeDirection(parsed, shortResults, "short"),
-    [parsed, shortResults]
+    () => summarizeDirection(shortParsed, shortResults, "short"),
+    [shortParsed, shortResults]
   );
 
   const bestDirection = longSummary.passed >= shortSummary.passed ? "long" : "short";
@@ -113,9 +116,10 @@ export default function ChartPage() {
     const results = dir === "long" ? longResults : shortResults;
     const summary = dir === "long" ? longSummary : shortSummary;
 
-    const condDetails = parsed.map((pc) => {
+    const directionParsed = dir === "long" ? longParsed : shortParsed;
+    const condDetails = directionParsed.map((pc) => {
       const r = results.find((res) => res.conditionId === pc.id);
-      return { name: pc.label, passed: r?.passed ?? false };
+      return { name: r?.effectiveLabel || pc.label, passed: r?.passed ?? false };
     });
 
     const indSnap: Record<string, number | null> = {};
@@ -147,7 +151,7 @@ export default function ChartPage() {
       ] : []),
       indicatorSnapshot: indSnap,
     };
-  }, [candles, parsed, longResults, shortResults, longSummary, shortSummary, activeStrategy, symbol, timeframe, category, marketCtx]);
+  }, [candles, longParsed, shortParsed, longResults, shortResults, longSummary, shortSummary, activeStrategy, symbol, timeframe, category, marketCtx]);
 
   // ─── Sound/alert triggers ─────────────────────────────────────────
   const prevLongRef = useRef<boolean[]>([]);
