@@ -8,6 +8,7 @@ import { LiveConditionsPanel } from "@/components/chart/LiveConditionsPanel";
 import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
 import { useStrategies } from "@/hooks/use-strategies";
 import { TrendingUp, TrendingDown, Puzzle, Volume2 } from "lucide-react";
+import { MarketAIPanel } from "@/components/chart/MarketAIPanel";
 import { useSearchParams } from "react-router-dom";
 import { playConditionTick, playEntryAlert, sendEntryPushNotification } from "@/lib/audio-notifications";
 import { toast } from "sonner";
