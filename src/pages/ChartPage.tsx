@@ -208,10 +208,10 @@ export default function ChartPage() {
             </div>
           )}
 
-          {/* Conditions checklist */}
+          {/* Conditions checklist — live evaluation */}
           {activeStrategy && conditions.length > 0 && (
             <div className="rounded-lg border border-border bg-card p-4">
-              <h3 className="mb-3 text-sm font-semibold text-foreground">Condições</h3>
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Condições (ao vivo)</h3>
               <div className="space-y-1.5">
                 {conditions.map((c) => {
                   const indicator = activeStrategy.indicators.find((i) => i.id === c.indicator_id);
@@ -220,17 +220,16 @@ export default function ChartPage() {
                     : c.condition_type;
 
                   // Format value for display
-                  const val = c.value as unknown;
+                  const val = c.value as any;
                   let valueStr = "";
-                  if (val && typeof val === "object" && "min" in (val as any) && "max" in (val as any)) {
-                    valueStr = `${(val as any).min} e ${(val as any).max}`;
+                  if (val && typeof val === "object" && "min" in val && "max" in val) {
+                    valueStr = `${val.min} e ${val.max}`;
                   } else if (typeof val === "object") {
-                    valueStr = Object.values(val as any).join(", ");
+                    valueStr = Object.values(val).join(", ");
                   } else {
                     valueStr = String(val ?? "");
                   }
 
-                  // Readable operator
                   const opMap: Record<string, string> = {
                     ">": "maior que",
                     "<": "menor que",
@@ -245,10 +244,17 @@ export default function ChartPage() {
                   };
                   const opStr = opMap[c.operator] || c.operator;
 
+                  // --- Live evaluation ---
+                  const passed = evaluateCondition(c, indicator, ticker, candles, latestOI, latestFunding);
+
                   return (
                     <div key={c.id} className="flex items-center gap-2 text-xs">
-                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="text-foreground">
+                      {passed ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-bull" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 shrink-0 text-bear" />
+                      )}
+                      <span className={passed ? "text-foreground" : "text-muted-foreground"}>
                         {indName} {opStr} {valueStr}
                       </span>
                       {c.role === "required" && (
@@ -258,6 +264,22 @@ export default function ChartPage() {
                   );
                 })}
               </div>
+              {/* Summary */}
+              {(() => {
+                const total = conditions.length;
+                const passedCount = conditions.filter((c) => {
+                  const ind = activeStrategy.indicators.find((i) => i.id === c.indicator_id);
+                  return evaluateCondition(c, ind, ticker, candles, latestOI, latestFunding);
+                }).length;
+                return (
+                  <div className="mt-3 pt-2 border-t border-border flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Resultado</span>
+                    <span className={`font-mono font-bold ${passedCount === total ? "text-bull" : passedCount >= total * 0.6 ? "text-yellow-400" : "text-bear"}`}>
+                      {passedCount}/{total} condições
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
