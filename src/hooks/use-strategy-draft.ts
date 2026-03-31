@@ -19,6 +19,13 @@ import {
 } from "@/types/strategy";
 import { getDefaultParams, getIndicatorDef } from "@/lib/indicators";
 
+// Map DB role enum to frontend role
+const dbRoleToFrontend = (r: string): "required" | "score" | "informative" => {
+  if (r === "scoring") return "score";
+  if (r === "info") return "informative";
+  return "required";
+};
+
 // Convert DB row to draft
 export function dbToDraft(
   strategy: any,
