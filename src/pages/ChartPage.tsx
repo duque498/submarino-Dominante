@@ -300,7 +300,7 @@ export default function ChartPage() {
             symbol={symbol}
             timeframe={timeframe}
             category={category}
-            height={typeof window !== "undefined" && window.innerWidth < 768 ? 320 : 520}
+            height={isMobile ? 300 : 520}
             indicators={chartIndicators}
           />
         </div>
