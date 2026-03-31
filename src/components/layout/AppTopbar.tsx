@@ -27,7 +27,12 @@ export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
   }, []);
 
   useEffect(() => {
-    setPushState(getPushPermission());
+    const perm = getPushPermission();
+    setPushState(perm);
+    // Auto-subscribe if already granted (ensures DB has the subscription)
+    if (perm === "granted") {
+      subscribeToPush();
+    }
   }, []);
 
   const handlePushToggle = async () => {
