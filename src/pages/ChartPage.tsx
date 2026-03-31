@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TradingViewChart } from "@/components/chart/TradingViewChart";
+import { EntryHubModal, type EntrySignalData } from "@/components/chart/EntryHubModal";
 import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
 import { useStrategies } from "@/hooks/use-strategies";
 import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Puzzle, Volume2 } from "lucide-react";
@@ -154,6 +155,9 @@ export default function ChartPage() {
   const category = (searchParams.get("category") || "linear") as BybitCategory;
   const [timeframe, setTimeframe] = useState(searchParams.get("tf") || "5m");
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>("none");
+  const [entryHubOpen, setEntryHubOpen] = useState(false);
+  const [entrySignal, setEntrySignal] = useState<EntrySignalData | null>(null);
+  const [isTestEntry, setIsTestEntry] = useState(false);
   const timeframes = ["1m", "5m", "15m", "1h", "4h"];
 
   const { data: tickers } = useTickers(category, symbol);
@@ -223,6 +227,65 @@ export default function ChartPage() {
   const bestDirection = longPassedCount >= shortPassedCount ? "long" : "short";
   const bestPassedCount = Math.max(longPassedCount, shortPassedCount);
 
+  // Build entry signal data for the hub modal
+  const buildEntrySignal = useCallback((dir: "long" | "short", test = false): EntrySignalData | null => {
+    if (!candles || candles.length < 20) return null;
+    const price = candles[candles.length - 1].close;
+    const period = 14;
+    const trs: number[] = [];
+    for (let i = Math.max(1, candles.length - period); i < candles.length; i++) {
+      const prev = candles[i - 1];
+      const c = candles[i];
+      trs.push(Math.max(c.high - c.low, Math.abs(c.high - prev.close), Math.abs(c.low - prev.close)));
+    }
+    const atr = trs.length > 0 ? trs.reduce((a, b) => a + b, 0) / trs.length : price * 0.01;
+    const isLong = dir === "long";
+    const stopDist = atr * 1.5;
+    const entry = price;
+    const stop = isLong ? price - stopDist : price + stopDist;
+    const tp1 = isLong ? price + stopDist * 1.5 : price - stopDist * 1.5;
+    const tp2 = isLong ? price + stopDist * 2.5 : price - stopDist * 2.5;
+    const rr = stopDist > 0 ? Math.abs(tp1 - entry) / stopDist : 0;
+
+    const results = dir === "long" ? longResults : shortResults;
+    const condDetails = conditions.map((c, i) => {
+      const ind = activeStrategy?.indicators.find((x) => x.id === c.indicator_id);
+      const name = ind ? ind.indicator_type.toUpperCase() : c.condition_type;
+      return { name, passed: results[i] ?? false };
+    });
+
+    const indSnap: Record<string, number | null> = {};
+    activeStrategy?.indicators.forEach((ind) => {
+      const v = getIndicatorValue(ind.indicator_type, ind.params as any, candles, ticker, latestOI, latestFunding);
+      indSnap[ind.indicator_type] = v;
+    });
+
+    const passed = results.filter(Boolean).length;
+    return {
+      symbol,
+      direction: dir,
+      strategyName: activeStrategy?.name || (test ? "Estratégia Teste" : "—"),
+      score: totalConditions > 0 ? Math.round((passed / totalConditions) * 100) : (test ? 78 : 0),
+      totalConditions: totalConditions || (test ? 5 : 0),
+      passedConditions: passed || (test ? 4 : 0),
+      entryPrice: entry,
+      stopPrice: stop,
+      target1Price: tp1,
+      target2Price: tp2,
+      rrRatio: rr,
+      timeframe,
+      market: category,
+      conditionDetails: condDetails.length > 0 ? condDetails : (test ? [
+        { name: "EMA 9 > EMA 21", passed: true },
+        { name: "RSI > 55", passed: true },
+        { name: "Volume > 1.5x média", passed: true },
+        { name: "Preço > VWAP", passed: true },
+        { name: "ADX > 25", passed: false },
+      ] : []),
+      indicatorSnapshot: indSnap,
+    };
+  }, [candles, ticker, latestOI, latestFunding, conditions, longResults, shortResults, activeStrategy, symbol, timeframe, category, totalConditions]);
+
   // Track previous state for sound transitions
   const prevResultsRef = useRef<boolean[]>([]);
   const entryAlertFiredRef = useRef(false);
@@ -231,7 +294,6 @@ export default function ChartPage() {
     if (!conditionResults.length) return;
     const prev = prevResultsRef.current;
 
-    // Play tick when a condition newly passes
     if (prev.length === conditionResults.length) {
       for (let i = 0; i < conditionResults.length; i++) {
         if (conditionResults[i] && !prev[i]) {
@@ -241,21 +303,22 @@ export default function ChartPage() {
       }
     }
 
-    // Play entry alert when crossing 60% threshold (for best direction)
     const bestRatio = totalConditions > 0 ? bestPassedCount / totalConditions : 0;
     if (bestRatio >= 0.6 && !entryAlertFiredRef.current) {
       entryAlertFiredRef.current = true;
       playEntryAlert();
-      toast.success(`🎯 Possível entrada ${bestDirection === "long" ? "LONG 🟢" : "SHORT 🔴"}! ${bestPassedCount}/${totalConditions} condições`, {
-        description: `${symbol} — ${activeStrategy?.name}`,
-        duration: 10000,
-      });
+      const sig = buildEntrySignal(bestDirection as "long" | "short");
+      if (sig) {
+        setEntrySignal(sig);
+        setIsTestEntry(false);
+        setEntryHubOpen(true);
+      }
     } else if (bestRatio < 0.6) {
       entryAlertFiredRef.current = false;
     }
 
     prevResultsRef.current = [...conditionResults];
-  }, [conditionResults, bestPassedCount, totalConditions, bestDirection, symbol, activeStrategy?.name]);
+  }, [conditionResults, bestPassedCount, totalConditions, bestDirection, buildEntrySignal]);
 
   return (
     <div className="space-y-4 animate-slide-in">
@@ -329,10 +392,12 @@ export default function ChartPage() {
           className="ml-auto text-xs gap-1.5"
           onClick={() => {
             playEntryAlert();
-            toast.success(`🎯 [TESTE] Possível entrada LONG 🟢! 4/5 condições`, {
-              description: `${symbol} — ${activeStrategy?.name || "Estratégia Teste"}`,
-              duration: 10000,
-            });
+            const sig = buildEntrySignal("long", true);
+            if (sig) {
+              setEntrySignal(sig);
+              setIsTestEntry(true);
+              setEntryHubOpen(true);
+            }
           }}
         >
           <Volume2 className="h-3.5 w-3.5" />
@@ -543,6 +608,14 @@ export default function ChartPage() {
           )}
         </div>
       </div>
+
+      {/* Entry Hub Modal */}
+      <EntryHubModal
+        open={entryHubOpen}
+        onOpenChange={setEntryHubOpen}
+        signal={entrySignal}
+        isTest={isTestEntry}
+      />
     </div>
   );
 }
