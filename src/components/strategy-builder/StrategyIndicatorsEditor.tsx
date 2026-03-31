@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Plus, Trash2, ChevronDown, GripVertical, Eye, EyeOff } from "lucide-react";
 import { INDICATOR_CATALOG, INDICATOR_CATEGORIES, getIndicatorDef } from "@/lib/indicators";
+import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type { useStrategyDraft } from "@/hooks/use-strategy-draft";
 import { useState } from "react";
 
@@ -15,9 +16,11 @@ interface Props {
 }
 
 export function StrategyIndicatorsEditor({ draftHook }: Props) {
-  const { draft, addIndicator, removeIndicator, updateIndicator } = draftHook;
+  const { draft, addIndicator, removeIndicator, updateIndicator, reorderIndicators } = draftHook;
   const [showCatalog, setShowCatalog] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+
+  const { getDragProps } = useDragReorder({ onReorder: reorderIndicators });
 
   const filteredCatalog = filterCategory
     ? INDICATOR_CATALOG.filter((i) => i.category === filterCategory)
@@ -85,9 +88,13 @@ export function StrategyIndicatorsEditor({ draftHook }: Props) {
         <div className="space-y-2">
           {draft.indicators.map((ind, idx) => {
             const def = getIndicatorDef(ind.type);
+            const dragProps = getDragProps(idx);
             return (
-              <Collapsible key={idx}>
-                <div className="border border-border rounded-lg bg-card/30">
+              <Collapsible key={`${ind.type}-${idx}`}>
+                <div
+                  {...dragProps}
+                  className={`border border-border rounded-lg bg-card/30 transition-all ${dragProps.className}`}
+                >
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center gap-2 p-2.5 cursor-pointer hover:bg-accent/20 transition-colors">
                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab" />
@@ -130,7 +137,6 @@ export function StrategyIndicatorsEditor({ draftHook }: Props) {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="p-3 pt-0 space-y-3 border-t border-border">
-                      {/* Label */}
                       <div className="space-y-1">
                         <Label className="text-[10px] text-muted-foreground">Label</Label>
                         <Input
@@ -139,8 +145,6 @@ export function StrategyIndicatorsEditor({ draftHook }: Props) {
                           className="h-7 text-xs"
                         />
                       </div>
-
-                      {/* Params */}
                       {def?.params.map((p) => (
                         <div key={p.name} className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">{p.label}</Label>
@@ -148,19 +152,13 @@ export function StrategyIndicatorsEditor({ draftHook }: Props) {
                             <Select
                               value={String(ind.params[p.name] ?? p.default)}
                               onValueChange={(v) =>
-                                updateIndicator(idx, {
-                                  params: { ...ind.params, [p.name]: v },
-                                })
+                                updateIndicator(idx, { params: { ...ind.params, [p.name]: v } })
                               }
                             >
-                              <SelectTrigger className="h-7 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
+                              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {p.options?.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
+                                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -169,30 +167,19 @@ export function StrategyIndicatorsEditor({ draftHook }: Props) {
                               type="number"
                               value={ind.params[p.name] ?? p.default}
                               onChange={(e) =>
-                                updateIndicator(idx, {
-                                  params: { ...ind.params, [p.name]: parseFloat(e.target.value) || 0 },
-                                })
+                                updateIndicator(idx, { params: { ...ind.params, [p.name]: parseFloat(e.target.value) || 0 } })
                               }
-                              min={p.min}
-                              max={p.max}
-                              step={p.step}
+                              min={p.min} max={p.max} step={p.step}
                               className="h-7 text-xs font-mono"
                             />
                           )}
                         </div>
                       ))}
-
-                      {/* Role & Weight */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Papel</Label>
-                          <Select
-                            value={ind.role}
-                            onValueChange={(v) => updateIndicator(idx, { role: v as any })}
-                          >
-                            <SelectTrigger className="h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
+                          <Select value={ind.role} onValueChange={(v) => updateIndicator(idx, { role: v as any })}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="required">Obrigatório</SelectItem>
                               <SelectItem value="score">Score</SelectItem>
@@ -206,8 +193,7 @@ export function StrategyIndicatorsEditor({ draftHook }: Props) {
                             type="number"
                             value={ind.weight}
                             onChange={(e) => updateIndicator(idx, { weight: parseInt(e.target.value) || 0 })}
-                            min={0}
-                            max={100}
+                            min={0} max={100}
                             className="h-7 text-xs font-mono"
                           />
                         </div>
