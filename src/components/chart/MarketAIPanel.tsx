@@ -30,7 +30,7 @@ interface MarketAIPanelProps {
   category: string;
 }
 
-const ANALYSIS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/market-analysis`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/market-analysis`;
 
 export function MarketAIPanel({ symbol, strategyContext, category }: MarketAIPanelProps) {
   const [tab, setTab] = useState("analysis");
