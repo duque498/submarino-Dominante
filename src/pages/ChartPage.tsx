@@ -418,22 +418,29 @@ export default function ChartPage() {
             </div>
           )}
 
-          {/* Conditions checklist — live evaluation */}
+          {/* Conditions checklist — LONG & SHORT live evaluation */}
           {activeStrategy && conditions.length > 0 && (
             <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="mb-3 text-sm font-semibold text-foreground">Condições (ao vivo)</h3>
-              <div className="space-y-1.5">
-                {conditions.map((c) => {
+              
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-muted-foreground">
+                <div className="flex-1">Condição</div>
+                <div className="w-12 text-center text-bull">LONG</div>
+                <div className="w-12 text-center text-bear">SHORT</div>
+              </div>
+
+              <div className="space-y-1">
+                {conditions.map((c, idx) => {
                   const indicator = activeStrategy.indicators.find((i) => i.id === c.indicator_id);
                   const indName = indicator
                     ? indicator.indicator_type.toUpperCase()
                     : c.condition_type;
 
-                  // Format value for display
                   const val = c.value as any;
                   let valueStr = "";
                   if (val && typeof val === "object" && "min" in val && "max" in val) {
-                    valueStr = `${val.min} e ${val.max}`;
+                    valueStr = `${val.min}–${val.max}`;
                   } else if (typeof val === "object") {
                     valueStr = Object.values(val).join(", ");
                   } else {
@@ -441,55 +448,72 @@ export default function ChartPage() {
                   }
 
                   const opMap: Record<string, string> = {
-                    ">": "maior que",
-                    "<": "menor que",
-                    ">=": "≥",
-                    "<=": "≤",
-                    "==": "igual a",
-                    "crosses_above": "cruza acima de",
-                    "crosses_below": "cruza abaixo de",
-                    "between": "entre",
-                    "increasing": "subindo",
-                    "decreasing": "descendo",
+                    ">": ">", "<": "<", ">=": "≥", "<=": "≤", "==": "=",
+                    "crosses_above": "↑", "crosses_below": "↓",
+                    "between": "∈", "increasing": "↗", "decreasing": "↘",
                   };
                   const opStr = opMap[c.operator] || c.operator;
 
-                  // --- Live evaluation ---
-                  const passed = evaluateCondition(c, indicator, ticker, candles, latestOI, latestFunding);
+                  const longPassed = longResults[idx];
+                  const shortPassed = shortResults[idx];
 
                   return (
-                    <div key={c.id} className="flex items-center gap-2 text-xs">
-                      {passed ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-bull" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5 shrink-0 text-bear" />
-                      )}
-                      <span className={passed ? "text-foreground" : "text-muted-foreground"}>
-                        {indName} {opStr} {valueStr}
-                      </span>
-                      {c.role === "required" && (
-                        <Badge variant="outline" className="ml-auto text-[8px] px-1">Obrig.</Badge>
-                      )}
+                    <div key={c.id} className="flex items-center gap-2 text-xs py-0.5">
+                      <div className="flex-1 flex items-center gap-1 min-w-0 truncate">
+                        <span className="text-muted-foreground truncate">
+                          {indName} {opStr} {valueStr}
+                        </span>
+                        {c.role === "required" && (
+                          <span className="text-[8px] text-yellow-500 shrink-0">★</span>
+                        )}
+                      </div>
+                      <div className="w-12 flex justify-center">
+                        {longPassed ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-bull" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-bear/50" />
+                        )}
+                      </div>
+                      <div className="w-12 flex justify-center">
+                        {shortPassed ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-bull" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-bear/50" />
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-              {/* Summary */}
-              {(() => {
-                const total = conditions.length;
-                const passedCount = conditions.filter((c) => {
-                  const ind = activeStrategy.indicators.find((i) => i.id === c.indicator_id);
-                  return evaluateCondition(c, ind, ticker, candles, latestOI, latestFunding);
-                }).length;
-                return (
-                  <div className="mt-3 pt-2 border-t border-border flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Resultado</span>
-                    <span className={`font-mono font-bold ${passedCount === total ? "text-bull" : passedCount >= total * 0.6 ? "text-yellow-400" : "text-bear"}`}>
-                      {passedCount}/{total} condições
+
+              {/* Summary for both directions */}
+              <div className="mt-3 pt-2 border-t border-border space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <TrendingUp className="h-3 w-3 text-bull" />
+                    <span className="text-muted-foreground">Long</span>
+                  </span>
+                  <span className={`font-mono font-bold ${longPassedCount === totalConditions ? "text-bull" : longPassedCount >= totalConditions * 0.6 ? "text-yellow-400" : "text-bear"}`}>
+                    {longPassedCount}/{totalConditions}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <TrendingDown className="h-3 w-3 text-bear" />
+                    <span className="text-muted-foreground">Short</span>
+                  </span>
+                  <span className={`font-mono font-bold ${shortPassedCount === totalConditions ? "text-bull" : shortPassedCount >= totalConditions * 0.6 ? "text-yellow-400" : "text-bear"}`}>
+                    {shortPassedCount}/{totalConditions}
+                  </span>
+                </div>
+                {(longPassedCount >= totalConditions * 0.6 || shortPassedCount >= totalConditions * 0.6) && (
+                  <div className="mt-1 rounded bg-primary/10 px-2 py-1 text-center">
+                    <span className="text-[10px] font-bold text-primary">
+                      🎯 Sinal {bestDirection === "long" ? "LONG" : "SHORT"} — {bestPassedCount}/{totalConditions} condições
                     </span>
                   </div>
-                );
-              })()}
+                )}
+              </div>
             </div>
           )}
 
