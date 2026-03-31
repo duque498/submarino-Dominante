@@ -227,6 +227,13 @@ export function useStrategyDraft(initialId?: string | null) {
         supabase.from("strategy_timeframes").delete().eq("strategy_id", strategyId!),
       ]);
 
+      // Map frontend roles to DB enum values
+      const roleToDb = (r: string) => {
+        if (r === "score") return "scoring";
+        if (r === "informative") return "info";
+        return "required";
+      };
+
       // Insert indicators
       if (draft.indicators.length > 0) {
         const { error } = await supabase.from("strategy_indicators").insert(
@@ -237,7 +244,7 @@ export function useStrategyDraft(initialId?: string | null) {
             params: ind.params,
             source: ind.source,
             timeframe: ind.timeframe,
-            role: ind.role,
+            role: roleToDb(ind.role),
             weight: ind.weight,
             enabled: ind.enabled,
             plot_on_chart: ind.plotOnChart,
