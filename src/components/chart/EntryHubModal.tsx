@@ -49,6 +49,24 @@ export function EntryHubModal({ open, onOpenChange, signal, isTest }: EntryHubMo
   const [copied, setCopied] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiEvaluation, setAiEvaluation] = useState<string | null>(null);
+  const [entered, setEntered] = useState(false);
+  const createTrade = useCreatePaperTrade();
+
+  const handleEnterTrade = useCallback(() => {
+    if (!signal) return;
+    createTrade.mutate({
+      symbol: signal.symbol,
+      direction: signal.direction === "long" ? "buy" : "sell",
+      entry_price: signal.entryPrice,
+      stop_price: signal.stopPrice,
+      target_price: signal.target1Price,
+    }, {
+      onSuccess: () => {
+        setEntered(true);
+        toast.success("Paper trade aberto! Monitorando TP e SL...");
+      },
+    });
+  }, [signal, createTrade]);
 
   const copyValue = useCallback((label: string, value: string) => {
     navigator.clipboard.writeText(value);
