@@ -453,6 +453,8 @@ export interface EvaluationResult {
   leftValue: number | null;
   rightValue: number | null;
   error?: string;
+  effectiveOperatorSymbol?: string;
+  effectiveLabel?: string;
 }
 
 export function evaluateConditions(
