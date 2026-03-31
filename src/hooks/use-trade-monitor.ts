@@ -13,6 +13,7 @@ export function useTradeMonitor() {
   const { data: openTrades } = usePaperTrades("open");
   const { data: tickers } = useTickers("linear");
   const closeTrade = useClosePaperTrade();
+  const { user } = useAuth();
   const notifiedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
