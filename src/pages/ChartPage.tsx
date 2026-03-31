@@ -256,8 +256,8 @@ export default function ChartPage() {
           </SelectContent>
         </Select>
         {activeStrategy && (
-          <Badge variant="outline" className="text-[10px]">
-            {activeStrategy.indicators.filter((i) => i.enabled).length} indicadores · {activeStrategy.conditions.length} condições
+          <Badge variant="outline" className="text-[8px] md:text-[10px] hidden sm:inline-flex">
+            {activeStrategy.indicators.filter((i) => i.enabled).length} ind · {activeStrategy.conditions.length} cond
           </Badge>
         )}
         <Button
