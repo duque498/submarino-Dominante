@@ -173,9 +173,9 @@ export default function ChartPage() {
     setSearchParams({ symbol: s, category, tf: timeframe });
   };
 
-  // Get indicators from selected strategy
+  // Get ALL enabled indicators for TradingView chart
   const chartIndicators = activeStrategy?.indicators
-    ?.filter((i) => i.enabled && i.plot_on_chart)
+    ?.filter((i) => i.enabled)
     ?.map((i) => ({
       indicator_type: i.indicator_type,
       params: i.params as Record<string, unknown> | null,
@@ -183,11 +183,12 @@ export default function ChartPage() {
       plot_on_chart: i.plot_on_chart,
     })) || [];
 
-  // Conditions from strategy for checklist
+  // Conditions from strategy for checklist — separate by direction context
   const conditions = activeStrategy?.conditions || [];
+  const strategyDirection = activeStrategy?.direction || "both";
 
-  // Evaluate all conditions for audio notifications
-  const conditionResults = useMemo(() => {
+  // Evaluate conditions for LONG
+  const longResults = useMemo(() => {
     if (!conditions.length) return [];
     return conditions.map((c) => {
       const ind = activeStrategy?.indicators.find((i) => i.id === c.indicator_id);
@@ -195,9 +196,32 @@ export default function ChartPage() {
     });
   }, [conditions, activeStrategy, ticker, candles, latestOI, latestFunding]);
 
-  const passedCount = conditionResults.filter(Boolean).length;
+  // Evaluate conditions for SHORT (invert directional conditions)
+  const shortResults = useMemo(() => {
+    if (!conditions.length) return [];
+    return conditions.map((c) => {
+      const ind = activeStrategy?.indicators.find((i) => i.id === c.indicator_id);
+      // For directional operators, evaluate inversely
+      const inverted = { ...c };
+      if (c.operator === "crosses_above") inverted.operator = "crosses_below";
+      else if (c.operator === "crosses_below") inverted.operator = "crosses_above";
+      else if (c.operator === ">") inverted.operator = "<";
+      else if (c.operator === "<") inverted.operator = ">";
+      else if (c.operator === ">=") inverted.operator = "<=";
+      else if (c.operator === "<=") inverted.operator = ">=";
+      return evaluateCondition(inverted as any, ind, ticker, candles, latestOI, latestFunding);
+    });
+  }, [conditions, activeStrategy, ticker, candles, latestOI, latestFunding]);
+
+  // Use appropriate results based on direction
+  const conditionResults = strategyDirection === "both" ? longResults : longResults;
+  const longPassedCount = longResults.filter(Boolean).length;
+  const shortPassedCount = shortResults.filter(Boolean).length;
+  const passedCount = longPassedCount;
   const totalConditions = conditions.length;
-  const passedRatio = totalConditions > 0 ? passedCount / totalConditions : 0;
+  const passedRatio = totalConditions > 0 ? Math.max(longPassedCount, shortPassedCount) / totalConditions : 0;
+  const bestDirection = longPassedCount >= shortPassedCount ? "long" : "short";
+  const bestPassedCount = Math.max(longPassedCount, shortPassedCount);
 
   // Track previous state for sound transitions
   const prevResultsRef = useRef<boolean[]>([]);
