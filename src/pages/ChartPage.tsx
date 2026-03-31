@@ -239,11 +239,11 @@ export default function ChartPage() {
       </div>
 
       {/* Strategy selector */}
-      <div className="flex items-center gap-2">
-        <Puzzle className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Estratégia:</span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Puzzle className="h-4 w-4 text-muted-foreground hidden sm:block" />
+        <span className="text-xs text-muted-foreground hidden sm:block">Estratégia:</span>
         <Select value={selectedStrategyId} onValueChange={setSelectedStrategyId}>
-          <SelectTrigger className="w-64 h-8 text-xs">
+          <SelectTrigger className="w-44 md:w-64 h-7 md:h-8 text-[10px] md:text-xs">
             <SelectValue placeholder="Selecione uma estratégia" />
           </SelectTrigger>
           <SelectContent>
