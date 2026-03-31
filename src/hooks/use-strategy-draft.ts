@@ -100,7 +100,7 @@ export function dbToDraft(
       params: (ind.params as Record<string, any>) || {},
       source: ind.source || "close",
       timeframe: ind.timeframe || null,
-      role: ind.role as any,
+      role: dbRoleToFrontend(ind.role),
       weight: ind.weight || 0,
       enabled: ind.enabled ?? true,
       plotOnChart: ind.plot_on_chart ?? true,
