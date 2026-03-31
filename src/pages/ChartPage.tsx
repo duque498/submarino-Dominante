@@ -12,6 +12,8 @@ import { TrendingUp, TrendingDown, Puzzle, Volume2 } from "lucide-react";
 import { MarketAIPanel } from "@/components/chart/MarketAIPanel";
 import { useSearchParams } from "react-router-dom";
 import { playConditionTick, playEntryAlert, sendEntryPushNotification } from "@/lib/audio-notifications";
+import { triggerPushNotification } from "@/lib/push-subscription";
+import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import {
   parseConditions,
