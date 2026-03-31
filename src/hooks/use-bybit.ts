@@ -15,7 +15,8 @@ export function useKlines(symbol: string, interval: string, category: BybitCateg
   return useQuery({
     queryKey: ["bybit-klines", category, symbol, interval, limit],
     queryFn: () => getKlines(symbol, interval, category, limit),
-    staleTime: 10000,
+    refetchInterval: 1000,
+    staleTime: 500,
     enabled: !!symbol,
   });
 }
