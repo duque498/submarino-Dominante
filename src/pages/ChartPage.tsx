@@ -291,14 +291,14 @@ export default function ChartPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-3 md:gap-4 lg:grid-cols-[1fr_380px]">
         {/* TradingView Chart */}
         <div>
           <TradingViewChart
             symbol={symbol}
             timeframe={timeframe}
             category={category}
-            height={520}
+            height={typeof window !== "undefined" && window.innerWidth < 768 ? 320 : 520}
             indicators={chartIndicators}
           />
         </div>
