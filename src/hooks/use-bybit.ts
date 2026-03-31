@@ -6,8 +6,8 @@ export function useTickers(category: BybitCategory = "linear", symbol?: string) 
   return useQuery({
     queryKey: ["bybit-tickers", category, symbol],
     queryFn: () => getTickers(category, symbol),
-    refetchInterval: 5000,
-    staleTime: 3000,
+    refetchInterval: 1000,
+    staleTime: 500,
   });
 }
 
@@ -15,7 +15,8 @@ export function useKlines(symbol: string, interval: string, category: BybitCateg
   return useQuery({
     queryKey: ["bybit-klines", category, symbol, interval, limit],
     queryFn: () => getKlines(symbol, interval, category, limit),
-    staleTime: 10000,
+    refetchInterval: 1000,
+    staleTime: 500,
     enabled: !!symbol,
   });
 }
@@ -24,7 +25,7 @@ export function useOrderbook(symbol: string, category: BybitCategory = "linear")
   return useQuery({
     queryKey: ["bybit-orderbook", category, symbol],
     queryFn: () => getOrderbook(symbol, category),
-    refetchInterval: 3000,
+    refetchInterval: 1000,
     enabled: !!symbol,
   });
 }
