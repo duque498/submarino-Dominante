@@ -464,7 +464,7 @@ export function evaluateConditions(
 ): EvaluationResult[] {
   return parsed.map(pc => {
     if (!pc.validation.valid) {
-      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: null, error: pc.validation.error };
+      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: null, error: pc.validation.error, effectiveOperatorSymbol: pc.operatorSymbol, effectiveLabel: pc.label };
     }
 
     // Resolve left value
