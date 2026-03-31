@@ -392,10 +392,12 @@ export default function ChartPage() {
           className="ml-auto text-xs gap-1.5"
           onClick={() => {
             playEntryAlert();
-            toast.success(`🎯 [TESTE] Possível entrada LONG 🟢! 4/5 condições`, {
-              description: `${symbol} — ${activeStrategy?.name || "Estratégia Teste"}`,
-              duration: 10000,
-            });
+            const sig = buildEntrySignal("long", true);
+            if (sig) {
+              setEntrySignal(sig);
+              setIsTestEntry(true);
+              setEntryHubOpen(true);
+            }
           }}
         >
           <Volume2 className="h-3.5 w-3.5" />
