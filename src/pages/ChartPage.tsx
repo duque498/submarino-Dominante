@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TradingViewChart } from "@/components/chart/TradingViewChart";
-import { useTickers, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
+import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
 import { useStrategies } from "@/hooks/use-strategies";
 import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Puzzle } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
