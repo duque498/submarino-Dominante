@@ -173,17 +173,19 @@ export function validateCondition(
 
 // ─── Parsed Condition (human-readable + evaluatable) ────────────────
 
+export type ConditionDirection = "long" | "short";
+
 export interface ParsedCondition {
   id: string;
-  label: string;           // e.g. "EMA(9) > EMA(21)"
-  leftLabel: string;       // e.g. "EMA(9)"
-  operator: string;        // raw operator
-  operatorSymbol: string;  // display symbol like ">", "≥", "↑"
-  rightLabel: string;      // e.g. "EMA(21)" or "50"
+  label: string;
+  leftLabel: string;
+  operator: string;
+  operatorSymbol: string;
+  rightLabel: string;
   role: string;
   weight: number;
+  direction: ConditionDirection;
   validation: ConditionValidation;
-  // For evaluation
   leftIndicatorId: string | null;
   leftType: string;
   leftParams: Record<string, unknown> | null;
@@ -229,43 +231,35 @@ function indicatorLabel(type: string, params: Record<string, unknown> | null): s
   }
 }
 
-/**
- * Normalize a string into a slug for fuzzy matching.
- * "EMA Curta (Pullback)" → "ema_curta_pullback"
- */
 function slugify(s: string): string {
   return s
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_|_$/g, "");
 }
 
-/**
- * Find an indicator by ID, label, slug, or indicator_type (fuzzy match).
- */
 function findIndicator(
   ref: string,
   indicators: Tables<"strategy_indicators">[],
 ): Tables<"strategy_indicators"> | undefined {
   if (!ref) return undefined;
-  // Try direct ID match
   let ind = indicators.find(i => i.id === ref);
   if (ind) return ind;
-  // Try by exact label match (case insensitive)
+
   ind = indicators.find(i => i.label?.toLowerCase() === ref.toLowerCase());
   if (ind) return ind;
-  // Try by indicator_type match
+
   ind = indicators.find(i => i.indicator_type === ref);
   if (ind) return ind;
-  // Slug match: compare slugified ref against slugified label
+
   const refSlug = slugify(ref);
   ind = indicators.find(i => i.label && slugify(i.label).startsWith(refSlug));
   if (ind) return ind;
-  // Partial slug: "ema_curta" should match label slug "ema_curta_pullback"
+
   ind = indicators.find(i => i.label && slugify(i.label).includes(refSlug));
   if (ind) return ind;
-  // Try matching "type_label-fragment" e.g. "rsi_14" → indicator_type "rsi" with period 14
+
   const typeMatch = ref.match(/^([a-z_]+?)_(\d+)$/);
   if (typeMatch) {
     ind = indicators.find(i =>
@@ -273,74 +267,119 @@ function findIndicator(
       (i.params as any)?.period === Number(typeMatch[2])
     );
     if (ind) return ind;
-    // Just match by type if only one of that type exists
+
     const byType = indicators.filter(i => i.indicator_type === typeMatch[1]);
     if (byType.length === 1) return byType[0];
   }
+
   return undefined;
 }
 
-function resolveOperandLabel(
-  operand: { type?: string; ref?: string; value?: number | string },
-  indicators: Tables<"strategy_indicators">[],
-): { label: string; indType: string | null; indParams: Record<string, unknown> | null; isPrice: boolean; numericValue: number | null } {
-  const type = operand.type || "";
-  const ref = operand.ref || "";
+function normalizeConditionDirection(value: unknown): ConditionDirection | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (["long", "buy", "bull", "alta", "compra"].includes(normalized)) return "long";
+  if (["short", "sell", "bear", "baixa", "venda"].includes(normalized)) return "short";
+  return null;
+}
 
-  // Price references
-  if (type === "price" || ref.startsWith("price.") || ref === "close" || ref === "price") {
-    const priceLabel = ref === "price.high" ? "Preço (High)" :
-                       ref === "price.low" ? "Preço (Low)" :
-                       "Preço";
-    return { label: priceLabel, indType: null, indParams: null, isPrice: true, numericValue: null };
-  }
+function inferConditionDirection({
+  explicitDirection,
+  strategyDirection,
+  leftType,
+  operator,
+  rightValue,
+  compareMin,
+  compareMax,
+}: {
+  explicitDirection: ConditionDirection | null;
+  strategyDirection: string;
+  leftType: string;
+  operator: string;
+  rightValue: number | null;
+  compareMin: number | null;
+  compareMax: number | null;
+}): ConditionDirection {
+  if (explicitDirection) return explicitDirection;
+  if (strategyDirection === "long" || strategyDirection === "short") return strategyDirection;
 
-  // Volume reference
-  if (ref === "volume") {
-    return { label: "Volume", indType: "volume_sma", indParams: null, isPrice: false, numericValue: null };
-  }
+  const normalizedLeftType = leftType.toLowerCase();
+  const isOscillator = ["rsi", "stochastic", "stoch_rsi"].includes(normalizedLeftType);
 
-  // Indicator reference
-  if (type === "indicator" || (!type && ref)) {
-    const ind = findIndicator(ref, indicators);
-    if (ind) {
-      const params = (ind.params as Record<string, unknown>) || null;
-      return { label: indicatorLabel(ind.indicator_type, params), indType: ind.indicator_type, indParams: params, isPrice: false, numericValue: null };
+  if (isOscillator) {
+    if (operator === "between" && compareMin != null && compareMax != null) {
+      return (compareMin + compareMax) / 2 >= 50 ? "long" : "short";
     }
-    // Indicator not found — show ref name nicely
-    return { label: ref || "???", indType: null, indParams: null, isPrice: false, numericValue: null };
+
+    if (rightValue != null) {
+      if ((operator === ">" || operator === ">=") && rightValue >= 50) return "long";
+      if ((operator === ">" || operator === ">=") && rightValue < 50) return "short";
+      if ((operator === "<" || operator === "<=") && rightValue > 50) return "long";
+      if ((operator === "<" || operator === "<=") && rightValue <= 50) return "short";
+    }
   }
 
-  // Fixed value
-  if (type === "value" || type === "multiplier") {
-    const val = operand.value != null ? Number(operand.value) : null;
-    const suffix = type === "multiplier" ? "x" : "";
-    return { label: val != null ? `${val}${suffix}` : "???", indType: null, indParams: null, isPrice: false, numericValue: val };
+  switch (operator) {
+    case ">":
+    case ">=":
+    case "crosses_above":
+    case "increasing":
+      return "long";
+    case "<":
+    case "<=":
+    case "crosses_below":
+    case "decreasing":
+      return "short";
+    case "between":
+      if (compareMin != null && compareMax != null) {
+        return (compareMin + compareMax) / 2 >= 0 ? "long" : "short";
+      }
+      return "long";
+    case "==":
+      return rightValue != null && rightValue < 0 ? "short" : "long";
+    default:
+      return "long";
   }
+}
 
-  // Fallback: try numeric
-  if (operand.value != null) {
-    const val = Number(operand.value);
-    return { label: String(val), indType: null, indParams: null, isPrice: false, numericValue: val };
-  }
+function buildConditionKey(pc: ParsedCondition): string {
+  return JSON.stringify({
+    direction: pc.direction,
+    leftType: pc.leftType,
+    leftParams: pc.leftParams || {},
+    operator: pc.operator,
+    rightType: pc.rightType,
+    rightValue: pc.rightValue,
+    rightIndicatorType: pc.rightIndicatorType,
+    rightIndicatorParams: pc.rightIndicatorParams || {},
+  });
+}
 
-  return { label: "???", indType: null, indParams: null, isPrice: false, numericValue: null };
+export function filterConditionsByDirection(
+  parsed: ParsedCondition[],
+  direction: ConditionDirection,
+): ParsedCondition[] {
+  const seen = new Set<string>();
+
+  return parsed.filter((pc) => {
+    if (pc.direction !== direction) return false;
+    const key = buildConditionKey(pc);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function parseConditions(
   conditions: Tables<"strategy_conditions">[],
   indicators: Tables<"strategy_indicators">[],
+  strategyDirection: string = "both",
 ): ParsedCondition[] {
   return conditions.map(c => {
     const validation = validateCondition(c, indicators);
-
-    // Extract the stored operands
     const valueObj = (c.value as Record<string, unknown>) || {};
     const compareToObj = (c.compare_to as Record<string, unknown>) || {};
 
-    // --- LEFT SIDE ---
-    // The left operand info is stored in `value` as { leftType, leftRef, leftOutput }
-    // or via `indicator_id` + `condition_type`
     const leftRef = (valueObj.leftRef as string) || c.indicator_id || "";
     const leftOperandType = (valueObj.leftType as string) || c.condition_type || "";
 
@@ -352,8 +391,8 @@ export function parseConditions(
       leftLabel = leftRef === "price.high" ? "Preço (High)" : leftRef === "price.low" ? "Preço (Low)" : "Preço";
       leftType = "price";
     } else {
-      const leftInd = findIndicator(leftRef, indicators) || 
-                       (c.indicator_id ? indicators.find(i => i.id === c.indicator_id) : undefined);
+      const leftInd = findIndicator(leftRef, indicators) ||
+        (c.indicator_id ? indicators.find(i => i.id === c.indicator_id) : undefined);
       if (leftInd) {
         leftParams = (leftInd.params as Record<string, unknown>) || null;
         leftLabel = indicatorLabel(leftInd.indicator_type, leftParams);
@@ -364,7 +403,6 @@ export function parseConditions(
       }
     }
 
-    // --- RIGHT SIDE ---
     let rightType: "value" | "indicator" | "price" = "value";
     let rightValue: number | null = null;
     let rightIndicatorType: string | null = null;
@@ -374,6 +412,8 @@ export function parseConditions(
     const rightOpType = (compareToObj.type as string) || "";
     const rightOpRef = (compareToObj.ref as string) || "";
     const rightOpValue = compareToObj.value != null ? Number(compareToObj.value) : null;
+    const compareMin = compareToObj.min != null ? Number(compareToObj.min) : valueObj.min != null ? Number(valueObj.min) : null;
+    const compareMax = compareToObj.max != null ? Number(compareToObj.max) : valueObj.max != null ? Number(valueObj.max) : null;
 
     if (rightOpType === "price" || rightOpRef.startsWith("price.") || rightOpRef === "close" || rightOpRef === "price") {
       rightType = "price";
@@ -386,7 +426,6 @@ export function parseConditions(
         rightIndicatorParams = (rightInd.params as Record<string, unknown>) || null;
         rightLabel = indicatorLabel(rightInd.indicator_type, rightIndicatorParams);
       } else {
-        // Show the ref name nicely instead of raw JSON
         rightLabel = rightOpRef || "???";
       }
     } else if (rightOpType === "multiplier" && rightOpValue != null) {
@@ -399,7 +438,6 @@ export function parseConditions(
       rightLabel = String(rightOpValue);
     }
 
-    // Fallback: use rightValue from the value object
     if (!rightLabel) {
       const fallbackVal = valueObj.rightValue != null ? Number(valueObj.rightValue) : null;
       if (fallbackVal != null && !isNaN(fallbackVal)) {
@@ -408,18 +446,29 @@ export function parseConditions(
       }
     }
 
-    // Handle between operator with min/max
     if (c.operator === "between") {
-      const min = (compareToObj.min as number) ?? (valueObj.min as number);
-      const max = (compareToObj.max as number) ?? (valueObj.max as number);
-      if (min != null && max != null) {
-        rightLabel = `${min}–${max}`;
+      if (compareMin != null && compareMax != null) {
+        rightLabel = `${compareMin}–${compareMax}`;
       } else if (rightOpValue != null) {
         rightLabel = String(rightOpValue);
       }
     }
 
     if (!rightLabel) rightLabel = "???";
+
+    const explicitDirection =
+      normalizeConditionDirection(valueObj.direction) ||
+      normalizeConditionDirection(compareToObj.direction);
+
+    const direction = inferConditionDirection({
+      explicitDirection,
+      strategyDirection,
+      leftType,
+      operator: c.operator,
+      rightValue,
+      compareMin,
+      compareMax,
+    });
 
     const opSymbol = OPERATOR_SYMBOLS[c.operator] || c.operator;
     const label = `${leftLabel} ${opSymbol} ${rightLabel}`;
@@ -433,6 +482,7 @@ export function parseConditions(
       rightLabel,
       role: c.role,
       weight: c.weight,
+      direction,
       validation,
       leftIndicatorId: c.indicator_id,
       leftType,
@@ -444,8 +494,6 @@ export function parseConditions(
     };
   });
 }
-
-// ─── Condition Evaluation Result ────────────────────────────────────
 
 export interface EvaluationResult {
   conditionId: string;
@@ -460,14 +508,21 @@ export interface EvaluationResult {
 export function evaluateConditions(
   parsed: ParsedCondition[],
   ctx: MarketContext,
-  direction: "long" | "short",
+  _direction: ConditionDirection,
 ): EvaluationResult[] {
   return parsed.map(pc => {
     if (!pc.validation.valid) {
-      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: null, error: pc.validation.error, effectiveOperatorSymbol: pc.operatorSymbol, effectiveLabel: pc.label };
+      return {
+        conditionId: pc.id,
+        passed: false,
+        leftValue: null,
+        rightValue: null,
+        error: pc.validation.error,
+        effectiveOperatorSymbol: pc.operatorSymbol,
+        effectiveLabel: pc.label,
+      };
     }
 
-    // Resolve left value
     let leftVal: number | null;
     if (pc.leftType === "price") {
       leftVal = getPrice(ctx);
@@ -475,7 +530,6 @@ export function evaluateConditions(
       leftVal = resolveIndicatorValue(pc.leftType, pc.leftParams, ctx);
     }
 
-    // Resolve right value
     let rightVal: number | null = pc.rightValue;
     if (pc.rightType === "indicator" && pc.rightIndicatorType) {
       rightVal = resolveIndicatorValue(pc.rightIndicatorType, pc.rightIndicatorParams, ctx);
@@ -484,28 +538,20 @@ export function evaluateConditions(
     }
 
     if (leftVal == null || isNaN(leftVal)) {
-      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: rightVal, error: "Sem dados", effectiveOperatorSymbol: pc.operatorSymbol, effectiveLabel: pc.label };
-    }
-
-    // For SHORT direction, invert directional operators
-    let operator = pc.operator;
-    if (direction === "short") {
-      const invertMap: Record<string, string> = {
-        ">": "<",
-        "<": ">",
-        ">=": "<=",
-        "<=": ">=",
-        "crosses_above": "crosses_below",
-        "crosses_below": "crosses_above",
-        "increasing": "decreasing",
-        "decreasing": "increasing",
+      return {
+        conditionId: pc.id,
+        passed: false,
+        leftValue: null,
+        rightValue: rightVal,
+        error: "Sem dados",
+        effectiveOperatorSymbol: pc.operatorSymbol,
+        effectiveLabel: pc.label,
       };
-      operator = invertMap[operator] || operator;
     }
 
     let passed = false;
 
-    switch (operator) {
+    switch (pc.operator) {
       case ">":
         passed = rightVal != null && leftVal > rightVal;
         break;
@@ -522,8 +568,6 @@ export function evaluateConditions(
         passed = rightVal != null && Math.abs(leftVal - rightVal) < 0.001;
         break;
       case "between": {
-        const val = pc.rightValue; // use original since between doesn't invert
-        // Parse min/max from right label
         const parts = pc.rightLabel.split("–").map(Number);
         if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
           passed = leftVal >= parts[0] && leftVal <= parts[1];
@@ -564,17 +608,19 @@ export function evaluateConditions(
       }
     }
 
-    const effectiveOpSymbol = OPERATOR_SYMBOLS[operator] || operator;
-    const effectiveLabel = `${pc.leftLabel} ${effectiveOpSymbol} ${pc.rightLabel}`;
-
-    return { conditionId: pc.id, passed, leftValue: leftVal, rightValue: rightVal, effectiveOperatorSymbol: effectiveOpSymbol, effectiveLabel };
+    return {
+      conditionId: pc.id,
+      passed,
+      leftValue: leftVal,
+      rightValue: rightVal,
+      effectiveOperatorSymbol: pc.operatorSymbol,
+      effectiveLabel: pc.label,
+    };
   });
 }
 
-// ─── Summary helpers ────────────────────────────────────────────────
-
 export interface DirectionSummary {
-  direction: "long" | "short";
+  direction: ConditionDirection;
   total: number;
   passed: number;
   ratio: number;
@@ -585,7 +631,7 @@ export interface DirectionSummary {
 export function summarizeDirection(
   parsed: ParsedCondition[],
   results: EvaluationResult[],
-  direction: "long" | "short",
+  direction: ConditionDirection,
 ): DirectionSummary {
   const validParsed = parsed.filter(p => p.validation.valid);
   const total = validParsed.length;
@@ -603,8 +649,8 @@ export function summarizeDirection(
     .map(p => p.label);
 
   let status: DirectionSummary["status"] = "no_signal";
-  if (ratio === 1) status = "confirmed";
-  else if (ratio >= 0.7) status = "almost";
+  if (total > 0 && ratio === 1) status = "confirmed";
+  else if (total > 0 && ratio >= 0.7) status = "almost";
 
   return { direction, total, passed, ratio, status, missingConditions: missing };
 }
