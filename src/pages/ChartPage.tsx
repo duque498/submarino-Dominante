@@ -155,6 +155,9 @@ export default function ChartPage() {
   const category = (searchParams.get("category") || "linear") as BybitCategory;
   const [timeframe, setTimeframe] = useState(searchParams.get("tf") || "5m");
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>("none");
+  const [entryHubOpen, setEntryHubOpen] = useState(false);
+  const [entrySignal, setEntrySignal] = useState<EntrySignalData | null>(null);
+  const [isTestEntry, setIsTestEntry] = useState(false);
   const timeframes = ["1m", "5m", "15m", "1h", "4h"];
 
   const { data: tickers } = useTickers(category, symbol);
