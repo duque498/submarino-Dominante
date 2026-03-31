@@ -151,7 +151,7 @@ export default function ChartPage() {
       ] : []),
       indicatorSnapshot: indSnap,
     };
-  }, [candles, parsed, longResults, shortResults, longSummary, shortSummary, activeStrategy, symbol, timeframe, category, marketCtx]);
+  }, [candles, longParsed, shortParsed, longResults, shortResults, longSummary, shortSummary, activeStrategy, symbol, timeframe, category, marketCtx]);
 
   // ─── Sound/alert triggers ─────────────────────────────────────────
   const prevLongRef = useRef<boolean[]>([]);

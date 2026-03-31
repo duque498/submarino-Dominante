@@ -291,30 +291,35 @@ export function LiveConditionsPanel({ strategy, symbol, timeframe, ctx }: LiveCo
         </div>
       )}
 
-      {/* LONG block */}
-      {showLong && parsed.length > 0 && (
+      {!showLong && !showShort && parsed.length > 0 && (
+        <div className="rounded border border-border bg-muted/20 px-3 py-2">
+          <p className="text-[10px] text-muted-foreground">
+            Nenhuma condição válida foi classificada para LONG ou SHORT.
+          </p>
+        </div>
+      )}
+
+      {showLong && (
         <DirectionBlock
           label="LONG"
           icon={TrendingUp}
           iconColor="text-bull"
-          parsed={parsed}
+          parsed={longParsed}
           results={longResults}
           summary={longSummary}
         />
       )}
 
-      {/* Separator */}
-      {showLong && showShort && parsed.length > 0 && (
+      {showLong && showShort && (
         <div className="border-t border-border" />
       )}
 
-      {/* SHORT block */}
-      {showShort && parsed.length > 0 && (
+      {showShort && (
         <DirectionBlock
           label="SHORT"
           icon={TrendingDown}
           iconColor="text-bear"
-          parsed={parsed}
+          parsed={shortParsed}
           results={shortResults}
           summary={shortSummary}
         />
