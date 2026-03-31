@@ -214,13 +214,42 @@ export default function ChartPage() {
               <div className="space-y-1.5">
                 {conditions.map((c) => {
                   const indicator = activeStrategy.indicators.find((i) => i.id === c.indicator_id);
-                  const label = indicator
-                    ? `${indicator.indicator_type.toUpperCase()} ${c.operator} ${JSON.stringify(c.value)}`
-                    : `${c.condition_type} ${c.operator} ${JSON.stringify(c.value)}`;
+                  const indName = indicator
+                    ? indicator.indicator_type.toUpperCase()
+                    : c.condition_type;
+
+                  // Format value for display
+                  const val = c.value as unknown;
+                  let valueStr = "";
+                  if (val && typeof val === "object" && "min" in (val as any) && "max" in (val as any)) {
+                    valueStr = `${(val as any).min} e ${(val as any).max}`;
+                  } else if (typeof val === "object") {
+                    valueStr = Object.values(val as any).join(", ");
+                  } else {
+                    valueStr = String(val ?? "");
+                  }
+
+                  // Readable operator
+                  const opMap: Record<string, string> = {
+                    ">": "maior que",
+                    "<": "menor que",
+                    ">=": "≥",
+                    "<=": "≤",
+                    "==": "igual a",
+                    "crosses_above": "cruza acima de",
+                    "crosses_below": "cruza abaixo de",
+                    "between": "entre",
+                    "increasing": "subindo",
+                    "decreasing": "descendo",
+                  };
+                  const opStr = opMap[c.operator] || c.operator;
+
                   return (
                     <div key={c.id} className="flex items-center gap-2 text-xs">
                       <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="text-foreground font-mono">{label}</span>
+                      <span className="text-foreground">
+                        {indName} {opStr} {valueStr}
+                      </span>
                       {c.role === "required" && (
                         <Badge variant="outline" className="ml-auto text-[8px] px-1">Obrig.</Badge>
                       )}
