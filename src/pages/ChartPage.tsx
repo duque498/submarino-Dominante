@@ -225,13 +225,13 @@ export default function ChartPage() {
         </div>
         <div className="flex items-center gap-1 flex-wrap">
           {["BTCUSDT", "ETHUSDT", "SOLUSDT"].map((s) => (
-            <Button key={s} variant={symbol === s ? "default" : "ghost"} size="sm" className="font-mono text-xs" onClick={() => setSymbol(s)}>
+            <Button key={s} variant={symbol === s ? "default" : "ghost"} size="sm" className="font-mono text-[10px] md:text-xs h-7 px-2 md:h-8 md:px-3" onClick={() => setSymbol(s)}>
               {s.replace("USDT", "")}
             </Button>
           ))}
-          <div className="mx-2 h-4 w-px bg-border" />
+          <div className="mx-1 md:mx-2 h-4 w-px bg-border" />
           {timeframes.map((tf) => (
-            <Button key={tf} variant={timeframe === tf ? "default" : "secondary"} size="sm" className="font-mono text-xs" onClick={() => setTimeframe(tf)}>
+            <Button key={tf} variant={timeframe === tf ? "default" : "secondary"} size="sm" className="font-mono text-[10px] md:text-xs h-7 px-2 md:h-8 md:px-3" onClick={() => setTimeframe(tf)}>
               {tf}
             </Button>
           ))}
