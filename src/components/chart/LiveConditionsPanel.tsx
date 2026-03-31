@@ -125,7 +125,7 @@ function DirectionBlock({
                 )}
               </div>
 
-              {/* Condition label */}
+              {/* Condition label — use direction-specific effective label */}
               <div className="flex-1 min-w-0 truncate">
                 <span
                   className={
@@ -136,7 +136,7 @@ function DirectionBlock({
                       : "text-muted-foreground"
                   }
                 >
-                  {pc.label}
+                  {result?.effectiveLabel || pc.label}
                 </span>
                 {hasError && (
                   <span className="ml-1 text-[9px] text-yellow-500/70">({errorMsg})</span>

@@ -453,6 +453,8 @@ export interface EvaluationResult {
   leftValue: number | null;
   rightValue: number | null;
   error?: string;
+  effectiveOperatorSymbol?: string;
+  effectiveLabel?: string;
 }
 
 export function evaluateConditions(
@@ -462,7 +464,7 @@ export function evaluateConditions(
 ): EvaluationResult[] {
   return parsed.map(pc => {
     if (!pc.validation.valid) {
-      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: null, error: pc.validation.error };
+      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: null, error: pc.validation.error, effectiveOperatorSymbol: pc.operatorSymbol, effectiveLabel: pc.label };
     }
 
     // Resolve left value
@@ -482,7 +484,7 @@ export function evaluateConditions(
     }
 
     if (leftVal == null || isNaN(leftVal)) {
-      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: rightVal, error: "Sem dados" };
+      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: rightVal, error: "Sem dados", effectiveOperatorSymbol: pc.operatorSymbol, effectiveLabel: pc.label };
     }
 
     // For SHORT direction, invert directional operators
@@ -562,7 +564,10 @@ export function evaluateConditions(
       }
     }
 
-    return { conditionId: pc.id, passed, leftValue: leftVal, rightValue: rightVal };
+    const effectiveOpSymbol = OPERATOR_SYMBOLS[operator] || operator;
+    const effectiveLabel = `${pc.leftLabel} ${effectiveOpSymbol} ${pc.rightLabel}`;
+
+    return { conditionId: pc.id, passed, leftValue: leftVal, rightValue: rightVal, effectiveOperatorSymbol: effectiveOpSymbol, effectiveLabel };
   });
 }
 
