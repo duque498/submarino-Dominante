@@ -85,17 +85,15 @@ export default function DashboardPage() {
   const topSignals = (signals || []).slice(0, 5);
 
   return (
-    <div className="space-y-6 animate-slide-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Monitoramento do scanner e oportunidades em tempo real</p>
+    <div className="space-y-4 md:space-y-6 animate-slide-in">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-xs md:text-sm text-muted-foreground truncate">Monitoramento do scanner em tempo real</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5">
-            <Radar className="h-3.5 w-3.5 text-primary animate-pulse" />
-            <span className="text-xs font-mono text-muted-foreground">Scanner ativo</span>
-          </div>
+        <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 md:px-3 md:py-1.5 shrink-0">
+          <Radar className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary animate-pulse" />
+          <span className="text-[10px] md:text-xs font-mono text-muted-foreground hidden sm:inline">Scanner ativo</span>
         </div>
       </div>
 
