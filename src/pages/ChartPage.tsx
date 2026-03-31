@@ -608,6 +608,14 @@ export default function ChartPage() {
           )}
         </div>
       </div>
+
+      {/* Entry Hub Modal */}
+      <EntryHubModal
+        open={entryHubOpen}
+        onOpenChange={setEntryHubOpen}
+        signal={entrySignal}
+        isTest={isTestEntry}
+      />
     </div>
   );
 }
