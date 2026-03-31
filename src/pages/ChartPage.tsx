@@ -401,6 +401,22 @@ export default function ChartPage() {
             />
           )}
 
+          {/* AI Market Analysis Panel */}
+          <MarketAIPanel
+            symbol={symbol}
+            strategyContext={activeStrategy ? {
+              id: activeStrategy.id,
+              name: activeStrategy.name,
+              direction: activeStrategy.direction,
+              indicators: activeStrategy.indicators.filter(i => i.enabled).map(i => ({
+                type: i.indicator_type,
+                params: i.params,
+                role: i.role,
+              })),
+            } : undefined}
+            category={category}
+          />
+
           {/* No strategy selected */}
           {!activeStrategy && (
             <div className="rounded-lg border border-dashed border-border p-6 text-center">
