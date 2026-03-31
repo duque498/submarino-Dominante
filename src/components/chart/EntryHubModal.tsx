@@ -14,9 +14,11 @@ import {
   Target,
   ShieldAlert,
   BarChart3,
+  PlayCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useCreatePaperTrade } from "@/hooks/use-paper-trades";
 
 export interface EntrySignalData {
   symbol: string;
