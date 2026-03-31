@@ -16,6 +16,7 @@ import HistoryPage from "@/pages/HistoryPage";
 import BacktestsPage from "@/pages/BacktestsPage";
 import PaperTradingPage from "@/pages/PaperTradingPage";
 import SettingsPage from "@/pages/SettingsPage";
+import InstallPage from "@/pages/InstallPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
