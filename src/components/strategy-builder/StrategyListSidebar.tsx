@@ -145,7 +145,7 @@ export function StrategyListSidebar({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(s.id);
+                        setDeleteTarget({ id: s.id, name: s.name });
                       }}
                       className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
                     >
