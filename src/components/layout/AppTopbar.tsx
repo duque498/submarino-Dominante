@@ -1,8 +1,9 @@
-import { Bell, Activity, Wifi, WifiOff } from "lucide-react";
+import { Activity, Wifi, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useBybitConnection } from "@/hooks/use-bybit-connection";
 import { useEffect, useState } from "react";
+import { NotificationPanel } from "@/components/notifications/NotificationPanel";
+import { useTradeMonitor } from "@/hooks/use-trade-monitor";
 
 interface AppTopbarProps {
   onNotificationsClick?: () => void;
@@ -11,6 +12,9 @@ interface AppTopbarProps {
 export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
   const connection = useBybitConnection();
   const [time, setTime] = useState(new Date());
+
+  // Activate TP/SL monitor globally
+  useTradeMonitor();
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -37,7 +41,7 @@ export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
         <div className="hidden items-center gap-2 sm:flex">
           <Activity className="h-4 w-4 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">Scanner</span>
-          <Badge variant="secondary" className="text-[10px]">Fase 3</Badge>
+          <Badge variant="secondary" className="text-[10px]">Ativo</Badge>
         </div>
       </div>
 
@@ -45,9 +49,7 @@ export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
         <span className="hidden text-xs text-muted-foreground md:block font-mono">
           {time.toLocaleTimeString("pt-BR")}
         </span>
-        <Button variant="ghost" size="icon" onClick={onNotificationsClick} className="relative">
-          <Bell className="h-4 w-4" />
-        </Button>
+        <NotificationPanel />
       </div>
     </header>
   );
