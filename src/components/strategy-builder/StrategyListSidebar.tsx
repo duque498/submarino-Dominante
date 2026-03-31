@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Play, Pause, Trash2, Settings2 } from "lucide-react";
+import { Plus, Search, Play, Pause, Trash2, Settings2, Copy, Sparkles } from "lucide-react";
+import { StrategyPresetsDialog } from "./StrategyPresetsDialog";
 import type { FullStrategy } from "@/hooks/use-strategies";
+import type { StrategyDraft } from "@/types/strategy";
 
 interface Props {
   strategies: FullStrategy[];
@@ -15,6 +17,8 @@ interface Props {
   onNew: () => void;
   onDelete: (id: string) => void;
   onToggle: (id: string, active: boolean) => void;
+  onDuplicate?: (id: string) => void;
+  onApplyPreset?: (draft: StrategyDraft) => void;
 }
 
 export function StrategyListSidebar({
@@ -25,6 +29,8 @@ export function StrategyListSidebar({
   onNew,
   onDelete,
   onToggle,
+  onDuplicate,
+  onApplyPreset,
 }: Props) {
   const [search, setSearch] = useState("");
 
@@ -38,9 +44,18 @@ export function StrategyListSidebar({
     <div className="h-full flex flex-col bg-card/30 border-r border-border">
       {/* Header */}
       <div className="p-3 space-y-2 border-b border-border">
-        <Button onClick={onNew} size="sm" className="w-full gap-1.5">
-          <Plus className="h-3.5 w-3.5" /> Nova Estratégia
-        </Button>
+        <div className="flex gap-1.5">
+          <Button onClick={onNew} size="sm" className="flex-1 gap-1.5">
+            <Plus className="h-3.5 w-3.5" /> Nova
+          </Button>
+          {onApplyPreset && (
+            <StrategyPresetsDialog onApply={onApplyPreset}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" /> Preset
+              </Button>
+            </StrategyPresetsDialog>
+          )}
+        </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -100,6 +115,18 @@ export function StrategyListSidebar({
                     </div>
                   </div>
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {onDuplicate && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDuplicate(s.id);
+                        }}
+                        className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                        title="Duplicar"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

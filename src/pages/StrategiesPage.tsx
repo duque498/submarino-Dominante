@@ -1,12 +1,15 @@
 import { useState, useCallback } from "react";
 import { useStrategies, useDeleteStrategy, useToggleStrategy } from "@/hooks/use-strategies";
-import { useStrategyDraft } from "@/hooks/use-strategy-draft";
+import { useStrategyDraft, dbToDraft } from "@/hooks/use-strategy-draft";
 import { StrategyListSidebar } from "@/components/strategy-builder/StrategyListSidebar";
 import { StrategyEditorTabs } from "@/components/strategy-builder/StrategyEditorTabs";
 import { StrategyAiPanel } from "@/components/strategy-builder/StrategyAiPanel";
+import { StrategyVersionsDialog } from "@/components/strategy-builder/StrategyVersionsDialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
-import { Bot, X } from "lucide-react";
+import { Bot, X, History } from "lucide-react";
+import { toast } from "sonner";
+import type { StrategyDraft } from "@/types/strategy";
 
 export default function StrategiesPage() {
   const { data: strategies, isLoading: loadingList } = useStrategies();
@@ -45,6 +48,50 @@ export default function StrategiesPage() {
     [toggleStrategy]
   );
 
+  const handleDuplicate = useCallback(
+    (id: string) => {
+      const strategy = strategies?.find((s) => s.id === id);
+      if (!strategy) return;
+
+      const duplicated = dbToDraft(
+        strategy,
+        strategy.indicators,
+        strategy.conditions,
+        strategy.weights,
+        strategy.symbols,
+        strategy.timeframes
+      );
+
+      // Remove id to create a new one, update name
+      draftHook.replaceDraft({
+        ...duplicated,
+        id: undefined,
+        name: `${duplicated.name} (cópia)`,
+        version: 1,
+      });
+      setSelectedId(null);
+      toast.info("Estratégia duplicada. Salve para confirmar.");
+    },
+    [strategies, draftHook]
+  );
+
+  const handleApplyPreset = useCallback(
+    (preset: StrategyDraft) => {
+      setSelectedId(null);
+      draftHook.replaceDraft(preset);
+      toast.info("Preset aplicado. Edite e salve para confirmar.");
+    },
+    [draftHook]
+  );
+
+  const handleRestoreVersion = useCallback(
+    (snapshot: StrategyDraft) => {
+      draftHook.replaceDraft({ ...snapshot, id: draftHook.draft.id });
+      toast.success("Versão restaurada. Salve para confirmar.");
+    },
+    [draftHook]
+  );
+
   return (
     <div className="h-[calc(100vh-3.5rem)] flex flex-col animate-slide-in">
       {/* Top bar */}
@@ -59,6 +106,17 @@ export default function StrategiesPage() {
           )}
           {draftHook.saving && (
             <span className="text-xs text-muted-foreground font-mono">Salvando...</span>
+          )}
+          {draftHook.draft.id && (
+            <StrategyVersionsDialog
+              strategyId={draftHook.draft.id}
+              onRestore={handleRestoreVersion}
+            >
+              <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs">
+                <History className="h-3.5 w-3.5" />
+                Versões
+              </Button>
+            </StrategyVersionsDialog>
           )}
           <Button
             variant={showAi ? "default" : "outline"}
@@ -85,6 +143,8 @@ export default function StrategiesPage() {
               onNew={handleNew}
               onDelete={handleDelete}
               onToggle={handleToggle}
+              onDuplicate={handleDuplicate}
+              onApplyPreset={handleApplyPreset}
             />
           </ResizablePanel>
 
