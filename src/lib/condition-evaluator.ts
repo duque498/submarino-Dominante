@@ -564,7 +564,10 @@ export function evaluateConditions(
       }
     }
 
-    return { conditionId: pc.id, passed, leftValue: leftVal, rightValue: rightVal };
+    const effectiveOpSymbol = OPERATOR_SYMBOLS[operator] || operator;
+    const effectiveLabel = `${pc.leftLabel} ${effectiveOpSymbol} ${pc.rightLabel}`;
+
+    return { conditionId: pc.id, passed, leftValue: leftVal, rightValue: rightVal, effectiveOperatorSymbol: effectiveOpSymbol, effectiveLabel };
   });
 }
 
