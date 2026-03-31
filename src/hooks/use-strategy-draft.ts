@@ -59,7 +59,7 @@ export function dbToDraft(
         ref: (c.compare_to as any)?.ref || "",
         value: (c.compare_to as any)?.value ?? (c.value as any)?.rightValue,
       },
-      role: c.role as any,
+      role: dbRoleToFrontend(c.role),
       weight: c.weight || 10,
       enabled: true,
     })),
