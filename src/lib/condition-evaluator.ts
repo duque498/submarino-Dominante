@@ -230,7 +230,19 @@ function indicatorLabel(type: string, params: Record<string, unknown> | null): s
 }
 
 /**
- * Find an indicator by ID or by label/ref string (fuzzy match).
+ * Normalize a string into a slug for fuzzy matching.
+ * "EMA Curta (Pullback)" → "ema_curta_pullback"
+ */
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+/**
+ * Find an indicator by ID, label, slug, or indicator_type (fuzzy match).
  */
 function findIndicator(
   ref: string,
@@ -240,12 +252,31 @@ function findIndicator(
   // Try direct ID match
   let ind = indicators.find(i => i.id === ref);
   if (ind) return ind;
-  // Try by label match (case insensitive)
+  // Try by exact label match (case insensitive)
   ind = indicators.find(i => i.label?.toLowerCase() === ref.toLowerCase());
   if (ind) return ind;
   // Try by indicator_type match
   ind = indicators.find(i => i.indicator_type === ref);
   if (ind) return ind;
+  // Slug match: compare slugified ref against slugified label
+  const refSlug = slugify(ref);
+  ind = indicators.find(i => i.label && slugify(i.label).startsWith(refSlug));
+  if (ind) return ind;
+  // Partial slug: "ema_curta" should match label slug "ema_curta_pullback"
+  ind = indicators.find(i => i.label && slugify(i.label).includes(refSlug));
+  if (ind) return ind;
+  // Try matching "type_label-fragment" e.g. "rsi_14" → indicator_type "rsi" with period 14
+  const typeMatch = ref.match(/^([a-z_]+?)_(\d+)$/);
+  if (typeMatch) {
+    ind = indicators.find(i =>
+      i.indicator_type === typeMatch[1] &&
+      (i.params as any)?.period === Number(typeMatch[2])
+    );
+    if (ind) return ind;
+    // Just match by type if only one of that type exists
+    const byType = indicators.filter(i => i.indicator_type === typeMatch[1]);
+    if (byType.length === 1) return byType[0];
+  }
   return undefined;
 }
 
