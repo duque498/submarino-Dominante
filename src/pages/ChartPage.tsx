@@ -7,7 +7,144 @@ import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/
 import { useStrategies } from "@/hooks/use-strategies";
 import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Puzzle } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import type { BybitCategory } from "@/services/bybit";
+import type { BybitCategory, CandleData, TickerData } from "@/services/bybit";
+import type { Tables } from "@/integrations/supabase/types";
+
+// Simple EMA/SMA calculator for live condition evaluation
+function calcSMA(data: number[], period: number): number {
+  if (data.length < period) return NaN;
+  const slice = data.slice(-period);
+  return slice.reduce((s, v) => s + v, 0) / period;
+}
+
+function calcEMA(data: number[], period: number): number {
+  if (data.length < period) return NaN;
+  const k = 2 / (period + 1);
+  let ema = calcSMA(data.slice(0, period), period);
+  for (let i = period; i < data.length; i++) {
+    ema = data[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+function calcRSI(closes: number[], period: number): number {
+  if (closes.length < period + 1) return NaN;
+  let gains = 0, losses = 0;
+  const recent = closes.slice(-(period + 1));
+  for (let i = 1; i < recent.length; i++) {
+    const diff = recent[i] - recent[i - 1];
+    if (diff > 0) gains += diff;
+    else losses -= diff;
+  }
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
+}
+
+function getIndicatorValue(
+  indType: string,
+  params: Record<string, unknown> | null,
+  candles: CandleData[] | undefined,
+  ticker: TickerData | undefined,
+  oi: { openInterest: number } | undefined,
+  funding: { fundingRate: number } | undefined,
+): number | null {
+  if (!candles?.length) return null;
+  const closes = candles.map((c) => c.close);
+  const volumes = candles.map((c) => c.volume);
+  const p = params || {};
+
+  switch (indType) {
+    case "ema":
+      return calcEMA(closes, Number(p.period || 21));
+    case "sma":
+      return calcSMA(closes, Number(p.period || 50));
+    case "rsi":
+      return calcRSI(closes, Number(p.period || 14));
+    case "volume_sma": {
+      const avg = calcSMA(volumes, Number(p.period || 20));
+      const lastVol = volumes[volumes.length - 1];
+      return avg > 0 ? lastVol / avg : null;
+    }
+    case "vwap":
+      return ticker?.lastPrice ?? null; // simplified
+    case "open_interest":
+      return oi?.openInterest ?? null;
+    case "funding_rate":
+      return funding ? funding.fundingRate * 100 : null;
+    case "atr": {
+      const period = Number(p.period || 14);
+      if (candles.length < period + 1) return null;
+      const trs = candles.slice(-period - 1).map((c, i, arr) => {
+        if (i === 0) return 0;
+        const prev = arr[i - 1];
+        return Math.max(c.high - c.low, Math.abs(c.high - prev.close), Math.abs(c.low - prev.close));
+      }).slice(1);
+      return trs.reduce((s, v) => s + v, 0) / period;
+    }
+    case "spread":
+      return ticker?.spread ?? null;
+    default:
+      return null;
+  }
+}
+
+function evaluateCondition(
+  condition: Tables<"strategy_conditions">,
+  indicator: Tables<"strategy_indicators"> | undefined,
+  ticker: TickerData | undefined,
+  candles: CandleData[] | undefined,
+  oi: { openInterest: number } | undefined,
+  funding: { fundingRate: number } | undefined,
+): boolean {
+  if (!indicator && !condition.condition_type) return false;
+
+  const indType = indicator?.indicator_type || condition.condition_type;
+  const params = (indicator?.params ?? null) as Record<string, unknown> | null;
+  const value = getIndicatorValue(indType, params, candles, ticker, oi, funding);
+
+  if (value === null || isNaN(value)) return false;
+
+  const condVal = condition.value as any;
+  const op = condition.operator;
+
+  switch (op) {
+    case ">": return value > Number(condVal);
+    case "<": return value < Number(condVal);
+    case ">=": return value >= Number(condVal);
+    case "<=": return value <= Number(condVal);
+    case "==": return Math.abs(value - Number(condVal)) < 0.001;
+    case "between":
+      return value >= Number(condVal?.min) && value <= Number(condVal?.max);
+    case "crosses_above": {
+      // Simplified: check if current value is above target
+      return value > Number(condVal);
+    }
+    case "crosses_below": {
+      return value < Number(condVal);
+    }
+    case "increasing": {
+      if (!candles || candles.length < 3) return false;
+      const closes = candles.map((c) => c.close);
+      const prev = indType === "ema"
+        ? calcEMA(closes.slice(0, -1), Number(params?.period || 21))
+        : calcSMA(closes.slice(0, -1), Number(params?.period || 50));
+      return value > prev;
+    }
+    case "decreasing": {
+      if (!candles || candles.length < 3) return false;
+      const closes = candles.map((c) => c.close);
+      const prev = indType === "ema"
+        ? calcEMA(closes.slice(0, -1), Number(params?.period || 21))
+        : calcSMA(closes.slice(0, -1), Number(params?.period || 50));
+      return value < prev;
+    }
+    default:
+      return false;
+  }
+}
 
 export default function ChartPage() {
   const [searchParams, setSearchParams] = useSearchParams();
