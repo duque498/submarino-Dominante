@@ -36,6 +36,7 @@ export default function ChartPage() {
   const [entrySignal, setEntrySignal] = useState<EntrySignalData | null>(null);
   const [isTestEntry, setIsTestEntry] = useState(false);
   const timeframes = ["1m", "5m", "15m", "1h", "4h"];
+  const isMobile = useIsMobile();
 
   const { data: tickers } = useTickers(category, symbol);
   const { data: oiData } = useOpenInterest(symbol, category);
