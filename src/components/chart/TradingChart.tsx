@@ -188,7 +188,7 @@ export function TradingChart({
   }, [symbol, timeframe, category]);
 
   return (
-    <div className="relative rounded-lg border border-border bg-card overflow-hidden">
+    <div className="relative rounded-lg border border-border overflow-hidden" style={{ backgroundColor: '#171b22', color: '#7a8194' }}>
       <div ref={containerRef} />
     </div>
   );
