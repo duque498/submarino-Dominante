@@ -34,6 +34,7 @@ export function StrategyListSidebar({
   onApplyPreset,
 }: Props) {
   const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const filtered = strategies.filter(
     (s) =>
