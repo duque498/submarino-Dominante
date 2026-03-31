@@ -275,7 +275,7 @@ export function useStrategyDraft(initialId?: string | null) {
               ref: c.rightOperand.ref,
               value: c.rightOperand.value,
             },
-            role: c.role,
+            role: roleToDb(c.role),
             weight: c.weight,
             sort_order: i,
           }))
