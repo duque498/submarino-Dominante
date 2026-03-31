@@ -29,6 +29,7 @@ import {
 import type { BybitCategory, CandleData, TickerData } from "@/services/bybit";
 
 export default function ChartPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const symbol = searchParams.get("symbol") || "BTCUSDT";
   const category = (searchParams.get("category") || "linear") as BybitCategory;
