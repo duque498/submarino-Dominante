@@ -412,6 +412,17 @@ export default function ChartPage() {
               setEntrySignal(sig);
               setIsTestEntry(true);
               setEntryHubOpen(true);
+              sendEntryPushNotification({
+                symbol: sig.symbol,
+                direction: sig.direction,
+                score: sig.score,
+                passedConditions: sig.passedConditions,
+                totalConditions: sig.totalConditions,
+                entryPrice: sig.entryPrice,
+                stopPrice: sig.stopPrice,
+                targetPrice: sig.target1Price,
+                strategyName: sig.strategyName,
+              });
             }
           }}
         >
