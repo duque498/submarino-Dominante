@@ -64,26 +64,13 @@ export function MarketAIPanel({ symbol, strategyContext, category }: MarketAIPan
     return () => { if (autoRefreshRef.current) clearInterval(autoRefreshRef.current); };
   }, [symbol, strategyContext?.id]);
 
-  const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    };
-  };
-
   const fetchAnalysis = useCallback(async () => {
     setAnalysisLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(ANALYSIS_URL, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ action: "analyze", symbol, strategyContext }),
+      const { data, error } = await supabase.functions.invoke("market-analysis", {
+        body: { action: "analyze", symbol, strategyContext },
       });
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
+      if (error) throw error;
       setAnalysis(data.analysis);
       setAnalysisTimestamp(data.timestamp);
     } catch (e) {
@@ -96,14 +83,10 @@ export function MarketAIPanel({ symbol, strategyContext, category }: MarketAIPan
   const fetchPairScans = useCallback(async () => {
     setScanLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(ANALYSIS_URL, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ action: "scan_pairs" }),
+      const { data, error } = await supabase.functions.invoke("market-analysis", {
+        body: { action: "scan_pairs" },
       });
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
+      if (error) throw error;
       setPairScans(data.pairs || []);
       setScanTimestamp(data.timestamp);
     } catch (e) {
