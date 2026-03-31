@@ -6,8 +6,8 @@ export function useTickers(category: BybitCategory = "linear", symbol?: string) 
   return useQuery({
     queryKey: ["bybit-tickers", category, symbol],
     queryFn: () => getTickers(category, symbol),
-    refetchInterval: 5000,
-    staleTime: 3000,
+    refetchInterval: 1000,
+    staleTime: 500,
   });
 }
 
