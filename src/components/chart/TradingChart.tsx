@@ -146,7 +146,7 @@ export function TradingChart({
       if (targetPrice) {
         series.createPriceLine({
           price: targetPrice,
-          color: "hsl(145, 63%, 42%)",
+          color: "#22c55e",
           lineWidth: 1,
           lineStyle: 2,
           title: "Alvo",
