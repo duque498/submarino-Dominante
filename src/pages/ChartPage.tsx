@@ -186,6 +186,52 @@ export default function ChartPage() {
   // Conditions from strategy for checklist
   const conditions = activeStrategy?.conditions || [];
 
+  // Evaluate all conditions for audio notifications
+  const conditionResults = useMemo(() => {
+    if (!conditions.length) return [];
+    return conditions.map((c) => {
+      const ind = activeStrategy?.indicators.find((i) => i.id === c.indicator_id);
+      return evaluateCondition(c, ind, ticker, candles, latestOI, latestFunding);
+    });
+  }, [conditions, activeStrategy, ticker, candles, latestOI, latestFunding]);
+
+  const passedCount = conditionResults.filter(Boolean).length;
+  const totalConditions = conditions.length;
+  const passedRatio = totalConditions > 0 ? passedCount / totalConditions : 0;
+
+  // Track previous state for sound transitions
+  const prevResultsRef = useRef<boolean[]>([]);
+  const entryAlertFiredRef = useRef(false);
+
+  useEffect(() => {
+    if (!conditionResults.length) return;
+    const prev = prevResultsRef.current;
+
+    // Play tick when a condition newly passes
+    if (prev.length === conditionResults.length) {
+      for (let i = 0; i < conditionResults.length; i++) {
+        if (conditionResults[i] && !prev[i]) {
+          playConditionTick();
+          break;
+        }
+      }
+    }
+
+    // Play entry alert when crossing 60% threshold
+    if (passedRatio >= 0.6 && !entryAlertFiredRef.current) {
+      entryAlertFiredRef.current = true;
+      playEntryAlert();
+      toast.success(`🎯 Possível entrada! ${passedCount}/${totalConditions} condições`, {
+        description: `${symbol} — ${activeStrategy?.name}`,
+        duration: 10000,
+      });
+    } else if (passedRatio < 0.6) {
+      entryAlertFiredRef.current = false;
+    }
+
+    prevResultsRef.current = [...conditionResults];
+  }, [conditionResults, passedRatio, passedCount, totalConditions, symbol, activeStrategy?.name]);
+
   return (
     <div className="space-y-4 animate-slide-in">
       {/* Header */}
