@@ -105,13 +105,13 @@ export default function DashboardPage() {
           { label: "Estratégias Ativas", value: String(activeStrategies.length), icon: ShieldCheck },
           { label: "Alertas Pendentes", value: String(pendingAlerts ?? 0), icon: AlertTriangle, accent: (pendingAlerts ?? 0) > 0 ? "text-chart-yellow" : "" },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-lg border border-border bg-card p-4">
+          <div key={stat.label} className="rounded-lg border border-border bg-card p-3 md:p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{stat.label}</span>
-              <stat.icon className={`h-4 w-4 ${stat.accent || "text-muted-foreground"}`} />
+              <span className="text-[10px] md:text-xs text-muted-foreground">{stat.label}</span>
+              <stat.icon className={`h-3.5 w-3.5 md:h-4 md:w-4 ${stat.accent || "text-muted-foreground"}`} />
             </div>
-            <div className="mt-2">
-              <span className={`text-2xl font-bold font-mono ${stat.accent || "text-foreground"}`}>{stat.value}</span>
+            <div className="mt-1 md:mt-2">
+              <span className={`text-lg md:text-2xl font-bold font-mono ${stat.accent || "text-foreground"}`}>{stat.value}</span>
             </div>
           </div>
         ))}
