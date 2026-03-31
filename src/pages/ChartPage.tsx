@@ -312,6 +312,21 @@ export default function ChartPage() {
         setEntrySignal(sig);
         setIsTestEntry(false);
         setEntryHubOpen(true);
+        // Browser push notification (works even when tab is not focused)
+        sendEntryPushNotification({
+          symbol: sig.symbol,
+          direction: sig.direction,
+          score: sig.score,
+          passedConditions: sig.passedConditions,
+          totalConditions: sig.totalConditions,
+          entryPrice: sig.entryPrice,
+          stopPrice: sig.stopPrice,
+          targetPrice: sig.target1Price,
+          strategyName: sig.strategyName,
+          onClick: () => {
+            setEntryHubOpen(true);
+          },
+        });
       }
     } else if (bestRatio < 0.6) {
       entryAlertFiredRef.current = false;
