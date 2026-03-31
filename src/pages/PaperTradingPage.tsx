@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "@/components/ui/score-badge";
-import { TrendingUp, TrendingDown, Loader2, Target } from "lucide-react";
-import { usePaperTrades } from "@/hooks/use-paper-trades";
+import { TrendingUp, TrendingDown, Loader2, Target, LogOut, Trash2, X } from "lucide-react";
+import { usePaperTrades, useClosePaperTrade, useDeletePaperTrade } from "@/hooks/use-paper-trades";
 import { useTickers } from "@/hooks/use-bybit";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function PaperTradingPage() {
   const { data: trades, isLoading } = usePaperTrades();
