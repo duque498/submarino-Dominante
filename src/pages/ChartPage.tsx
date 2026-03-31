@@ -116,9 +116,10 @@ export default function ChartPage() {
     const results = dir === "long" ? longResults : shortResults;
     const summary = dir === "long" ? longSummary : shortSummary;
 
-    const condDetails = parsed.map((pc) => {
+    const directionParsed = dir === "long" ? longParsed : shortParsed;
+    const condDetails = directionParsed.map((pc) => {
       const r = results.find((res) => res.conditionId === pc.id);
-      return { name: pc.label, passed: r?.passed ?? false };
+      return { name: r?.effectiveLabel || pc.label, passed: r?.passed ?? false };
     });
 
     const indSnap: Record<string, number | null> = {};
