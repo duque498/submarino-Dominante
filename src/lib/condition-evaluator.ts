@@ -484,7 +484,7 @@ export function evaluateConditions(
     }
 
     if (leftVal == null || isNaN(leftVal)) {
-      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: rightVal, error: "Sem dados" };
+      return { conditionId: pc.id, passed: false, leftValue: null, rightValue: rightVal, error: "Sem dados", effectiveOperatorSymbol: pc.operatorSymbol, effectiveLabel: pc.label };
     }
 
     // For SHORT direction, invert directional operators
