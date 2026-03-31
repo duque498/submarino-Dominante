@@ -404,6 +404,32 @@ export function useStrategyDraft(initialId?: string | null) {
     setDirty(true);
   }, []);
 
+  // Reorder indicators
+  const reorderIndicators = useCallback((fromIndex: number, toIndex: number) => {
+    setDraft((prev) => {
+      const items = [...prev.indicators];
+      const [moved] = items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, moved);
+      return { ...prev, indicators: items };
+    });
+    setDirty(true);
+  }, []);
+
+  // Reorder conditions within a group
+  const reorderConditions = useCallback((groupIndex: number, fromIndex: number, toIndex: number) => {
+    setDraft((prev) => ({
+      ...prev,
+      conditionGroups: prev.conditionGroups.map((g, i) => {
+        if (i !== groupIndex) return g;
+        const items = [...g.conditions];
+        const [moved] = items.splice(fromIndex, 1);
+        items.splice(toIndex, 0, moved);
+        return { ...g, conditions: items };
+      }),
+    }));
+    setDirty(true);
+  }, []);
+
   return {
     draft,
     loading,
@@ -420,5 +446,7 @@ export function useStrategyDraft(initialId?: string | null) {
     addConditionGroup,
     addCondition,
     removeCondition,
+    reorderIndicators,
+    reorderConditions,
   };
 }
