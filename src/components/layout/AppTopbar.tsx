@@ -31,9 +31,13 @@ export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
   }, []);
 
   const handlePushToggle = async () => {
-    if (pushState === "granted") return; // already granted, can't revoke programmatically
-    if (pushState === "denied") return; // blocked by user
+    if (pushState === "granted") return;
+    if (pushState === "denied") return;
     const ok = await requestPushPermission();
+    if (ok) {
+      // Subscribe to Web Push and save to DB
+      await subscribeToPush();
+    }
     setPushState(ok ? "granted" : getPushPermission());
   };
 
