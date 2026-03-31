@@ -80,6 +80,14 @@ export function useTradeMonitor() {
             description: `Entrada: $${trade.entry_price} → Saída: $${price.toFixed(2)} | PnL: ${pnl.toFixed(2)}%`,
             duration: 15000,
           });
+          if (user?.id) {
+            triggerPushNotification({
+              userId: user.id,
+              title: `❌ SL Atingido — ${trade.symbol}`,
+              body: `Entrada: $${trade.entry_price} → $${price.toFixed(2)} | PnL: ${pnl.toFixed(2)}%`,
+              tag: `sl-${trade.symbol}`,
+            });
+          }
 
           closeTrade.mutate({
             id: trade.id,
