@@ -207,11 +207,11 @@ export default function ChartPage() {
   }, [longResults, shortResults, longSummary, shortSummary, buildEntrySignal]);
 
   return (
-    <div className="space-y-4 animate-slide-in">
+    <div className="space-y-3 md:space-y-4 animate-slide-in">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold font-mono text-foreground">{symbol}</h1>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-lg md:text-2xl font-bold font-mono text-foreground">{symbol}</h1>
           {ticker && (
             <>
               <span className="font-mono text-lg text-foreground">${ticker.lastPrice.toLocaleString()}</span>
