@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_chat_messages: {
+        Row: {
+          content: string
+          context: Json | null
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alert_deliveries: {
         Row: {
           alert_id: string
@@ -209,6 +236,56 @@ export type Database = {
         }
         Relationships: []
       }
+      market_analyses: {
+        Row: {
+          analysis_text: string
+          created_at: string
+          id: string
+          key_levels: Json | null
+          market_data_snapshot: Json | null
+          recommendations: Json | null
+          sentiment: string | null
+          strategy_id: string | null
+          symbol: string
+          trends: Json | null
+          user_id: string
+        }
+        Insert: {
+          analysis_text: string
+          created_at?: string
+          id?: string
+          key_levels?: Json | null
+          market_data_snapshot?: Json | null
+          recommendations?: Json | null
+          sentiment?: string | null
+          strategy_id?: string | null
+          symbol: string
+          trends?: Json | null
+          user_id: string
+        }
+        Update: {
+          analysis_text?: string
+          created_at?: string
+          id?: string
+          key_levels?: Json | null
+          market_data_snapshot?: Json | null
+          recommendations?: Json | null
+          sentiment?: string | null
+          strategy_id?: string | null
+          symbol?: string
+          trends?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_analyses_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_channels: {
         Row: {
           active: boolean | null
@@ -241,6 +318,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      pair_scans: {
+        Row: {
+          conditions_passed: number | null
+          conditions_total: number | null
+          created_at: string
+          direction: string | null
+          id: string
+          indicator_values: Json | null
+          is_signal: boolean | null
+          market_data: Json | null
+          score: number | null
+          strategy_id: string | null
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          conditions_passed?: number | null
+          conditions_total?: number | null
+          created_at?: string
+          direction?: string | null
+          id?: string
+          indicator_values?: Json | null
+          is_signal?: boolean | null
+          market_data?: Json | null
+          score?: number | null
+          strategy_id?: string | null
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          conditions_passed?: number | null
+          conditions_total?: number | null
+          created_at?: string
+          direction?: string | null
+          id?: string
+          indicator_values?: Json | null
+          is_signal?: boolean | null
+          market_data?: Json | null
+          score?: number | null
+          strategy_id?: string | null
+          symbol?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pair_scans_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       paper_trades: {
         Row: {

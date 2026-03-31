@@ -8,6 +8,7 @@ import { LiveConditionsPanel } from "@/components/chart/LiveConditionsPanel";
 import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
 import { useStrategies } from "@/hooks/use-strategies";
 import { TrendingUp, TrendingDown, Puzzle, Volume2 } from "lucide-react";
+import { MarketAIPanel } from "@/components/chart/MarketAIPanel";
 import { useSearchParams } from "react-router-dom";
 import { playConditionTick, playEntryAlert, sendEntryPushNotification } from "@/lib/audio-notifications";
 import { toast } from "sonner";
@@ -289,7 +290,7 @@ export default function ChartPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
         {/* TradingView Chart */}
         <div>
           <TradingViewChart
@@ -399,6 +400,22 @@ export default function ChartPage() {
               ctx={marketCtx}
             />
           )}
+
+          {/* AI Market Analysis Panel */}
+          <MarketAIPanel
+            symbol={symbol}
+            strategyContext={activeStrategy ? {
+              id: activeStrategy.id,
+              name: activeStrategy.name,
+              direction: activeStrategy.direction,
+              indicators: activeStrategy.indicators.filter(i => i.enabled).map(i => ({
+                type: i.indicator_type,
+                params: i.params,
+                role: i.role,
+              })),
+            } : undefined}
+            category={category}
+          />
 
           {/* No strategy selected */}
           {!activeStrategy && (
