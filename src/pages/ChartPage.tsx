@@ -94,6 +94,52 @@ function getIndicatorValue(
   }
 }
 
+// ===== Scalp condition definitions =====
+interface ScalpCondition {
+  label: string;
+  evaluate: (close: number, ema9: number, ema21: number, ema200: number, rsi: number) => boolean;
+}
+
+const LONG_CONDITIONS: ScalpCondition[] = [
+  { label: "close > EMA 9", evaluate: (close, ema9) => close > ema9 },
+  { label: "close > EMA 21", evaluate: (close, _e9, ema21) => close > ema21 },
+  { label: "close > EMA 200", evaluate: (close, _e9, _e21, ema200) => close > ema200 },
+  { label: "EMA 9 > EMA 21", evaluate: (_c, ema9, ema21) => ema9 > ema21 },
+  { label: "EMA 21 > EMA 200", evaluate: (_c, _e9, ema21, ema200) => ema21 > ema200 },
+  { label: "RSI 14 > 50", evaluate: (_c, _e9, _e21, _e200, rsi) => rsi > 50 },
+  { label: "RSI 14 < 70", evaluate: (_c, _e9, _e21, _e200, rsi) => rsi < 70 },
+];
+
+const SHORT_CONDITIONS: ScalpCondition[] = [
+  { label: "close < EMA 9", evaluate: (close, ema9) => close < ema9 },
+  { label: "close < EMA 21", evaluate: (close, _e9, ema21) => close < ema21 },
+  { label: "close < EMA 200", evaluate: (close, _e9, _e21, ema200) => close < ema200 },
+  { label: "EMA 9 < EMA 21", evaluate: (_c, ema9, ema21) => ema9 < ema21 },
+  { label: "EMA 21 < EMA 200", evaluate: (_c, _e9, ema21, ema200) => ema21 < ema200 },
+  { label: "RSI 14 < 50", evaluate: (_c, _e9, _e21, _e200, rsi) => rsi < 50 },
+  { label: "RSI 14 > 30", evaluate: (_c, _e9, _e21, _e200, rsi) => rsi > 30 },
+];
+
+function useScalpConditions(candles: CandleData[] | undefined) {
+  return useMemo(() => {
+    if (!candles || candles.length < 201) {
+      return { ema9: NaN, ema21: NaN, ema200: NaN, rsi: NaN, close: NaN, longResults: [] as boolean[], shortResults: [] as boolean[] };
+    }
+    const closes = candles.map(c => c.close);
+    const close = closes[closes.length - 1];
+    const ema9 = calcEMA(closes, 9);
+    const ema21 = calcEMA(closes, 21);
+    const ema200 = calcEMA(closes, 200);
+    const rsi = calcRSI(closes, 14);
+
+    const longResults = LONG_CONDITIONS.map(c => !isNaN(ema9) && !isNaN(ema21) && !isNaN(ema200) && !isNaN(rsi) && c.evaluate(close, ema9, ema21, ema200, rsi));
+    const shortResults = SHORT_CONDITIONS.map(c => !isNaN(ema9) && !isNaN(ema21) && !isNaN(ema200) && !isNaN(rsi) && c.evaluate(close, ema9, ema21, ema200, rsi));
+
+    return { ema9, ema21, ema200, rsi, close, longResults, shortResults };
+  }, [candles]);
+}
+
+// Keep old evaluateCondition for compatibility with DB conditions
 function evaluateCondition(
   condition: Tables<"strategy_conditions">,
   indicator: Tables<"strategy_indicators"> | undefined,
@@ -103,129 +149,22 @@ function evaluateCondition(
   funding: { fundingRate: number } | undefined,
 ): boolean {
   if (!indicator && !condition.condition_type) return false;
-
   const indType = indicator?.indicator_type || condition.condition_type;
   const params = (indicator?.params ?? null) as Record<string, unknown> | null;
   const value = getIndicatorValue(indType, params, candles, ticker, oi, funding);
-
   if (value === null || isNaN(value)) return false;
-
   const condVal = condition.value as any;
   const op = condition.operator;
-
   switch (op) {
     case ">": return value > Number(condVal);
     case "<": return value < Number(condVal);
     case ">=": return value >= Number(condVal);
     case "<=": return value <= Number(condVal);
     case "==": return Math.abs(value - Number(condVal)) < 0.001;
-    case "between":
-      return value >= Number(condVal?.min) && value <= Number(condVal?.max);
-    case "crosses_above": {
-      // Simplified: check if current value is above target
-      return value > Number(condVal);
-    }
-    case "crosses_below": {
-      return value < Number(condVal);
-    }
-    case "increasing": {
-      if (!candles || candles.length < 3) return false;
-      const closes = candles.map((c) => c.close);
-      const prev = indType === "ema"
-        ? calcEMA(closes.slice(0, -1), Number(params?.period || 21))
-        : calcSMA(closes.slice(0, -1), Number(params?.period || 50));
-      return value > prev;
-    }
-    case "decreasing": {
-      if (!candles || candles.length < 3) return false;
-      const closes = candles.map((c) => c.close);
-      const prev = indType === "ema"
-        ? calcEMA(closes.slice(0, -1), Number(params?.period || 21))
-        : calcSMA(closes.slice(0, -1), Number(params?.period || 50));
-      return value < prev;
-    }
-    default:
-      return false;
+    case "between": return value >= Number(condVal?.min) && value <= Number(condVal?.max);
+    default: return false;
   }
 }
-
-export default function ChartPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const symbol = searchParams.get("symbol") || "BTCUSDT";
-  const category = (searchParams.get("category") || "linear") as BybitCategory;
-  const [timeframe, setTimeframe] = useState(searchParams.get("tf") || "5m");
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("none");
-  const [entryHubOpen, setEntryHubOpen] = useState(false);
-  const [entrySignal, setEntrySignal] = useState<EntrySignalData | null>(null);
-  const [isTestEntry, setIsTestEntry] = useState(false);
-  const timeframes = ["1m", "5m", "15m", "1h", "4h"];
-
-  const { data: tickers } = useTickers(category, symbol);
-  const { data: oiData } = useOpenInterest(symbol, category);
-  const { data: fundingData } = useFundingRate(symbol, category);
-  const { data: strategies } = useStrategies();
-  const { data: candles } = useKlines(symbol, timeframe, category, 200);
-
-  const ticker = tickers?.[0];
-  const latestOI = oiData?.[0];
-  const latestFunding = fundingData?.[0];
-
-  const activeStrategy = strategies?.find((s) => s.id === selectedStrategyId);
-  const activeStrategies = strategies?.filter((s) => s.active) || [];
-
-  const setSymbol = (s: string) => {
-    setSearchParams({ symbol: s, category, tf: timeframe });
-  };
-
-  // Get ALL enabled indicators for TradingView chart
-  const chartIndicators = activeStrategy?.indicators
-    ?.filter((i) => i.enabled)
-    ?.map((i) => ({
-      indicator_type: i.indicator_type,
-      params: i.params as Record<string, unknown> | null,
-      enabled: i.enabled,
-      plot_on_chart: i.plot_on_chart,
-    })) || [];
-
-  // Conditions from strategy for checklist — separate by direction context
-  const conditions = activeStrategy?.conditions || [];
-  const strategyDirection = activeStrategy?.direction || "both";
-
-  // Evaluate conditions for LONG
-  const longResults = useMemo(() => {
-    if (!conditions.length) return [];
-    return conditions.map((c) => {
-      const ind = activeStrategy?.indicators.find((i) => i.id === c.indicator_id);
-      return evaluateCondition(c, ind, ticker, candles, latestOI, latestFunding);
-    });
-  }, [conditions, activeStrategy, ticker, candles, latestOI, latestFunding]);
-
-  // Evaluate conditions for SHORT (invert directional conditions)
-  const shortResults = useMemo(() => {
-    if (!conditions.length) return [];
-    return conditions.map((c) => {
-      const ind = activeStrategy?.indicators.find((i) => i.id === c.indicator_id);
-      // For directional operators, evaluate inversely
-      const inverted = { ...c };
-      if (c.operator === "crosses_above") inverted.operator = "crosses_below";
-      else if (c.operator === "crosses_below") inverted.operator = "crosses_above";
-      else if (c.operator === ">") inverted.operator = "<";
-      else if (c.operator === "<") inverted.operator = ">";
-      else if (c.operator === ">=") inverted.operator = "<=";
-      else if (c.operator === "<=") inverted.operator = ">=";
-      return evaluateCondition(inverted as any, ind, ticker, candles, latestOI, latestFunding);
-    });
-  }, [conditions, activeStrategy, ticker, candles, latestOI, latestFunding]);
-
-  // Use appropriate results based on direction
-  const conditionResults = strategyDirection === "both" ? longResults : longResults;
-  const longPassedCount = longResults.filter(Boolean).length;
-  const shortPassedCount = shortResults.filter(Boolean).length;
-  const passedCount = longPassedCount;
-  const totalConditions = conditions.length;
-  const passedRatio = totalConditions > 0 ? Math.max(longPassedCount, shortPassedCount) / totalConditions : 0;
-  const bestDirection = longPassedCount >= shortPassedCount ? "long" : "short";
-  const bestPassedCount = Math.max(longPassedCount, shortPassedCount);
 
   // Build entry signal data for the hub modal
   const buildEntrySignal = useCallback((dir: "long" | "short", test = false): EntrySignalData | null => {
