@@ -158,6 +158,30 @@ export function StrategyListSidebar({
           )}
         </div>
       </ScrollArea>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir estratégia?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A estratégia <strong>"{deleteTarget?.name}"</strong> será excluída permanentemente, incluindo indicadores, condições e histórico de versões.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTarget) onDelete(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
