@@ -128,7 +128,7 @@ export function TradingChart({
       if (entryPrice) {
         series.createPriceLine({
           price: entryPrice,
-          color: "hsl(210, 100%, 52%)",
+          color: "#1a8cff",
           lineWidth: 1,
           lineStyle: 2,
           title: "Entrada",
