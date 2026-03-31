@@ -94,52 +94,6 @@ function getIndicatorValue(
   }
 }
 
-// ===== Scalp condition definitions =====
-interface ScalpCondition {
-  label: string;
-  evaluate: (close: number, ema9: number, ema21: number, ema200: number, rsi: number) => boolean;
-}
-
-const LONG_CONDITIONS: ScalpCondition[] = [
-  { label: "close > EMA 9", evaluate: (close, ema9) => close > ema9 },
-  { label: "close > EMA 21", evaluate: (close, _e9, ema21) => close > ema21 },
-  { label: "close > EMA 200", evaluate: (close, _e9, _e21, ema200) => close > ema200 },
-  { label: "EMA 9 > EMA 21", evaluate: (_c, ema9, ema21) => ema9 > ema21 },
-  { label: "EMA 21 > EMA 200", evaluate: (_c, _e9, ema21, ema200) => ema21 > ema200 },
-  { label: "RSI 14 > 50", evaluate: (_c, _e9, _e21, _e200, rsi) => rsi > 50 },
-  { label: "RSI 14 < 70", evaluate: (_c, _e9, _e21, _e200, rsi) => rsi < 70 },
-];
-
-const SHORT_CONDITIONS: ScalpCondition[] = [
-  { label: "close < EMA 9", evaluate: (close, ema9) => close < ema9 },
-  { label: "close < EMA 21", evaluate: (close, _e9, ema21) => close < ema21 },
-  { label: "close < EMA 200", evaluate: (close, _e9, _e21, ema200) => close < ema200 },
-  { label: "EMA 9 < EMA 21", evaluate: (_c, ema9, ema21) => ema9 < ema21 },
-  { label: "EMA 21 < EMA 200", evaluate: (_c, _e9, ema21, ema200) => ema21 < ema200 },
-  { label: "RSI 14 < 50", evaluate: (_c, _e9, _e21, _e200, rsi) => rsi < 50 },
-  { label: "RSI 14 > 30", evaluate: (_c, _e9, _e21, _e200, rsi) => rsi > 30 },
-];
-
-function useScalpConditions(candles: CandleData[] | undefined) {
-  return useMemo(() => {
-    if (!candles || candles.length < 201) {
-      return { ema9: NaN, ema21: NaN, ema200: NaN, rsi: NaN, close: NaN, longResults: [] as boolean[], shortResults: [] as boolean[] };
-    }
-    const closes = candles.map(c => c.close);
-    const close = closes[closes.length - 1];
-    const ema9 = calcEMA(closes, 9);
-    const ema21 = calcEMA(closes, 21);
-    const ema200 = calcEMA(closes, 200);
-    const rsi = calcRSI(closes, 14);
-
-    const longResults = LONG_CONDITIONS.map(c => !isNaN(ema9) && !isNaN(ema21) && !isNaN(ema200) && !isNaN(rsi) && c.evaluate(close, ema9, ema21, ema200, rsi));
-    const shortResults = SHORT_CONDITIONS.map(c => !isNaN(ema9) && !isNaN(ema21) && !isNaN(ema200) && !isNaN(rsi) && c.evaluate(close, ema9, ema21, ema200, rsi));
-
-    return { ema9, ema21, ema200, rsi, close, longResults, shortResults };
-  }, [candles]);
-}
-
-// Keep old evaluateCondition for compatibility with DB conditions
 function evaluateCondition(
   condition: Tables<"strategy_conditions">,
   indicator: Tables<"strategy_indicators"> | undefined,
@@ -149,27 +103,57 @@ function evaluateCondition(
   funding: { fundingRate: number } | undefined,
 ): boolean {
   if (!indicator && !condition.condition_type) return false;
+
   const indType = indicator?.indicator_type || condition.condition_type;
   const params = (indicator?.params ?? null) as Record<string, unknown> | null;
   const value = getIndicatorValue(indType, params, candles, ticker, oi, funding);
+
   if (value === null || isNaN(value)) return false;
+
   const condVal = condition.value as any;
   const op = condition.operator;
+
   switch (op) {
     case ">": return value > Number(condVal);
     case "<": return value < Number(condVal);
     case ">=": return value >= Number(condVal);
     case "<=": return value <= Number(condVal);
     case "==": return Math.abs(value - Number(condVal)) < 0.001;
-    case "between": return value >= Number(condVal?.min) && value <= Number(condVal?.max);
-    default: return false;
+    case "between":
+      return value >= Number(condVal?.min) && value <= Number(condVal?.max);
+    case "crosses_above": {
+      // Simplified: check if current value is above target
+      return value > Number(condVal);
+    }
+    case "crosses_below": {
+      return value < Number(condVal);
+    }
+    case "increasing": {
+      if (!candles || candles.length < 3) return false;
+      const closes = candles.map((c) => c.close);
+      const prev = indType === "ema"
+        ? calcEMA(closes.slice(0, -1), Number(params?.period || 21))
+        : calcSMA(closes.slice(0, -1), Number(params?.period || 50));
+      return value > prev;
+    }
+    case "decreasing": {
+      if (!candles || candles.length < 3) return false;
+      const closes = candles.map((c) => c.close);
+      const prev = indType === "ema"
+        ? calcEMA(closes.slice(0, -1), Number(params?.period || 21))
+        : calcSMA(closes.slice(0, -1), Number(params?.period || 50));
+      return value < prev;
+    }
+    default:
+      return false;
   }
 }
+
 export default function ChartPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const symbol = searchParams.get("symbol") || "BTCUSDT";
   const category = (searchParams.get("category") || "linear") as BybitCategory;
-  const [timeframe, setTimeframe] = useState(searchParams.get("tf") || "15m");
+  const [timeframe, setTimeframe] = useState(searchParams.get("tf") || "5m");
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>("none");
   const [entryHubOpen, setEntryHubOpen] = useState(false);
   const [entrySignal, setEntrySignal] = useState<EntrySignalData | null>(null);
@@ -180,7 +164,7 @@ export default function ChartPage() {
   const { data: oiData } = useOpenInterest(symbol, category);
   const { data: fundingData } = useFundingRate(symbol, category);
   const { data: strategies } = useStrategies();
-  const { data: candles } = useKlines(symbol, timeframe, category, 300);
+  const { data: candles } = useKlines(symbol, timeframe, category, 200);
 
   const ticker = tickers?.[0];
   const latestOI = oiData?.[0];
@@ -203,12 +187,43 @@ export default function ChartPage() {
       plot_on_chart: i.plot_on_chart,
     })) || [];
 
-  // ===== Scalp condition evaluation =====
-  const scalp = useScalpConditions(candles);
-  const { longResults, shortResults } = scalp;
+  // Conditions from strategy for checklist — separate by direction context
+  const conditions = activeStrategy?.conditions || [];
+  const strategyDirection = activeStrategy?.direction || "both";
+
+  // Evaluate conditions for LONG
+  const longResults = useMemo(() => {
+    if (!conditions.length) return [];
+    return conditions.map((c) => {
+      const ind = activeStrategy?.indicators.find((i) => i.id === c.indicator_id);
+      return evaluateCondition(c, ind, ticker, candles, latestOI, latestFunding);
+    });
+  }, [conditions, activeStrategy, ticker, candles, latestOI, latestFunding]);
+
+  // Evaluate conditions for SHORT (invert directional conditions)
+  const shortResults = useMemo(() => {
+    if (!conditions.length) return [];
+    return conditions.map((c) => {
+      const ind = activeStrategy?.indicators.find((i) => i.id === c.indicator_id);
+      // For directional operators, evaluate inversely
+      const inverted = { ...c };
+      if (c.operator === "crosses_above") inverted.operator = "crosses_below";
+      else if (c.operator === "crosses_below") inverted.operator = "crosses_above";
+      else if (c.operator === ">") inverted.operator = "<";
+      else if (c.operator === "<") inverted.operator = ">";
+      else if (c.operator === ">=") inverted.operator = "<=";
+      else if (c.operator === "<=") inverted.operator = ">=";
+      return evaluateCondition(inverted as any, ind, ticker, candles, latestOI, latestFunding);
+    });
+  }, [conditions, activeStrategy, ticker, candles, latestOI, latestFunding]);
+
+  // Use appropriate results based on direction
+  const conditionResults = strategyDirection === "both" ? longResults : longResults;
   const longPassedCount = longResults.filter(Boolean).length;
   const shortPassedCount = shortResults.filter(Boolean).length;
-  const totalConditions = 7;
+  const passedCount = longPassedCount;
+  const totalConditions = conditions.length;
+  const passedRatio = totalConditions > 0 ? Math.max(longPassedCount, shortPassedCount) / totalConditions : 0;
   const bestDirection = longPassedCount >= shortPassedCount ? "long" : "short";
   const bestPassedCount = Math.max(longPassedCount, shortPassedCount);
 
@@ -232,25 +247,27 @@ export default function ChartPage() {
     const tp2 = isLong ? price + stopDist * 2.5 : price - stopDist * 2.5;
     const rr = stopDist > 0 ? Math.abs(tp1 - entry) / stopDist : 0;
 
-    const condDefs = dir === "long" ? LONG_CONDITIONS : SHORT_CONDITIONS;
     const results = dir === "long" ? longResults : shortResults;
-    const condDetails = condDefs.map((c, i) => ({ name: c.label, passed: results[i] ?? false }));
+    const condDetails = conditions.map((c, i) => {
+      const ind = activeStrategy?.indicators.find((x) => x.id === c.indicator_id);
+      const name = ind ? ind.indicator_type.toUpperCase() : c.condition_type;
+      return { name, passed: results[i] ?? false };
+    });
 
-    const indSnap: Record<string, number | null> = {
-      ema9: scalp.ema9,
-      ema21: scalp.ema21,
-      ema200: scalp.ema200,
-      rsi14: scalp.rsi,
-    };
+    const indSnap: Record<string, number | null> = {};
+    activeStrategy?.indicators.forEach((ind) => {
+      const v = getIndicatorValue(ind.indicator_type, ind.params as any, candles, ticker, latestOI, latestFunding);
+      indSnap[ind.indicator_type] = v;
+    });
 
     const passed = results.filter(Boolean).length;
     return {
       symbol,
       direction: dir,
-      strategyName: activeStrategy?.name || (test ? "Scalp BTC 15m" : "Scalp Monitor"),
-      score: Math.round((passed / totalConditions) * 100),
-      totalConditions,
-      passedConditions: passed,
+      strategyName: activeStrategy?.name || (test ? "Estratégia Teste" : "—"),
+      score: totalConditions > 0 ? Math.round((passed / totalConditions) * 100) : (test ? 78 : 0),
+      totalConditions: totalConditions || (test ? 5 : 0),
+      passedConditions: passed || (test ? 4 : 0),
       entryPrice: entry,
       stopPrice: stop,
       target1Price: tp1,
@@ -258,41 +275,44 @@ export default function ChartPage() {
       rrRatio: rr,
       timeframe,
       market: category,
-      conditionDetails: condDetails,
+      conditionDetails: condDetails.length > 0 ? condDetails : (test ? [
+        { name: "EMA 9 > EMA 21", passed: true },
+        { name: "RSI > 55", passed: true },
+        { name: "Volume > 1.5x média", passed: true },
+        { name: "Preço > VWAP", passed: true },
+        { name: "ADX > 25", passed: false },
+      ] : []),
       indicatorSnapshot: indSnap,
     };
-  }, [candles, longResults, shortResults, scalp, activeStrategy, symbol, timeframe, category, totalConditions]);
+  }, [candles, ticker, latestOI, latestFunding, conditions, longResults, shortResults, activeStrategy, symbol, timeframe, category, totalConditions]);
 
   // Track previous state for sound transitions
-  const prevLongRef = useRef<boolean[]>([]);
-  const prevShortRef = useRef<boolean[]>([]);
+  const prevResultsRef = useRef<boolean[]>([]);
   const entryAlertFiredRef = useRef(false);
 
   useEffect(() => {
-    // Tick sound when any condition flips to true
-    const prevL = prevLongRef.current;
-    const prevS = prevShortRef.current;
-    if (prevL.length === longResults.length) {
-      for (let i = 0; i < longResults.length; i++) {
-        if (longResults[i] && !prevL[i]) { playConditionTick(); break; }
-      }
-    }
-    if (prevS.length === shortResults.length) {
-      for (let i = 0; i < shortResults.length; i++) {
-        if (shortResults[i] && !prevS[i]) { playConditionTick(); break; }
+    if (!conditionResults.length) return;
+    const prev = prevResultsRef.current;
+
+    if (prev.length === conditionResults.length) {
+      for (let i = 0; i < conditionResults.length; i++) {
+        if (conditionResults[i] && !prev[i]) {
+          playConditionTick();
+          break;
+        }
       }
     }
 
-    // Alert only when ALL 7/7 conditions are met
-    if ((longPassedCount === 7 || shortPassedCount === 7) && !entryAlertFiredRef.current) {
+    const bestRatio = totalConditions > 0 ? bestPassedCount / totalConditions : 0;
+    if (bestRatio >= 0.6 && !entryAlertFiredRef.current) {
       entryAlertFiredRef.current = true;
-      const dir = longPassedCount === 7 ? "long" : "short";
       playEntryAlert();
-      const sig = buildEntrySignal(dir as "long" | "short");
+      const sig = buildEntrySignal(bestDirection as "long" | "short");
       if (sig) {
         setEntrySignal(sig);
         setIsTestEntry(false);
         setEntryHubOpen(true);
+        // Browser push notification (works even when tab is not focused)
         sendEntryPushNotification({
           symbol: sig.symbol,
           direction: sig.direction,
@@ -303,57 +323,17 @@ export default function ChartPage() {
           stopPrice: sig.stopPrice,
           targetPrice: sig.target1Price,
           strategyName: sig.strategyName,
-          onClick: () => setEntryHubOpen(true),
+          onClick: () => {
+            setEntryHubOpen(true);
+          },
         });
       }
-    } else if (longPassedCount < 7 && shortPassedCount < 7) {
+    } else if (bestRatio < 0.6) {
       entryAlertFiredRef.current = false;
     }
 
-    prevLongRef.current = [...longResults];
-    prevShortRef.current = [...shortResults];
-  }, [longResults, shortResults, longPassedCount, shortPassedCount, buildEntrySignal]);
-
-  // Helper to render a condition block
-  const renderConditionBlock = (
-    title: string,
-    icon: React.ReactNode,
-    conditions: ScalpCondition[],
-    results: boolean[],
-    passedCount: number,
-    colorClass: string,
-  ) => (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-xs font-semibold">
-          {icon}
-          <span className={colorClass}>{title}</span>
-        </span>
-        <span className={`font-mono text-xs font-bold ${passedCount === 7 ? "text-bull" : passedCount >= 5 ? "text-yellow-400" : "text-bear"}`}>
-          {passedCount}/7
-        </span>
-      </div>
-      {conditions.map((c, idx) => {
-        const passed = results[idx];
-        const isBlocker = !passed && passedCount >= 5; // highlight blockers when close to signal
-        return (
-          <div
-            key={c.label}
-            className={`flex items-center gap-2 text-xs py-0.5 px-2 rounded ${isBlocker ? "bg-bear/10 border border-bear/20" : ""}`}
-          >
-            {passed ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-bull shrink-0" />
-            ) : (
-              <XCircle className={`h-3.5 w-3.5 shrink-0 ${isBlocker ? "text-bear" : "text-muted-foreground/40"}`} />
-            )}
-            <span className={`font-mono ${passed ? "text-foreground" : isBlocker ? "text-bear" : "text-muted-foreground"}`}>
-              {c.label}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
+    prevResultsRef.current = [...conditionResults];
+  }, [conditionResults, bestPassedCount, totalConditions, bestDirection, buildEntrySignal]);
 
   return (
     <div className="space-y-4 animate-slide-in">
@@ -508,82 +488,7 @@ export default function ChartPage() {
             </div>
           </div>
 
-          {/* Indicator values */}
-          {!isNaN(scalp.ema9) && (
-            <div className="rounded-lg border border-border bg-card p-4">
-              <h3 className="mb-3 text-sm font-semibold text-foreground">Indicadores (ao vivo)</h3>
-              <div className="space-y-1.5 text-xs">
-                {[
-                  ["EMA 9", scalp.ema9],
-                  ["EMA 21", scalp.ema21],
-                  ["EMA 200", scalp.ema200],
-                  ["RSI 14", scalp.rsi],
-                  ["Close", scalp.close],
-                ].map(([label, val]) => (
-                  <div key={label as string} className="flex justify-between">
-                    <span className="text-muted-foreground font-mono">{label}</span>
-                    <span className="font-mono text-foreground">
-                      {label === "RSI 14" ? (val as number).toFixed(2) : `$${(val as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ===== SCALP CONDITIONS — LONG & SHORT ===== */}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Condições Scalp (ao vivo)</h3>
-
-            {isNaN(scalp.ema9) ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                Aguardando dados (precisa de 200+ candles)...
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {renderConditionBlock(
-                  "LONG",
-                  <TrendingUp className="h-3.5 w-3.5 text-bull" />,
-                  LONG_CONDITIONS,
-                  longResults,
-                  longPassedCount,
-                  "text-bull",
-                )}
-
-                <div className="border-t border-border" />
-
-                {renderConditionBlock(
-                  "SHORT",
-                  <TrendingDown className="h-3.5 w-3.5 text-bear" />,
-                  SHORT_CONDITIONS,
-                  shortResults,
-                  shortPassedCount,
-                  "text-bear",
-                )}
-
-                {/* Signal alert */}
-                {longPassedCount === 7 && (
-                  <div className="rounded bg-bull/10 border border-bull/20 px-3 py-2 text-center">
-                    <span className="text-xs font-bold text-bull">🎯 SINAL LONG — 7/7 condições ✓</span>
-                  </div>
-                )}
-                {shortPassedCount === 7 && (
-                  <div className="rounded bg-bear/10 border border-bear/20 px-3 py-2 text-center">
-                    <span className="text-xs font-bold text-bear">🎯 SINAL SHORT — 7/7 condições ✓</span>
-                  </div>
-                )}
-                {longPassedCount < 7 && shortPassedCount < 7 && (longPassedCount > 0 || shortPassedCount > 0) && (
-                  <div className="rounded bg-muted/30 px-3 py-2 text-center">
-                    <span className="text-[10px] text-muted-foreground">
-                      Sem alinhamento completo — aguardando 7/7
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Strategy indicators list (from selected strategy) */}
+          {/* Strategy indicators list */}
           {activeStrategy && (
             <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="mb-3 text-sm font-semibold text-foreground">
@@ -615,6 +520,105 @@ export default function ChartPage() {
                       </div>
                     );
                   })}
+              </div>
+            </div>
+          )}
+
+          {/* Conditions checklist — LONG & SHORT live evaluation */}
+          {activeStrategy && conditions.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Condições (ao vivo)</h3>
+              
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-muted-foreground">
+                <div className="flex-1">Condição</div>
+                <div className="w-12 text-center text-bull">LONG</div>
+                <div className="w-12 text-center text-bear">SHORT</div>
+              </div>
+
+              <div className="space-y-1">
+                {conditions.map((c, idx) => {
+                  const indicator = activeStrategy.indicators.find((i) => i.id === c.indicator_id);
+                  const indName = indicator
+                    ? indicator.indicator_type.toUpperCase()
+                    : c.condition_type;
+
+                  const val = c.value as any;
+                  let valueStr = "";
+                  if (val && typeof val === "object" && "min" in val && "max" in val) {
+                    valueStr = `${val.min}–${val.max}`;
+                  } else if (typeof val === "object") {
+                    valueStr = Object.values(val).join(", ");
+                  } else {
+                    valueStr = String(val ?? "");
+                  }
+
+                  const opMap: Record<string, string> = {
+                    ">": ">", "<": "<", ">=": "≥", "<=": "≤", "==": "=",
+                    "crosses_above": "↑", "crosses_below": "↓",
+                    "between": "∈", "increasing": "↗", "decreasing": "↘",
+                  };
+                  const opStr = opMap[c.operator] || c.operator;
+
+                  const longPassed = longResults[idx];
+                  const shortPassed = shortResults[idx];
+
+                  return (
+                    <div key={c.id} className="flex items-center gap-2 text-xs py-0.5">
+                      <div className="flex-1 flex items-center gap-1 min-w-0 truncate">
+                        <span className="text-muted-foreground truncate">
+                          {indName} {opStr} {valueStr}
+                        </span>
+                        {c.role === "required" && (
+                          <span className="text-[8px] text-yellow-500 shrink-0">★</span>
+                        )}
+                      </div>
+                      <div className="w-12 flex justify-center">
+                        {longPassed ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-bull" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-bear/50" />
+                        )}
+                      </div>
+                      <div className="w-12 flex justify-center">
+                        {shortPassed ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-bull" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-bear/50" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Summary for both directions */}
+              <div className="mt-3 pt-2 border-t border-border space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <TrendingUp className="h-3 w-3 text-bull" />
+                    <span className="text-muted-foreground">Long</span>
+                  </span>
+                  <span className={`font-mono font-bold ${longPassedCount === totalConditions ? "text-bull" : longPassedCount >= totalConditions * 0.6 ? "text-yellow-400" : "text-bear"}`}>
+                    {longPassedCount}/{totalConditions}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <TrendingDown className="h-3 w-3 text-bear" />
+                    <span className="text-muted-foreground">Short</span>
+                  </span>
+                  <span className={`font-mono font-bold ${shortPassedCount === totalConditions ? "text-bull" : shortPassedCount >= totalConditions * 0.6 ? "text-yellow-400" : "text-bear"}`}>
+                    {shortPassedCount}/{totalConditions}
+                  </span>
+                </div>
+                {(longPassedCount >= totalConditions * 0.6 || shortPassedCount >= totalConditions * 0.6) && (
+                  <div className="mt-1 rounded bg-primary/10 px-2 py-1 text-center">
+                    <span className="text-[10px] font-bold text-primary">
+                      🎯 Sinal {bestDirection === "long" ? "LONG" : "SHORT"} — {bestPassedCount}/{totalConditions} condições
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
