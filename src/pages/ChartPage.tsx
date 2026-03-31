@@ -323,6 +323,21 @@ export default function ChartPage() {
             {activeStrategy.indicators.filter((i) => i.enabled).length} indicadores ativos
           </Badge>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto text-xs gap-1.5"
+          onClick={() => {
+            playEntryAlert();
+            toast.success(`🎯 [TESTE] Possível entrada LONG 🟢! 4/5 condições`, {
+              description: `${symbol} — ${activeStrategy?.name || "Estratégia Teste"}`,
+              duration: 10000,
+            });
+          }}
+        >
+          <Volume2 className="h-3.5 w-3.5" />
+          Testar Alerta
+        </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
