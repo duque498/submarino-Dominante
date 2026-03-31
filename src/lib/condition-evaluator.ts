@@ -229,74 +229,166 @@ function indicatorLabel(type: string, params: Record<string, unknown> | null): s
   }
 }
 
+/**
+ * Find an indicator by ID or by label/ref string (fuzzy match).
+ */
+function findIndicator(
+  ref: string,
+  indicators: Tables<"strategy_indicators">[],
+): Tables<"strategy_indicators"> | undefined {
+  if (!ref) return undefined;
+  // Try direct ID match
+  let ind = indicators.find(i => i.id === ref);
+  if (ind) return ind;
+  // Try by label match (case insensitive)
+  ind = indicators.find(i => i.label?.toLowerCase() === ref.toLowerCase());
+  if (ind) return ind;
+  // Try by indicator_type match
+  ind = indicators.find(i => i.indicator_type === ref);
+  if (ind) return ind;
+  return undefined;
+}
+
+function resolveOperandLabel(
+  operand: { type?: string; ref?: string; value?: number | string },
+  indicators: Tables<"strategy_indicators">[],
+): { label: string; indType: string | null; indParams: Record<string, unknown> | null; isPrice: boolean; numericValue: number | null } {
+  const type = operand.type || "";
+  const ref = operand.ref || "";
+
+  // Price references
+  if (type === "price" || ref.startsWith("price.") || ref === "close" || ref === "price") {
+    const priceLabel = ref === "price.high" ? "Preço (High)" :
+                       ref === "price.low" ? "Preço (Low)" :
+                       "Preço";
+    return { label: priceLabel, indType: null, indParams: null, isPrice: true, numericValue: null };
+  }
+
+  // Volume reference
+  if (ref === "volume") {
+    return { label: "Volume", indType: "volume_sma", indParams: null, isPrice: false, numericValue: null };
+  }
+
+  // Indicator reference
+  if (type === "indicator" || (!type && ref)) {
+    const ind = findIndicator(ref, indicators);
+    if (ind) {
+      const params = (ind.params as Record<string, unknown>) || null;
+      return { label: indicatorLabel(ind.indicator_type, params), indType: ind.indicator_type, indParams: params, isPrice: false, numericValue: null };
+    }
+    // Indicator not found — show ref name nicely
+    return { label: ref || "???", indType: null, indParams: null, isPrice: false, numericValue: null };
+  }
+
+  // Fixed value
+  if (type === "value" || type === "multiplier") {
+    const val = operand.value != null ? Number(operand.value) : null;
+    const suffix = type === "multiplier" ? "x" : "";
+    return { label: val != null ? `${val}${suffix}` : "???", indType: null, indParams: null, isPrice: false, numericValue: val };
+  }
+
+  // Fallback: try numeric
+  if (operand.value != null) {
+    const val = Number(operand.value);
+    return { label: String(val), indType: null, indParams: null, isPrice: false, numericValue: val };
+  }
+
+  return { label: "???", indType: null, indParams: null, isPrice: false, numericValue: null };
+}
+
 export function parseConditions(
   conditions: Tables<"strategy_conditions">[],
   indicators: Tables<"strategy_indicators">[],
 ): ParsedCondition[] {
   return conditions.map(c => {
     const validation = validateCondition(c, indicators);
-    const ind = c.indicator_id ? indicators.find(i => i.id === c.indicator_id) : null;
-    
-    // Left side
-    const leftType = ind?.indicator_type || c.condition_type || "unknown";
-    const leftParams = (ind?.params as Record<string, unknown>) || null;
-    const leftLabel = ind ? indicatorLabel(ind.indicator_type, leftParams) : 
-                      c.condition_type === "price" ? "Preço" : 
-                      c.condition_type ? c.condition_type.toUpperCase() : "???";
 
-    // Right side — can be a static value, indicator, or price
-    const compareTo = c.compare_to as any;
+    // Extract the stored operands
+    const valueObj = (c.value as Record<string, unknown>) || {};
+    const compareToObj = (c.compare_to as Record<string, unknown>) || {};
+
+    // --- LEFT SIDE ---
+    // The left operand info is stored in `value` as { leftType, leftRef, leftOutput }
+    // or via `indicator_id` + `condition_type`
+    const leftRef = (valueObj.leftRef as string) || c.indicator_id || "";
+    const leftOperandType = (valueObj.leftType as string) || c.condition_type || "";
+
+    let leftLabel: string;
+    let leftType: string;
+    let leftParams: Record<string, unknown> | null = null;
+
+    if (leftOperandType === "price" || leftRef.startsWith("price.") || leftRef === "close") {
+      leftLabel = leftRef === "price.high" ? "Preço (High)" : leftRef === "price.low" ? "Preço (Low)" : "Preço";
+      leftType = "price";
+    } else {
+      const leftInd = findIndicator(leftRef, indicators) || 
+                       (c.indicator_id ? indicators.find(i => i.id === c.indicator_id) : undefined);
+      if (leftInd) {
+        leftParams = (leftInd.params as Record<string, unknown>) || null;
+        leftLabel = indicatorLabel(leftInd.indicator_type, leftParams);
+        leftType = leftInd.indicator_type;
+      } else {
+        leftLabel = leftRef || c.condition_type?.toUpperCase() || "???";
+        leftType = c.condition_type || "unknown";
+      }
+    }
+
+    // --- RIGHT SIDE ---
     let rightType: "value" | "indicator" | "price" = "value";
     let rightValue: number | null = null;
     let rightIndicatorType: string | null = null;
     let rightIndicatorParams: Record<string, unknown> | null = null;
     let rightLabel = "";
 
-    if (compareTo && typeof compareTo === "object") {
-      if (compareTo.indicator_id) {
-        // Comparing to another indicator
-        const rightInd = indicators.find(i => i.id === compareTo.indicator_id);
-        if (rightInd) {
-          rightType = "indicator";
-          rightIndicatorType = rightInd.indicator_type;
-          rightIndicatorParams = (rightInd.params as Record<string, unknown>) || null;
-          rightLabel = indicatorLabel(rightInd.indicator_type, rightIndicatorParams);
-        } else {
-          rightLabel = "???";
-        }
-      } else if (compareTo.type === "price" || compareTo.ref === "price" || compareTo.ref === "close") {
-        rightType = "price";
-        rightLabel = "Preço";
-      } else if ("min" in compareTo && "max" in compareTo) {
-        rightType = "value";
-        rightValue = null; // handled by between operator
-        rightLabel = `${compareTo.min}–${compareTo.max}`;
-      } else if ("value" in compareTo) {
-        rightType = "value";
-        rightValue = Number(compareTo.value);
-        rightLabel = String(compareTo.value);
+    const rightOpType = (compareToObj.type as string) || "";
+    const rightOpRef = (compareToObj.ref as string) || "";
+    const rightOpValue = compareToObj.value != null ? Number(compareToObj.value) : null;
+
+    if (rightOpType === "price" || rightOpRef.startsWith("price.") || rightOpRef === "close" || rightOpRef === "price") {
+      rightType = "price";
+      rightLabel = rightOpRef === "price.high" ? "Preço (High)" : rightOpRef === "price.low" ? "Preço (Low)" : "Preço";
+    } else if (rightOpType === "indicator" || (rightOpRef && rightOpType !== "value" && rightOpType !== "multiplier")) {
+      const rightInd = findIndicator(rightOpRef, indicators);
+      if (rightInd) {
+        rightType = "indicator";
+        rightIndicatorType = rightInd.indicator_type;
+        rightIndicatorParams = (rightInd.params as Record<string, unknown>) || null;
+        rightLabel = indicatorLabel(rightInd.indicator_type, rightIndicatorParams);
       } else {
-        rightLabel = JSON.stringify(compareTo);
+        // Show the ref name nicely instead of raw JSON
+        rightLabel = rightOpRef || "???";
       }
-    } else if (compareTo != null) {
+    } else if (rightOpType === "multiplier" && rightOpValue != null) {
       rightType = "value";
-      rightValue = Number(compareTo);
-      rightLabel = String(compareTo);
+      rightValue = rightOpValue;
+      rightLabel = `${rightOpValue}x`;
+    } else if (rightOpValue != null) {
+      rightType = "value";
+      rightValue = rightOpValue;
+      rightLabel = String(rightOpValue);
     }
 
-    // If compareTo is empty, use the condition value as the right side
-    if (!rightLabel && c.value != null) {
-      const val = c.value as any;
-      if (typeof val === "object" && "min" in val && "max" in val) {
-        rightLabel = `${val.min}–${val.max}`;
-      } else if (typeof val === "object") {
-        rightValue = Number(Object.values(val)[0] ?? 0);
-        rightLabel = String(rightValue);
-      } else {
-        rightValue = Number(val);
-        rightLabel = String(val);
+    // Fallback: use rightValue from the value object
+    if (!rightLabel) {
+      const fallbackVal = valueObj.rightValue != null ? Number(valueObj.rightValue) : null;
+      if (fallbackVal != null && !isNaN(fallbackVal)) {
+        rightValue = fallbackVal;
+        rightLabel = String(fallbackVal);
       }
     }
+
+    // Handle between operator with min/max
+    if (c.operator === "between") {
+      const min = (compareToObj.min as number) ?? (valueObj.min as number);
+      const max = (compareToObj.max as number) ?? (valueObj.max as number);
+      if (min != null && max != null) {
+        rightLabel = `${min}–${max}`;
+      } else if (rightOpValue != null) {
+        rightLabel = String(rightOpValue);
+      }
+    }
+
+    if (!rightLabel) rightLabel = "???";
 
     const opSymbol = OPERATOR_SYMBOLS[c.operator] || c.operator;
     const label = `${leftLabel} ${opSymbol} ${rightLabel}`;
