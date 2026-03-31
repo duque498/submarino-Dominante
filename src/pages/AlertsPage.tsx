@@ -142,7 +142,7 @@ export default function AlertsPage() {
                       </div>
 
                       {/* Price grid */}
-                      <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
+                      <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10px] md:text-xs sm:grid-cols-4 sm:gap-2">
                         <div>
                           <span className="text-muted-foreground">Entrada</span>
                           <p className="font-mono font-semibold text-foreground">
