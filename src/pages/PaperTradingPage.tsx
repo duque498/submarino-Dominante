@@ -11,6 +11,8 @@ import { toast } from "sonner";
 export default function PaperTradingPage() {
   const { data: trades, isLoading } = usePaperTrades();
   const { data: tickers } = useTickers("linear");
+  const closeTrade = useClosePaperTrade();
+  const deleteTrade = useDeletePaperTrade();
   const tickerMap = new Map((tickers || []).map((t) => [t.symbol, t]));
 
   const openTrades = (trades || []).filter((t) => t.status === "open");
@@ -19,6 +21,16 @@ export default function PaperTradingPage() {
   const totalPnl = closedTrades.reduce((sum, t) => sum + (t.pnl_percent || 0), 0);
   const wins = closedTrades.filter((t) => (t.pnl_percent || 0) > 0).length;
   const winRate = closedTrades.length > 0 ? ((wins / closedTrades.length) * 100).toFixed(0) : "—";
+
+  const handleClose = (t: any) => {
+    const ticker = tickerMap.get(t.symbol);
+    const currentPrice = ticker?.lastPrice || t.entry_price;
+    const isLong = t.direction === "buy";
+    const pnl = isLong
+      ? ((currentPrice - t.entry_price) / t.entry_price) * 100
+      : ((t.entry_price - currentPrice) / t.entry_price) * 100;
+    closeTrade.mutate({ id: t.id, exit_price: currentPrice, pnl_percent: pnl });
+  };
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -66,7 +78,6 @@ export default function PaperTradingPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {/* Open trades first */}
           {[...openTrades, ...closedTrades].map((t) => {
             const ticker = tickerMap.get(t.symbol);
             const currentPrice = ticker?.lastPrice;
@@ -107,24 +118,50 @@ export default function PaperTradingPage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div
-                    className={cn(
-                      "font-mono font-bold",
-                      (livePnl ?? 0) >= 0 ? "text-bull" : "text-bear"
-                    )}
-                  >
-                    {livePnl !== null && livePnl !== undefined
-                      ? `${livePnl >= 0 ? "+" : ""}${livePnl.toFixed(2)}%`
-                      : "—"}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div
+                      className={cn(
+                        "font-mono font-bold",
+                        (livePnl ?? 0) >= 0 ? "text-bull" : "text-bear"
+                      )}
+                    >
+                      {livePnl !== null && livePnl !== undefined
+                        ? `${livePnl >= 0 ? "+" : ""}${livePnl.toFixed(2)}%`
+                        : "—"}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {t.status === "open" && currentPrice
+                        ? `$${currentPrice.toLocaleString()}`
+                        : t.exit_price
+                        ? `$${t.exit_price.toLocaleString()}`
+                        : ""}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    {t.status === "open" && currentPrice
-                      ? `$${currentPrice.toLocaleString()}`
-                      : t.exit_price
-                      ? `$${t.exit_price.toLocaleString()}`
-                      : ""}
-                  </span>
+                  <div className="flex gap-1">
+                    {t.status === "open" && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 border-bear/30 text-bear hover:bg-bear/10 hover:text-bear"
+                        title="Sair da operação"
+                        onClick={() => handleClose(t)}
+                        disabled={closeTrade.isPending}
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 border-destructive/30 text-destructive hover:bg-destructive/10"
+                      title="Excluir trade"
+                      onClick={() => deleteTrade.mutate(t.id)}
+                      disabled={deleteTrade.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
