@@ -24,33 +24,33 @@ export default function HistoryPage() {
         <p className="text-sm text-muted-foreground">Todos os sinais gerados e seus resultados</p>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border border-border -mx-3 md:mx-0">
+        <table className="w-full text-xs md:text-sm">
           <thead>
             <tr className="border-b border-border bg-card">
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ativo</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dir.</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">TF</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">Score</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">Resultado</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">P&L</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium text-muted-foreground">Data</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium text-muted-foreground">Ativo</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-left font-medium text-muted-foreground">Dir.</th>
+              <th className="hidden sm:table-cell px-2 md:px-4 py-2 md:py-3 text-left font-medium text-muted-foreground">TF</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-center font-medium text-muted-foreground">Score</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-center font-medium text-muted-foreground">Res.</th>
+              <th className="px-2 md:px-4 py-2 md:py-3 text-right font-medium text-muted-foreground">P&L</th>
             </tr>
           </thead>
           <tbody>
             {mockHistory.map((s) => (
               <tr key={s.id} className="border-b border-border/50 hover:bg-accent/30">
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{s.time}</td>
-                <td className="px-4 py-3 font-mono font-semibold text-foreground">{s.symbol}</td>
-                <td className="px-4 py-3">
-                  <Badge variant={s.direction === "buy" ? "bull" : "bear"} className="text-[10px]">
+                <td className="px-2 md:px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">{s.time}</td>
+                <td className="px-2 md:px-4 py-2 md:py-3 font-mono font-semibold text-foreground text-xs">{s.symbol.replace("USDT","")}</td>
+                <td className="px-2 md:px-4 py-2 md:py-3">
+                  <Badge variant={s.direction === "buy" ? "bull" : "bear"} className="text-[8px] md:text-[10px]">
                     {s.direction === "buy" ? "C" : "V"}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{s.timeframe}</td>
-                <td className="px-4 py-3 text-center"><ScoreBadge score={s.score} size="sm" /></td>
-                <td className="px-4 py-3 text-center"><ResultIcon result={s.result} /></td>
-                <td className={`px-4 py-3 text-right font-mono ${s.pnl.startsWith("+") ? "text-bull" : s.pnl.startsWith("-") && s.pnl !== "-" ? "text-bear" : "text-muted-foreground"}`}>
+                <td className="hidden sm:table-cell px-2 md:px-4 py-2 md:py-3 font-mono text-[10px] text-muted-foreground">{s.timeframe}</td>
+                <td className="px-2 md:px-4 py-2 md:py-3 text-center"><ScoreBadge score={s.score} size="sm" /></td>
+                <td className="px-2 md:px-4 py-2 md:py-3 text-center"><ResultIcon result={s.result} /></td>
+                <td className={`px-2 md:px-4 py-2 md:py-3 text-right font-mono text-xs ${s.pnl.startsWith("+") ? "text-bull" : s.pnl.startsWith("-") && s.pnl !== "-" ? "text-bear" : "text-muted-foreground"}`}>
                   {s.pnl}
                 </td>
               </tr>

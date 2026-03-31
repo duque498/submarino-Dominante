@@ -93,12 +93,12 @@ export default function StrategiesPage() {
   );
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col animate-slide-in">
+    <div className="h-[calc(100vh-3.5rem-3.5rem)] md:h-[calc(100vh-3.5rem)] flex flex-col animate-slide-in">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50 shrink-0">
-        <div>
-          <h1 className="text-lg font-bold text-foreground">Strategy Builder</h1>
-          <p className="text-xs text-muted-foreground">Crie e edite estratégias avançadas</p>
+      <div className="flex items-center justify-between px-3 md:px-4 py-2 border-b border-border bg-card/50 shrink-0 gap-2">
+        <div className="min-w-0">
+          <h1 className="text-base md:text-lg font-bold text-foreground truncate">Strategy Builder</h1>
+          <p className="text-[10px] md:text-xs text-muted-foreground hidden sm:block">Crie e edite estratégias avançadas</p>
         </div>
         <div className="flex items-center gap-2">
           {draftHook.dirty && (
@@ -133,8 +133,8 @@ export default function StrategiesPage() {
       {/* 3-panel layout */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
-          {/* Sidebar */}
-          <ResizablePanel defaultSize={18} minSize={14} maxSize={28}>
+          {/* Sidebar — hidden on very small screens */}
+          <ResizablePanel defaultSize={18} minSize={10} maxSize={28} className="hidden sm:block">
             <StrategyListSidebar
               strategies={strategies || []}
               loading={loadingList}

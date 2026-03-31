@@ -85,17 +85,15 @@ export default function DashboardPage() {
   const topSignals = (signals || []).slice(0, 5);
 
   return (
-    <div className="space-y-6 animate-slide-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Monitoramento do scanner e oportunidades em tempo real</p>
+    <div className="space-y-4 md:space-y-6 animate-slide-in">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-xs md:text-sm text-muted-foreground truncate">Monitoramento do scanner em tempo real</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5">
-            <Radar className="h-3.5 w-3.5 text-primary animate-pulse" />
-            <span className="text-xs font-mono text-muted-foreground">Scanner ativo</span>
-          </div>
+        <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 md:px-3 md:py-1.5 shrink-0">
+          <Radar className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary animate-pulse" />
+          <span className="text-[10px] md:text-xs font-mono text-muted-foreground hidden sm:inline">Scanner ativo</span>
         </div>
       </div>
 
@@ -107,28 +105,28 @@ export default function DashboardPage() {
           { label: "Estratégias Ativas", value: String(activeStrategies.length), icon: ShieldCheck },
           { label: "Alertas Pendentes", value: String(pendingAlerts ?? 0), icon: AlertTriangle, accent: (pendingAlerts ?? 0) > 0 ? "text-chart-yellow" : "" },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-lg border border-border bg-card p-4">
+          <div key={stat.label} className="rounded-lg border border-border bg-card p-3 md:p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{stat.label}</span>
-              <stat.icon className={`h-4 w-4 ${stat.accent || "text-muted-foreground"}`} />
+              <span className="text-[10px] md:text-xs text-muted-foreground">{stat.label}</span>
+              <stat.icon className={`h-3.5 w-3.5 md:h-4 md:w-4 ${stat.accent || "text-muted-foreground"}`} />
             </div>
-            <div className="mt-2">
-              <span className={`text-2xl font-bold font-mono ${stat.accent || "text-foreground"}`}>{stat.value}</span>
+            <div className="mt-1 md:mt-2">
+              <span className={`text-lg md:text-2xl font-bold font-mono ${stat.accent || "text-foreground"}`}>{stat.value}</span>
             </div>
           </div>
         ))}
       </div>
 
       {/* Scanner Status */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
+      <div className="rounded-lg border border-border bg-card p-3 md:p-4">
+        <div className="flex items-center justify-between mb-2 md:mb-3">
+          <h2 className="text-xs md:text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <Activity className="h-3.5 w-3.5 text-primary" />
             Status do Scanner
           </h2>
-          <span className="text-[10px] font-mono text-muted-foreground">Auto-scan a cada 2 min</span>
+          <span className="text-[9px] md:text-[10px] font-mono text-muted-foreground">Auto-scan 2 min</span>
         </div>
-        <div className="flex flex-wrap gap-6">
+        <div className="flex flex-wrap gap-3 md:gap-6">
           <StatusIndicator status={connection.connected ? "online" : "offline"} label={connection.connected ? "Bybit Conectada" : "Bybit Desconectada"} />
           <StatusIndicator status={activeStrategies.length > 0 ? "online" : "warning"} label={`${activeStrategies.length} estratégia(s) ativa(s)`} />
           <StatusIndicator status={signalsToday.length > 0 ? "online" : "loading"} label={`Último sinal: ${lastScanText}`} />

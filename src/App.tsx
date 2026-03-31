@@ -16,6 +16,7 @@ import HistoryPage from "@/pages/HistoryPage";
 import BacktestsPage from "@/pages/BacktestsPage";
 import PaperTradingPage from "@/pages/PaperTradingPage";
 import SettingsPage from "@/pages/SettingsPage";
+import InstallPage from "@/pages/InstallPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/backtests" element={<BacktestsPage />} />
             <Route path="/paper-trading" element={<PaperTradingPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
+            <Route path="/instalar" element={<InstallPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
