@@ -6,6 +6,7 @@ import { TradingViewChart } from "@/components/chart/TradingViewChart";
 import { EntryHubModal, type EntrySignalData } from "@/components/chart/EntryHubModal";
 import { LiveConditionsPanel } from "@/components/chart/LiveConditionsPanel";
 import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useStrategies } from "@/hooks/use-strategies";
 import { TrendingUp, TrendingDown, Puzzle, Volume2 } from "lucide-react";
 import { MarketAIPanel } from "@/components/chart/MarketAIPanel";
