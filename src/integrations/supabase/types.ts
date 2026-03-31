@@ -421,53 +421,74 @@ export type Database = {
         Row: {
           active: boolean | null
           alert_mode: string | null
+          alert_rules: Json
           cooldown_minutes: number | null
           created_at: string
           description: string | null
+          direction: string
+          exchange: string
           id: string
           market: string
           max_alerts_per_symbol_per_day: number | null
           min_rr: number | null
           name: string
+          priority: string
+          risk_rules: Json
           score_min: number | null
+          tags: Json
           time_window_end: string | null
           time_window_start: string | null
           updated_at: string
           user_id: string
+          version: number
         }
         Insert: {
           active?: boolean | null
           alert_mode?: string | null
+          alert_rules?: Json
           cooldown_minutes?: number | null
           created_at?: string
           description?: string | null
+          direction?: string
+          exchange?: string
           id?: string
           market?: string
           max_alerts_per_symbol_per_day?: number | null
           min_rr?: number | null
           name: string
+          priority?: string
+          risk_rules?: Json
           score_min?: number | null
+          tags?: Json
           time_window_end?: string | null
           time_window_start?: string | null
           updated_at?: string
           user_id: string
+          version?: number
         }
         Update: {
           active?: boolean | null
           alert_mode?: string | null
+          alert_rules?: Json
           cooldown_minutes?: number | null
           created_at?: string
           description?: string | null
+          direction?: string
+          exchange?: string
           id?: string
           market?: string
           max_alerts_per_symbol_per_day?: number | null
           min_rr?: number | null
           name?: string
+          priority?: string
+          risk_rules?: Json
           score_min?: number | null
+          tags?: Json
           time_window_end?: string | null
           time_window_start?: string | null
           updated_at?: string
           user_id?: string
+          version?: number
         }
         Relationships: []
       }
@@ -476,6 +497,7 @@ export type Database = {
           compare_to: Json | null
           condition_type: string
           created_at: string
+          group_id: string | null
           id: string
           indicator_id: string | null
           logic_group: string | null
@@ -484,11 +506,13 @@ export type Database = {
           sort_order: number | null
           strategy_id: string
           value: Json
+          weight: number
         }
         Insert: {
           compare_to?: Json | null
           condition_type: string
           created_at?: string
+          group_id?: string | null
           id?: string
           indicator_id?: string | null
           logic_group?: string | null
@@ -497,11 +521,13 @@ export type Database = {
           sort_order?: number | null
           strategy_id: string
           value: Json
+          weight?: number
         }
         Update: {
           compare_to?: Json | null
           condition_type?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           indicator_id?: string | null
           logic_group?: string | null
@@ -510,6 +536,7 @@ export type Database = {
           sort_order?: number | null
           strategy_id?: string
           value?: Json
+          weight?: number
         }
         Relationships: [
           {
@@ -531,32 +558,47 @@ export type Database = {
       strategy_indicators: {
         Row: {
           created_at: string
+          enabled: boolean
           id: string
           indicator_type: string
+          label: string | null
           params: Json | null
+          plot_on_chart: boolean
           role: string
           sort_order: number | null
+          source: string
           strategy_id: string
+          timeframe: string | null
           weight: number | null
         }
         Insert: {
           created_at?: string
+          enabled?: boolean
           id?: string
           indicator_type: string
+          label?: string | null
           params?: Json | null
+          plot_on_chart?: boolean
           role?: string
           sort_order?: number | null
+          source?: string
           strategy_id: string
+          timeframe?: string | null
           weight?: number | null
         }
         Update: {
           created_at?: string
+          enabled?: boolean
           id?: string
           indicator_type?: string
+          label?: string | null
           params?: Json | null
+          plot_on_chart?: boolean
           role?: string
           sort_order?: number | null
+          source?: string
           strategy_id?: string
+          timeframe?: string | null
           weight?: number | null
         }
         Relationships: [
@@ -614,6 +656,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "strategy_timeframes_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_versions: {
+        Row: {
+          change_summary: string | null
+          created_at: string
+          id: string
+          snapshot: Json
+          strategy_id: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          change_summary?: string | null
+          created_at?: string
+          id?: string
+          snapshot?: Json
+          strategy_id: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          change_summary?: string | null
+          created_at?: string
+          id?: string
+          snapshot?: Json
+          strategy_id?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_versions_strategy_id_fkey"
             columns: ["strategy_id"]
             isOneToOne: false
             referencedRelation: "strategies"
