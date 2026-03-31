@@ -19,6 +19,13 @@ import {
 } from "@/types/strategy";
 import { getDefaultParams, getIndicatorDef } from "@/lib/indicators";
 
+// Map DB role enum to frontend role
+const dbRoleToFrontend = (r: string): "required" | "score" | "informative" => {
+  if (r === "scoring") return "score";
+  if (r === "info") return "informative";
+  return "required";
+};
+
 // Convert DB row to draft
 export function dbToDraft(
   strategy: any,
@@ -52,7 +59,7 @@ export function dbToDraft(
         ref: (c.compare_to as any)?.ref || "",
         value: (c.compare_to as any)?.value ?? (c.value as any)?.rightValue,
       },
-      role: c.role as any,
+      role: dbRoleToFrontend(c.role),
       weight: c.weight || 10,
       enabled: true,
     })),
@@ -93,7 +100,7 @@ export function dbToDraft(
       params: (ind.params as Record<string, any>) || {},
       source: ind.source || "close",
       timeframe: ind.timeframe || null,
-      role: ind.role as any,
+      role: dbRoleToFrontend(ind.role),
       weight: ind.weight || 0,
       enabled: ind.enabled ?? true,
       plotOnChart: ind.plot_on_chart ?? true,
@@ -227,6 +234,13 @@ export function useStrategyDraft(initialId?: string | null) {
         supabase.from("strategy_timeframes").delete().eq("strategy_id", strategyId!),
       ]);
 
+      // Map frontend roles to DB enum values
+      const roleToDb = (r: string) => {
+        if (r === "score") return "scoring";
+        if (r === "informative") return "info";
+        return "required";
+      };
+
       // Insert indicators
       if (draft.indicators.length > 0) {
         const { error } = await supabase.from("strategy_indicators").insert(
@@ -237,7 +251,7 @@ export function useStrategyDraft(initialId?: string | null) {
             params: ind.params,
             source: ind.source,
             timeframe: ind.timeframe,
-            role: ind.role,
+            role: roleToDb(ind.role),
             weight: ind.weight,
             enabled: ind.enabled,
             plot_on_chart: ind.plotOnChart,
@@ -268,7 +282,7 @@ export function useStrategyDraft(initialId?: string | null) {
               ref: c.rightOperand.ref,
               value: c.rightOperand.value,
             },
-            role: c.role,
+            role: roleToDb(c.role),
             weight: c.weight,
             sort_order: i,
           }))
