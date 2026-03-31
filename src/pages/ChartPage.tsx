@@ -8,7 +8,7 @@ import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/
 import { useStrategies } from "@/hooks/use-strategies";
 import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Puzzle, Volume2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { playConditionTick, playEntryAlert } from "@/lib/audio-notifications";
+import { playConditionTick, playEntryAlert, sendEntryPushNotification } from "@/lib/audio-notifications";
 import { toast } from "sonner";
 import type { BybitCategory, CandleData, TickerData } from "@/services/bybit";
 import type { Tables } from "@/integrations/supabase/types";
@@ -312,6 +312,21 @@ export default function ChartPage() {
         setEntrySignal(sig);
         setIsTestEntry(false);
         setEntryHubOpen(true);
+        // Browser push notification (works even when tab is not focused)
+        sendEntryPushNotification({
+          symbol: sig.symbol,
+          direction: sig.direction,
+          score: sig.score,
+          passedConditions: sig.passedConditions,
+          totalConditions: sig.totalConditions,
+          entryPrice: sig.entryPrice,
+          stopPrice: sig.stopPrice,
+          targetPrice: sig.target1Price,
+          strategyName: sig.strategyName,
+          onClick: () => {
+            setEntryHubOpen(true);
+          },
+        });
       }
     } else if (bestRatio < 0.6) {
       entryAlertFiredRef.current = false;
@@ -397,6 +412,17 @@ export default function ChartPage() {
               setEntrySignal(sig);
               setIsTestEntry(true);
               setEntryHubOpen(true);
+              sendEntryPushNotification({
+                symbol: sig.symbol,
+                direction: sig.direction,
+                score: sig.score,
+                passedConditions: sig.passedConditions,
+                totalConditions: sig.totalConditions,
+                entryPrice: sig.entryPrice,
+                stopPrice: sig.stopPrice,
+                targetPrice: sig.target1Price,
+                strategyName: sig.strategyName,
+              });
             }
           }}
         >

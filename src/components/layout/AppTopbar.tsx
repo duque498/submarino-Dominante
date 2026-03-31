@@ -1,9 +1,12 @@
-import { Activity, Wifi, WifiOff } from "lucide-react";
+import { Activity, Wifi, WifiOff, Bell, BellOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useBybitConnection } from "@/hooks/use-bybit-connection";
 import { useEffect, useState } from "react";
 import { NotificationPanel } from "@/components/notifications/NotificationPanel";
 import { useTradeMonitor } from "@/hooks/use-trade-monitor";
+import { isPushSupported, getPushPermission, requestPushPermission } from "@/lib/audio-notifications";
 
 interface AppTopbarProps {
   onNotificationsClick?: () => void;
@@ -12,6 +15,7 @@ interface AppTopbarProps {
 export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
   const connection = useBybitConnection();
   const [time, setTime] = useState(new Date());
+  const [pushState, setPushState] = useState<NotificationPermission | "unsupported">("unsupported");
 
   // Activate TP/SL monitor globally
   useTradeMonitor();
@@ -20,6 +24,17 @@ export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    setPushState(getPushPermission());
+  }, []);
+
+  const handlePushToggle = async () => {
+    if (pushState === "granted") return; // already granted, can't revoke programmatically
+    if (pushState === "denied") return; // blocked by user
+    const ok = await requestPushPermission();
+    setPushState(ok ? "granted" : getPushPermission());
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-sm">
@@ -46,6 +61,34 @@ export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Push notification toggle */}
+        {isPushSupported() && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handlePushToggle}
+              >
+                {pushState === "granted" ? (
+                  <Bell className="h-4 w-4 text-bull" />
+                ) : pushState === "denied" ? (
+                  <BellOff className="h-4 w-4 text-bear" />
+                ) : (
+                  <Bell className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {pushState === "granted"
+                ? "Notificações push ativadas"
+                : pushState === "denied"
+                  ? "Notificações bloqueadas — habilite nas configurações do navegador"
+                  : "Ativar notificações push"}
+            </TooltipContent>
+          </Tooltip>
+        )}
         <span className="hidden text-xs text-muted-foreground md:block font-mono">
           {time.toLocaleTimeString("pt-BR")}
         </span>
