@@ -177,7 +177,7 @@ export function TradingChart({
         volumeSeriesRef.current.update({
           time: candle.time as Time,
           value: candle.volume,
-          color: candle.close >= candle.open ? "hsla(145, 63%, 42%, 0.35)" : "hsla(0, 72%, 51%, 0.35)",
+          color: candle.close >= candle.open ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)",
         });
       }
     });
