@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TradingViewChart } from "@/components/chart/TradingViewChart";
 import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
 import { useStrategies } from "@/hooks/use-strategies";
-import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Puzzle } from "lucide-react";
+import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Puzzle, Volume2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { playConditionTick, playEntryAlert } from "@/lib/audio-notifications";
 import { toast } from "sonner";
