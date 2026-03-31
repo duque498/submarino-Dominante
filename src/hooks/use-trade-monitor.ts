@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import { usePaperTrades, useClosePaperTrade } from "./use-paper-trades";
 import { useTickers } from "./use-bybit";
+import { useAuth } from "./use-auth";
 import { toast } from "sonner";
+import { triggerPushNotification } from "@/lib/push-subscription";
 
 /**
  * Monitors open paper trades against live prices.
