@@ -73,25 +73,27 @@ export default function ChartPage() {
   // ─── Parsed conditions from strategy ──────────────────────────────
   const parsed = useMemo(() => {
     if (!activeStrategy) return [];
-    return parseConditions(activeStrategy.conditions || [], activeStrategy.indicators || []);
+    return parseConditions(activeStrategy.conditions || [], activeStrategy.indicators || [], activeStrategy.direction);
   }, [activeStrategy]);
 
-  // ─── Evaluate for both directions ─────────────────────────────────
+  const longParsed = useMemo(() => filterConditionsByDirection(parsed, "long"), [parsed]);
+  const shortParsed = useMemo(() => filterConditionsByDirection(parsed, "short"), [parsed]);
+
   const longResults = useMemo(
-    () => evaluateConditions(parsed, marketCtx, "long"),
-    [parsed, marketCtx]
+    () => evaluateConditions(longParsed, marketCtx, "long"),
+    [longParsed, marketCtx]
   );
   const shortResults = useMemo(
-    () => evaluateConditions(parsed, marketCtx, "short"),
-    [parsed, marketCtx]
+    () => evaluateConditions(shortParsed, marketCtx, "short"),
+    [shortParsed, marketCtx]
   );
   const longSummary = useMemo(
-    () => summarizeDirection(parsed, longResults, "long"),
-    [parsed, longResults]
+    () => summarizeDirection(longParsed, longResults, "long"),
+    [longParsed, longResults]
   );
   const shortSummary = useMemo(
-    () => summarizeDirection(parsed, shortResults, "short"),
-    [parsed, shortResults]
+    () => summarizeDirection(shortParsed, shortResults, "short"),
+    [shortParsed, shortResults]
   );
 
   const bestDirection = longSummary.passed >= shortSummary.passed ? "long" : "short";
