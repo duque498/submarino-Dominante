@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { NotificationPanel } from "@/components/notifications/NotificationPanel";
 import { useTradeMonitor } from "@/hooks/use-trade-monitor";
 import { isPushSupported, getPushPermission, requestPushPermission } from "@/lib/audio-notifications";
+import { subscribeToPush } from "@/lib/push-subscription";
 
 interface AppTopbarProps {
   onNotificationsClick?: () => void;
