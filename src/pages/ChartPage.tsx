@@ -1,53 +1,50 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScoreBadge } from "@/components/ui/score-badge";
-import { TradingChart } from "@/components/chart/TradingChart";
-import { useKlines, useTickers, useOrderbook, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
-import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TradingViewChart } from "@/components/chart/TradingViewChart";
+import { useTickers, useOpenInterest, useFundingRate } from "@/hooks/use-bybit";
+import { useStrategies } from "@/hooks/use-strategies";
+import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Puzzle } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import type { BybitCategory } from "@/services/bybit";
-
-const mockScoreBreakdown = [
-  { label: "Backtest / Histórico", weight: 30, score: 78 },
-  { label: "Confluência de Indicadores", weight: 20, score: 85 },
-  { label: "Volume e Liquidez", weight: 15, score: 72 },
-  { label: "Spread e Execução", weight: 10, score: 60 },
-  { label: "Tendência TF Maior", weight: 10, score: 65 },
-  { label: "Risco / Retorno", weight: 10, score: 80 },
-  { label: "Derivativos (OI/Funding)", weight: 5, score: 55 },
-];
-
-const mockFilters = [
-  { label: "EMA 9 > EMA 21", passed: true, required: true },
-  { label: "RSI entre 55 e 70", passed: true, required: true },
-  { label: "Volume > 1.5x média", passed: true, required: true },
-  { label: "Preço acima VWAP", passed: true, required: true },
-  { label: "Spread < 0.05%", passed: true, required: true },
-  { label: "R/R >= 1.8", passed: true, required: true },
-  { label: "OI crescente", passed: false, required: false },
-  { label: "Funding neutro", passed: true, required: false },
-];
 
 export default function ChartPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const symbol = searchParams.get("symbol") || "BTCUSDT";
   const category = (searchParams.get("category") || "linear") as BybitCategory;
   const [timeframe, setTimeframe] = useState(searchParams.get("tf") || "5m");
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("none");
   const timeframes = ["1m", "5m", "15m", "1h", "4h"];
 
-  const { data: candles, isLoading: loadingCandles } = useKlines(symbol, timeframe, category);
   const { data: tickers } = useTickers(category, symbol);
   const { data: oiData } = useOpenInterest(symbol, category);
   const { data: fundingData } = useFundingRate(symbol, category);
+  const { data: strategies } = useStrategies();
 
   const ticker = tickers?.[0];
   const latestOI = oiData?.[0];
   const latestFunding = fundingData?.[0];
 
+  const activeStrategy = strategies?.find((s) => s.id === selectedStrategyId);
+  const activeStrategies = strategies?.filter((s) => s.active) || [];
+
   const setSymbol = (s: string) => {
     setSearchParams({ symbol: s, category, tf: timeframe });
   };
+
+  // Get indicators from selected strategy
+  const chartIndicators = activeStrategy?.indicators
+    ?.filter((i) => i.enabled && i.plot_on_chart)
+    ?.map((i) => ({
+      indicator_type: i.indicator_type,
+      params: i.params as Record<string, unknown> | null,
+      enabled: i.enabled,
+      plot_on_chart: i.plot_on_chart,
+    })) || [];
+
+  // Conditions from strategy for checklist
+  const conditions = activeStrategy?.conditions || [];
 
   return (
     <div className="space-y-4 animate-slide-in">
@@ -66,7 +63,7 @@ export default function ChartPage() {
           )}
           <Badge variant="outline" className="text-[10px] font-mono">{category === "linear" ? "PERP" : "SPOT"}</Badge>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           {["BTCUSDT", "ETHUSDT", "SOLUSDT"].map((s) => (
             <Button
               key={s}
@@ -93,26 +90,40 @@ export default function ChartPage() {
         </div>
       </div>
 
+      {/* Strategy selector */}
+      <div className="flex items-center gap-2">
+        <Puzzle className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Estratégia:</span>
+        <Select value={selectedStrategyId} onValueChange={setSelectedStrategyId}>
+          <SelectTrigger className="w-64 h-8 text-xs">
+            <SelectValue placeholder="Selecione uma estratégia" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Sem estratégia</SelectItem>
+            {activeStrategies.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.name} ({s.indicators.length} indicadores)
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {activeStrategy && (
+          <Badge variant="outline" className="text-[10px]">
+            {activeStrategy.indicators.filter((i) => i.enabled).length} indicadores ativos
+          </Badge>
+        )}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        {/* Chart */}
+        {/* TradingView Chart */}
         <div>
-          {loadingCandles ? (
-            <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-border bg-card">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : candles && candles.length > 0 ? (
-            <TradingChart
-              candles={candles}
-              symbol={symbol}
-              timeframe={timeframe}
-              category={category}
-              height={520}
-            />
-          ) : (
-            <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-border bg-card text-sm text-muted-foreground">
-              Sem dados disponíveis
-            </div>
-          )}
+          <TradingViewChart
+            symbol={symbol}
+            timeframe={timeframe}
+            category={category}
+            height={520}
+            indicators={chartIndicators}
+          />
         </div>
 
         {/* Side panel */}
@@ -160,37 +171,75 @@ export default function ChartPage() {
             </div>
           </div>
 
-          {/* Score Breakdown (mock for now) */}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Score por Bloco</h3>
-            <div className="space-y-2">
-              {mockScoreBreakdown.map((block) => (
-                <div key={block.label} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{block.label} ({block.weight}%)</span>
-                    <span className="font-mono text-foreground">{block.score}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-secondary">
-                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${block.score}%` }} />
-                  </div>
-                </div>
-              ))}
+          {/* Strategy indicators list */}
+          {activeStrategy && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">
+                Indicadores — {activeStrategy.name}
+              </h3>
+              <div className="space-y-1.5">
+                {activeStrategy.indicators
+                  .filter((i) => i.enabled)
+                  .map((ind) => {
+                    const params = ind.params as Record<string, unknown> | null;
+                    const paramStr = params
+                      ? Object.entries(params)
+                          .filter(([k]) => k !== "source")
+                          .map(([, v]) => v)
+                          .join(", ")
+                      : "";
+                    return (
+                      <div key={ind.id} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${ind.plot_on_chart ? "bg-primary" : "bg-muted"}`} />
+                          <span className="text-foreground font-mono">
+                            {ind.indicator_type.toUpperCase()}
+                            {paramStr && ` (${paramStr})`}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-[8px] px-1">
+                          {ind.role}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Checklist */}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Checklist de Filtros</h3>
-            <div className="space-y-1.5">
-              {mockFilters.map((f) => (
-                <div key={f.label} className="flex items-center gap-2 text-xs">
-                  {f.passed ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-bull" /> : <XCircle className="h-3.5 w-3.5 shrink-0 text-bear" />}
-                  <span className={f.passed ? "text-foreground" : "text-muted-foreground"}>{f.label}</span>
-                  {f.required && <Badge variant="outline" className="ml-auto text-[8px] px-1">Obrig.</Badge>}
-                </div>
-              ))}
+          {/* Conditions checklist */}
+          {activeStrategy && conditions.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Condições</h3>
+              <div className="space-y-1.5">
+                {conditions.map((c) => {
+                  const indicator = activeStrategy.indicators.find((i) => i.id === c.indicator_id);
+                  const label = indicator
+                    ? `${indicator.indicator_type.toUpperCase()} ${c.operator} ${JSON.stringify(c.value)}`
+                    : `${c.condition_type} ${c.operator} ${JSON.stringify(c.value)}`;
+                  return (
+                    <div key={c.id} className="flex items-center gap-2 text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="text-foreground font-mono">{label}</span>
+                      {c.role === "required" && (
+                        <Badge variant="outline" className="ml-auto text-[8px] px-1">Obrig.</Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* No strategy selected */}
+          {!activeStrategy && (
+            <div className="rounded-lg border border-dashed border-border p-6 text-center">
+              <Puzzle className="mx-auto h-6 w-6 text-muted-foreground/50" />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Selecione uma estratégia para ver indicadores no gráfico
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
