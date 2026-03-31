@@ -7,6 +7,8 @@ import { useTickers, useKlines, useOpenInterest, useFundingRate } from "@/hooks/
 import { useStrategies } from "@/hooks/use-strategies";
 import { CheckCircle2, XCircle, TrendingUp, TrendingDown, Puzzle } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import { playConditionTick, playEntryAlert } from "@/lib/audio-notifications";
+import { toast } from "sonner";
 import type { BybitCategory, CandleData, TickerData } from "@/services/bybit";
 import type { Tables } from "@/integrations/supabase/types";
 
