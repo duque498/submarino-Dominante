@@ -109,7 +109,7 @@ export default function PaperTradingPage() {
                         {t.status === "open" ? "Aberta" : "Fechada"}
                       </Badge>
                     </div>
-                    <div className="mt-1 flex gap-3 text-xs text-muted-foreground font-mono">
+                    <div className="mt-1 flex gap-2 md:gap-3 text-[10px] md:text-xs text-muted-foreground font-mono flex-wrap">
                       <span>E: ${t.entry_price.toLocaleString()}</span>
                       {t.stop_price && <span className="text-bear">SL: ${t.stop_price.toLocaleString()}</span>}
                       {t.target_price && <span className="text-bull">TP: ${t.target_price.toLocaleString()}</span>}

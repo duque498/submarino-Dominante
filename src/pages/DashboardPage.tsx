@@ -118,15 +118,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Scanner Status */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
+      <div className="rounded-lg border border-border bg-card p-3 md:p-4">
+        <div className="flex items-center justify-between mb-2 md:mb-3">
+          <h2 className="text-xs md:text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <Activity className="h-3.5 w-3.5 text-primary" />
             Status do Scanner
           </h2>
-          <span className="text-[10px] font-mono text-muted-foreground">Auto-scan a cada 2 min</span>
+          <span className="text-[9px] md:text-[10px] font-mono text-muted-foreground">Auto-scan 2 min</span>
         </div>
-        <div className="flex flex-wrap gap-6">
+        <div className="flex flex-wrap gap-3 md:gap-6">
           <StatusIndicator status={connection.connected ? "online" : "offline"} label={connection.connected ? "Bybit Conectada" : "Bybit Desconectada"} />
           <StatusIndicator status={activeStrategies.length > 0 ? "online" : "warning"} label={`${activeStrategies.length} estratégia(s) ativa(s)`} />
           <StatusIndicator status={signalsToday.length > 0 ? "online" : "loading"} label={`Último sinal: ${lastScanText}`} />

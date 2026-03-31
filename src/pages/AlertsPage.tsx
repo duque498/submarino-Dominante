@@ -121,7 +121,7 @@ export default function AlertsPage() {
                     <ScoreBadge score={signal.score} size="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-foreground text-lg">
+                        <span className="font-mono font-bold text-foreground text-base md:text-lg">
                           {signal.symbol}
                         </span>
                         <Badge variant={signal.direction === "buy" ? "bull" : "bear"}>

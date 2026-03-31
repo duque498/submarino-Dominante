@@ -15,7 +15,7 @@ export default function SettingsPage() {
         <p className="text-sm text-muted-foreground">Gerencie suas preferências</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {/* Profile */}
         <div className="rounded-lg border border-border bg-card p-5 space-y-4">
           <div className="flex items-center gap-2">

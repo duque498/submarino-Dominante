@@ -133,8 +133,8 @@ export default function StrategiesPage() {
       {/* 3-panel layout */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
-          {/* Sidebar */}
-          <ResizablePanel defaultSize={18} minSize={14} maxSize={28}>
+          {/* Sidebar — hidden on very small screens */}
+          <ResizablePanel defaultSize={18} minSize={10} maxSize={28} className="hidden sm:block">
             <StrategyListSidebar
               strategies={strategies || []}
               loading={loadingList}

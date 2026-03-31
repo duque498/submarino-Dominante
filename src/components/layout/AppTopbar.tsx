@@ -37,7 +37,7 @@ export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 flex h-12 md:h-14 items-center justify-between border-b border-border bg-card/80 px-2 md:px-4 backdrop-blur-sm">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           {connection.connected ? (
