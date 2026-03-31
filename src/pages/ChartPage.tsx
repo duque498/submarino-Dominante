@@ -15,6 +15,7 @@ import {
   parseConditions,
   evaluateConditions,
   summarizeDirection,
+  filterConditionsByDirection,
   resolveIndicatorValue,
   calcATR,
   getPrice,

@@ -17,6 +17,7 @@ import {
   parseConditions,
   evaluateConditions,
   summarizeDirection,
+  filterConditionsByDirection,
 } from "@/lib/condition-evaluator";
 
 interface LiveConditionsPanelProps {
