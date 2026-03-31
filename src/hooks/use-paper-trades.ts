@@ -95,6 +95,24 @@ export function useClosePaperTrade() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["paper-trades"] });
+      toast.success("Trade fechado!");
+    },
+  });
+}
+
+export function useDeletePaperTrade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("paper_trades")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["paper-trades"] });
+      toast.success("Trade excluído!");
     },
   });
 }
