@@ -241,20 +241,21 @@ export default function ChartPage() {
       }
     }
 
-    // Play entry alert when crossing 60% threshold
-    if (passedRatio >= 0.6 && !entryAlertFiredRef.current) {
+    // Play entry alert when crossing 60% threshold (for best direction)
+    const bestRatio = totalConditions > 0 ? bestPassedCount / totalConditions : 0;
+    if (bestRatio >= 0.6 && !entryAlertFiredRef.current) {
       entryAlertFiredRef.current = true;
       playEntryAlert();
-      toast.success(`🎯 Possível entrada! ${passedCount}/${totalConditions} condições`, {
+      toast.success(`🎯 Possível entrada ${bestDirection === "long" ? "LONG 🟢" : "SHORT 🔴"}! ${bestPassedCount}/${totalConditions} condições`, {
         description: `${symbol} — ${activeStrategy?.name}`,
         duration: 10000,
       });
-    } else if (passedRatio < 0.6) {
+    } else if (bestRatio < 0.6) {
       entryAlertFiredRef.current = false;
     }
 
     prevResultsRef.current = [...conditionResults];
-  }, [conditionResults, passedRatio, passedCount, totalConditions, symbol, activeStrategy?.name]);
+  }, [conditionResults, bestPassedCount, totalConditions, bestDirection, symbol, activeStrategy?.name]);
 
   return (
     <div className="space-y-4 animate-slide-in">
