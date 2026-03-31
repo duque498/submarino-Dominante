@@ -263,7 +263,7 @@ export default function ChartPage() {
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto text-xs gap-1.5"
+          className="ml-auto text-[10px] md:text-xs gap-1 h-7 md:h-8"
           onClick={() => {
             playEntryAlert();
             const sig = buildEntrySignal("long", true);
@@ -285,8 +285,9 @@ export default function ChartPage() {
             }
           }}
         >
-          <Volume2 className="h-3.5 w-3.5" />
-          Testar Alerta
+          <Volume2 className="h-3 w-3 md:h-3.5 md:w-3.5" />
+          <span className="hidden sm:inline">Testar Alerta</span>
+          <span className="sm:hidden">Teste</span>
         </Button>
       </div>
 
