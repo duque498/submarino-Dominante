@@ -27,6 +27,7 @@ const navItems = [
   { to: "/backtests", icon: FlaskConical, label: "Backtests" },
   { to: "/paper-trading", icon: Target, label: "Paper" },
   { to: "/configuracoes", icon: Settings, label: "Config" },
+  { to: "/instalar", icon: Download, label: "Instalar" },
 ];
 
 // Main tabs shown in the bottom bar on mobile (max 5)
