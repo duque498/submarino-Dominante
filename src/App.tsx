@@ -58,6 +58,7 @@ const App = () => (
             <Route path="/backtests" element={<BacktestsPage />} />
             <Route path="/paper-trading" element={<PaperTradingPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
+            <Route path="/instalar" element={<InstallPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
