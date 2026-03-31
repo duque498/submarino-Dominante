@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { NotificationPanel } from "@/components/notifications/NotificationPanel";
 import { useTradeMonitor } from "@/hooks/use-trade-monitor";
 import { isPushSupported, getPushPermission, requestPushPermission } from "@/lib/audio-notifications";
+import { subscribeToPush } from "@/lib/push-subscription";
 
 interface AppTopbarProps {
   onNotificationsClick?: () => void;
@@ -26,13 +27,22 @@ export function AppTopbar({ onNotificationsClick }: AppTopbarProps) {
   }, []);
 
   useEffect(() => {
-    setPushState(getPushPermission());
+    const perm = getPushPermission();
+    setPushState(perm);
+    // Auto-subscribe if already granted (ensures DB has the subscription)
+    if (perm === "granted") {
+      subscribeToPush();
+    }
   }, []);
 
   const handlePushToggle = async () => {
-    if (pushState === "granted") return; // already granted, can't revoke programmatically
-    if (pushState === "denied") return; // blocked by user
+    if (pushState === "granted") return;
+    if (pushState === "denied") return;
     const ok = await requestPushPermission();
+    if (ok) {
+      // Subscribe to Web Push and save to DB
+      await subscribeToPush();
+    }
     setPushState(ok ? "granted" : getPushPermission());
   };
 

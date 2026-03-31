@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import { usePaperTrades, useClosePaperTrade } from "./use-paper-trades";
 import { useTickers } from "./use-bybit";
+import { useAuth } from "./use-auth";
 import { toast } from "sonner";
+import { triggerPushNotification } from "@/lib/push-subscription";
 
 /**
  * Monitors open paper trades against live prices.
@@ -11,6 +13,7 @@ export function useTradeMonitor() {
   const { data: openTrades } = usePaperTrades("open");
   const { data: tickers } = useTickers("linear");
   const closeTrade = useClosePaperTrade();
+  const { user } = useAuth();
   const notifiedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -43,6 +46,14 @@ export function useTradeMonitor() {
             description: `Entrada: $${trade.entry_price} → Saída: $${price.toFixed(2)} | PnL: +${pnl.toFixed(2)}%`,
             duration: 15000,
           });
+          if (user?.id) {
+            triggerPushNotification({
+              userId: user.id,
+              title: `✅ TP Atingido — ${trade.symbol}`,
+              body: `Entrada: $${trade.entry_price} → $${price.toFixed(2)} | PnL: +${pnl.toFixed(2)}%`,
+              tag: `tp-${trade.symbol}`,
+            });
+          }
 
           closeTrade.mutate({
             id: trade.id,
@@ -69,6 +80,14 @@ export function useTradeMonitor() {
             description: `Entrada: $${trade.entry_price} → Saída: $${price.toFixed(2)} | PnL: ${pnl.toFixed(2)}%`,
             duration: 15000,
           });
+          if (user?.id) {
+            triggerPushNotification({
+              userId: user.id,
+              title: `❌ SL Atingido — ${trade.symbol}`,
+              body: `Entrada: $${trade.entry_price} → $${price.toFixed(2)} | PnL: ${pnl.toFixed(2)}%`,
+              tag: `sl-${trade.symbol}`,
+            });
+          }
 
           closeTrade.mutate({
             id: trade.id,
@@ -78,5 +97,5 @@ export function useTradeMonitor() {
         }
       }
     }
-  }, [openTrades, tickers, closeTrade]);
+  }, [openTrades, tickers, closeTrade, user]);
 }
