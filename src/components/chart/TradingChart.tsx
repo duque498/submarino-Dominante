@@ -37,37 +37,37 @@ export function TradingChart({
       width: containerRef.current.clientWidth,
       height,
       layout: {
-        background: { type: ColorType.Solid, color: "hsl(220, 18%, 10%)" },
-        textColor: "hsl(215, 15%, 55%)",
+        background: { type: ColorType.Solid, color: "#171b22" },
+        textColor: "#7a8194",
         fontFamily: "'JetBrains Mono', monospace",
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: "hsl(220, 14%, 14%)" },
-        horzLines: { color: "hsl(220, 14%, 14%)" },
+        vertLines: { color: "#1e2330" },
+        horzLines: { color: "#1e2330" },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: "hsl(210, 100%, 52%)", width: 1, style: 2, labelBackgroundColor: "hsl(210, 100%, 52%)" },
-        horzLine: { color: "hsl(210, 100%, 52%)", width: 1, style: 2, labelBackgroundColor: "hsl(210, 100%, 52%)" },
+        vertLine: { color: "#1a8cff", width: 1, style: 2, labelBackgroundColor: "#1a8cff" },
+        horzLine: { color: "#1a8cff", width: 1, style: 2, labelBackgroundColor: "#1a8cff" },
       },
       timeScale: {
-        borderColor: "hsl(220, 14%, 18%)",
+        borderColor: "#252a36",
         timeVisible: true,
         secondsVisible: false,
       },
       rightPriceScale: {
-        borderColor: "hsl(220, 14%, 18%)",
+        borderColor: "#252a36",
       },
     });
 
     const candleSeries = chart.addCandlestickSeries({
-      upColor: "hsl(145, 63%, 42%)",
-      downColor: "hsl(0, 72%, 51%)",
-      borderUpColor: "hsl(145, 63%, 42%)",
-      borderDownColor: "hsl(0, 72%, 51%)",
-      wickUpColor: "hsl(145, 63%, 48%)",
-      wickDownColor: "hsl(0, 72%, 58%)",
+      upColor: "#22c55e",
+      downColor: "#ef4444",
+      borderUpColor: "#22c55e",
+      borderDownColor: "#ef4444",
+      wickUpColor: "#2dd66f",
+      wickDownColor: "#f87171",
     });
 
     const volumeSeries = chart.addHistogramSeries({
