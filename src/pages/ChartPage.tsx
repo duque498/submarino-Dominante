@@ -21,6 +21,7 @@ export default function ChartPage() {
   const { data: oiData } = useOpenInterest(symbol, category);
   const { data: fundingData } = useFundingRate(symbol, category);
   const { data: strategies } = useStrategies();
+  const { data: candles } = useKlines(symbol, timeframe, category, 200);
 
   const ticker = tickers?.[0];
   const latestOI = oiData?.[0];
