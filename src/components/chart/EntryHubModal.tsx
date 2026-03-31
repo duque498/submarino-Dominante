@@ -52,6 +52,9 @@ export function EntryHubModal({ open, onOpenChange, signal, isTest }: EntryHubMo
   const [entered, setEntered] = useState(false);
   const createTrade = useCreatePaperTrade();
 
+  // Reset entered state when signal changes
+  useEffect(() => { setEntered(false); setAiEvaluation(null); }, [signal]);
+
   const handleEnterTrade = useCallback(() => {
     if (!signal) return;
     createTrade.mutate({
