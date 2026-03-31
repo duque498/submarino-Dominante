@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +14,11 @@ import {
   Target,
   ShieldAlert,
   BarChart3,
+  PlayCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useCreatePaperTrade } from "@/hooks/use-paper-trades";
 
 export interface EntrySignalData {
   symbol: string;
@@ -47,6 +49,27 @@ export function EntryHubModal({ open, onOpenChange, signal, isTest }: EntryHubMo
   const [copied, setCopied] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiEvaluation, setAiEvaluation] = useState<string | null>(null);
+  const [entered, setEntered] = useState(false);
+  const createTrade = useCreatePaperTrade();
+
+  // Reset entered state when signal changes
+  useEffect(() => { setEntered(false); setAiEvaluation(null); }, [signal]);
+
+  const handleEnterTrade = useCallback(() => {
+    if (!signal) return;
+    createTrade.mutate({
+      symbol: signal.symbol,
+      direction: signal.direction === "long" ? "buy" : "sell",
+      entry_price: signal.entryPrice,
+      stop_price: signal.stopPrice,
+      target_price: signal.target1Price,
+    }, {
+      onSuccess: () => {
+        setEntered(true);
+        toast.success("Paper trade aberto! Monitorando TP e SL...");
+      },
+    });
+  }, [signal, createTrade]);
 
   const copyValue = useCallback((label: string, value: string) => {
     navigator.clipboard.writeText(value);
@@ -261,6 +284,37 @@ Responda de forma direta: vale entrar? Qual o risco? Alguma ressalva?`,
               Clique em "Avaliar" para a IA analisar esta oportunidade de entrada.
             </p>
           )}
+        </div>
+
+        <Separator />
+
+        {/* Enter Trade Button */}
+        <div className="pt-1">
+          {!entered ? (
+            <Button
+              className="w-full gap-2 font-semibold"
+              variant={signal.direction === "long" ? "default" : "destructive"}
+              onClick={handleEnterTrade}
+              disabled={createTrade.isPending}
+            >
+              {createTrade.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <PlayCircle className="h-4 w-4" />
+              )}
+              Entrei nessa! (Paper Trade)
+            </Button>
+          ) : (
+            <div className="flex items-center justify-center gap-2 rounded-md border border-bull/30 bg-bull/10 p-3">
+              <Check className="h-4 w-4 text-bull" />
+              <span className="text-sm font-semibold text-bull">
+                Entrada registrada — monitorando TP/SL
+              </span>
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+            Ao clicar, um paper trade será aberto e você será notificado quando TP ou SL for atingido.
+          </p>
         </div>
       </DialogContent>
     </Dialog>

@@ -172,12 +172,13 @@ export default function ChartPage() {
       }
     }
 
-    // Alert when ALL conditions are met (100%)
-    const triggered = longSummary.status === "confirmed" || shortSummary.status === "confirmed";
+    // Alert when at least 5 conditions are met
+    const MIN_CONDITIONS_FOR_ALERT = 5;
+    const triggered = longSummary.passed >= MIN_CONDITIONS_FOR_ALERT || shortSummary.passed >= MIN_CONDITIONS_FOR_ALERT;
     if (triggered && !entryAlertFiredRef.current) {
       entryAlertFiredRef.current = true;
       playEntryAlert();
-      const dir = longSummary.status === "confirmed" ? "long" : "short";
+      const dir = longSummary.passed >= MIN_CONDITIONS_FOR_ALERT ? "long" : "short";
       const sig = buildEntrySignal(dir as "long" | "short");
       if (sig) {
         setEntrySignal(sig);
