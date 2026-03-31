@@ -178,7 +178,7 @@ export default function ChartPage() {
     if (triggered && !entryAlertFiredRef.current) {
       entryAlertFiredRef.current = true;
       playEntryAlert();
-      const dir = longSummary.status === "confirmed" ? "long" : "short";
+      const dir = longSummary.passed >= MIN_CONDITIONS_FOR_ALERT ? "long" : "short";
       const sig = buildEntrySignal(dir as "long" | "short");
       if (sig) {
         setEntrySignal(sig);

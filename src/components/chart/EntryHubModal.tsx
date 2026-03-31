@@ -282,6 +282,37 @@ Responda de forma direta: vale entrar? Qual o risco? Alguma ressalva?`,
             </p>
           )}
         </div>
+
+        <Separator />
+
+        {/* Enter Trade Button */}
+        <div className="pt-1">
+          {!entered ? (
+            <Button
+              className="w-full gap-2 font-semibold"
+              variant={signal.direction === "long" ? "default" : "destructive"}
+              onClick={handleEnterTrade}
+              disabled={createTrade.isPending}
+            >
+              {createTrade.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <PlayCircle className="h-4 w-4" />
+              )}
+              Entrei nessa! (Paper Trade)
+            </Button>
+          ) : (
+            <div className="flex items-center justify-center gap-2 rounded-md border border-bull/30 bg-bull/10 p-3">
+              <Check className="h-4 w-4 text-bull" />
+              <span className="text-sm font-semibold text-bull">
+                Entrada registrada — monitorando TP/SL
+              </span>
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+            Ao clicar, um paper trade será aberto e você será notificado quando TP ou SL for atingido.
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   );
