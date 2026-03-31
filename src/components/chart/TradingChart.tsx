@@ -114,7 +114,7 @@ export function TradingChart({
     const volumeData: HistogramData[] = candles.map((c) => ({
       time: c.time as Time,
       value: c.volume,
-      color: c.close >= c.open ? "hsla(145, 63%, 42%, 0.35)" : "hsla(0, 72%, 51%, 0.35)",
+      color: c.close >= c.open ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)",
     }));
 
     candleSeriesRef.current.setData(candleData);
