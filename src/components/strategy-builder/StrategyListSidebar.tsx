@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Search, Play, Pause, Trash2, Settings2, Copy, Sparkles } from "lucide-react";
 import { StrategyPresetsDialog } from "./StrategyPresetsDialog";
 import type { FullStrategy } from "@/hooks/use-strategies";
@@ -33,6 +34,7 @@ export function StrategyListSidebar({
   onApplyPreset,
 }: Props) {
   const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const filtered = strategies.filter(
     (s) =>
@@ -143,7 +145,7 @@ export function StrategyListSidebar({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(s.id);
+                        setDeleteTarget({ id: s.id, name: s.name });
                       }}
                       className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
                     >
@@ -156,6 +158,30 @@ export function StrategyListSidebar({
           )}
         </div>
       </ScrollArea>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir estratégia?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A estratégia <strong>"{deleteTarget?.name}"</strong> será excluída permanentemente, incluindo indicadores, condições e histórico de versões.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTarget) onDelete(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
