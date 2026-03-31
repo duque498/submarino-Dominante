@@ -25,7 +25,7 @@ export function useOrderbook(symbol: string, category: BybitCategory = "linear")
   return useQuery({
     queryKey: ["bybit-orderbook", category, symbol],
     queryFn: () => getOrderbook(symbol, category),
-    refetchInterval: 3000,
+    refetchInterval: 1000,
     enabled: !!symbol,
   });
 }
