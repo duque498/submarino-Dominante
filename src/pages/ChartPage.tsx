@@ -15,6 +15,7 @@ import { playConditionTick, playEntryAlert, sendEntryPushNotification } from "@/
 import { triggerPushNotification } from "@/lib/push-subscription";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   parseConditions,
   evaluateConditions,

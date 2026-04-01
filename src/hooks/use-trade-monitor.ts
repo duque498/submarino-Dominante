@@ -48,12 +48,12 @@ export function useTradeMonitor() {
             duration: 15000,
           });
           if (user?.id) {
-            triggerPushNotification({
-              userId: user.id,
-              title: `✅ TP Atingido — ${trade.symbol}`,
-              body: `Entrada: $${trade.entry_price} → $${price.toFixed(2)} | PnL: +${pnl.toFixed(2)}%`,
-              tag: `tp-${trade.symbol}`,
-            });
+            const title = `✅ TP Atingido — ${trade.symbol}`;
+            const body = `Entrada: $${trade.entry_price} → $${price.toFixed(2)} | PnL: +${pnl.toFixed(2)}%`;
+            triggerPushNotification({ userId: user.id, title, body, tag: `tp-${trade.symbol}` });
+            supabase.functions.invoke("send-telegram", {
+              body: { user_id: user.id, title, body },
+            }).catch(() => {});
           }
 
           closeTrade.mutate({
