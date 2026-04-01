@@ -34,7 +34,7 @@ export default function ChartPage() {
   const symbol = searchParams.get("symbol") || "BTCUSDT";
   const category = (searchParams.get("category") || "linear") as BybitCategory;
   const [timeframe, setTimeframe] = useState(searchParams.get("tf") || "5m");
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("none");
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("");
   const [entryHubOpen, setEntryHubOpen] = useState(false);
   const [entrySignal, setEntrySignal] = useState<EntrySignalData | null>(null);
   const [isTestEntry, setIsTestEntry] = useState(false);
@@ -51,8 +51,16 @@ export default function ChartPage() {
   const latestOI = oiData?.[0];
   const latestFunding = fundingData?.[0];
 
-  const activeStrategy = strategies?.find((s) => s.id === selectedStrategyId);
   const activeStrategies = strategies?.filter((s) => s.active) || [];
+
+  // Auto-select first active strategy when none is selected
+  useEffect(() => {
+    if (!selectedStrategyId && activeStrategies.length > 0) {
+      setSelectedStrategyId(activeStrategies[0].id);
+    }
+  }, [activeStrategies, selectedStrategyId]);
+
+  const activeStrategy = strategies?.find((s) => s.id === selectedStrategyId);
 
   const setSymbol = (s: string) => {
     setSearchParams({ symbol: s, category, tf: timeframe });
