@@ -518,8 +518,13 @@ serve(async (req) => {
               });
             }
 
-            // Send push notification to ALL user devices
+            // Send notifications to ALL channels
             const dirLabel = direction === "long" ? "🟢 LONG" : "🔴 SHORT";
+            const notifTitle = `${dirLabel} ${symbol} — Score ${score}`;
+            const notifBody = `${strategy.name} | Entry: $${levels.entryPrice.toFixed(2)} | TP: $${levels.target1Price.toFixed(2)} | SL: $${levels.stopPrice.toFixed(2)}`;
+            const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
+
+            // Push notification
             const { data: subs } = await supabase
               .from("push_subscriptions")
               .select("endpoint, p256dh, auth")
@@ -527,7 +532,6 @@ serve(async (req) => {
 
             if (subs && subs.length > 0) {
               try {
-                const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
                 const pushUrl = `${SUPABASE_URL}/functions/v1/send-push`;
                 await fetch(pushUrl, {
                   method: "POST",
@@ -537,16 +541,35 @@ serve(async (req) => {
                   },
                   body: JSON.stringify({
                     user_id: strategy.user_id,
-                    title: `${dirLabel} ${symbol} — Score ${score}`,
-                    body: `${strategy.name} | Entry: $${levels.entryPrice.toFixed(2)} | TP: $${levels.target1Price.toFixed(2)} | SL: $${levels.stopPrice.toFixed(2)}`,
+                    title: notifTitle,
+                    body: notifBody,
                     tag: `signal-${symbol}-${direction}`,
-                    data: { url: `/chart?symbol=${symbol}` },
+                    data: { url: `/grafico?symbol=${symbol}` },
                     requireInteraction: true,
                   }),
                 });
               } catch (pushErr) {
                 console.error("Push notification error:", pushErr);
               }
+            }
+
+            // Telegram notification
+            try {
+              const telegramUrl = `${SUPABASE_URL}/functions/v1/send-telegram`;
+              await fetch(telegramUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                },
+                body: JSON.stringify({
+                  user_id: strategy.user_id,
+                  title: `${dirLabel} ${symbol} — Score ${score}`,
+                  body: `📊 ${strategy.name}\n💰 Entry: $${levels.entryPrice.toFixed(2)}\n🎯 TP: $${levels.target1Price.toFixed(2)}\n🛑 SL: $${levels.stopPrice.toFixed(2)}\n📈 R/R: ${levels.rrRatio.toFixed(2)}`,
+                }),
+              });
+            } catch (tgErr) {
+              console.error("Telegram notification error:", tgErr);
             }
           }
         }
