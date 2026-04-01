@@ -34,7 +34,7 @@ export default function ChartPage() {
   const symbol = searchParams.get("symbol") || "BTCUSDT";
   const category = (searchParams.get("category") || "linear") as BybitCategory;
   const [timeframe, setTimeframe] = useState(searchParams.get("tf") || "5m");
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("none");
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("");
   const [entryHubOpen, setEntryHubOpen] = useState(false);
   const [entrySignal, setEntrySignal] = useState<EntrySignalData | null>(null);
   const [isTestEntry, setIsTestEntry] = useState(false);
