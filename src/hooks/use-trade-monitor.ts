@@ -82,12 +82,12 @@ export function useTradeMonitor() {
             duration: 15000,
           });
           if (user?.id) {
-            triggerPushNotification({
-              userId: user.id,
-              title: `❌ SL Atingido — ${trade.symbol}`,
-              body: `Entrada: $${trade.entry_price} → $${price.toFixed(2)} | PnL: ${pnl.toFixed(2)}%`,
-              tag: `sl-${trade.symbol}`,
-            });
+            const title = `❌ SL Atingido — ${trade.symbol}`;
+            const body = `Entrada: $${trade.entry_price} → $${price.toFixed(2)} | PnL: ${pnl.toFixed(2)}%`;
+            triggerPushNotification({ userId: user.id, title, body, tag: `sl-${trade.symbol}` });
+            supabase.functions.invoke("send-telegram", {
+              body: { user_id: user.id, title, body },
+            }).catch(() => {});
           }
 
           closeTrade.mutate({
