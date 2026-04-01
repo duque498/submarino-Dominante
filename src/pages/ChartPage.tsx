@@ -168,6 +168,64 @@ export default function ChartPage() {
     };
   }, [candles, longParsed, shortParsed, longResults, shortResults, longSummary, shortSummary, activeStrategy, symbol, timeframe, category, marketCtx]);
 
+  const sendTelegramSignalNotification = useCallback(async (
+    sig: EntrySignalData,
+    options?: { isTest?: boolean }
+  ) => {
+    if (!user?.id) return;
+
+    const pFmt = (n: number) => (n < 1 ? n.toFixed(6) : n < 100 ? n.toFixed(4) : n.toFixed(2));
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const directionLabel = sig.direction === "long" ? "🟢 LONG" : "🔴 SHORT";
+    const conditionsList = sig.conditionDetails
+      .map((condition) => `${condition.passed ? "✅" : "❌"} ${escapeHtml(condition.name)}`)
+      .join("\n");
+    const alertLink = `${window.location.origin}/grafico?symbol=${encodeURIComponent(sig.symbol)}&category=${encodeURIComponent(sig.market)}&tf=${encodeURIComponent(sig.timeframe)}`;
+
+    const notifTitle = `${options?.isTest ? "🧪 " : "🎯 "}${sig.symbol} — ${directionLabel} (Score ${sig.score})`;
+    const notifBody = [
+      options?.isTest ? "🧪 <b>Teste de alerta do Radar Alpha</b>" : "🚨 <b>Alerta da sua estratégia</b>",
+      "",
+      `${directionLabel} <b>${escapeHtml(sig.symbol)}</b> — Score <b>${sig.score}/100</b>`,
+      `📊 <b>Estratégia:</b> ${escapeHtml(sig.strategyName)}`,
+      `⏰ <b>Timeframe:</b> ${escapeHtml(sig.timeframe)}`,
+      `🏪 <b>Mercado:</b> ${escapeHtml(sig.market.toUpperCase())}`,
+      "",
+      `📍 <b>Entrada:</b> $${pFmt(sig.entryPrice)}`,
+      `🛑 <b>SL:</b> $${pFmt(sig.stopPrice)}`,
+      `🎯 <b>TP1:</b> $${pFmt(sig.target1Price)}`,
+      `🎯 <b>TP2:</b> $${pFmt(sig.target2Price)}`,
+      `📈 <b>R/R:</b> ${sig.rrRatio.toFixed(2)}`,
+      "",
+      `✅ <b>Condições válidas:</b> ${sig.passedConditions}/${sig.totalConditions}`,
+      conditionsList ? `🧩 <b>Radar:</b>\n${conditionsList}` : "",
+      "",
+      `🔗 <a href="${alertLink}">Abrir no Radar Alpha</a>`,
+    ].filter(Boolean).join("\n");
+
+    try {
+      const { error } = await supabase.functions.invoke("send-telegram", {
+        body: { user_id: user.id, title: notifTitle, body: notifBody },
+      });
+
+      if (error) throw error;
+
+      if (options?.isTest) {
+        toast.success("Teste enviado para o Telegram");
+      }
+    } catch (error) {
+      console.error("Telegram alert error:", error);
+      if (options?.isTest) {
+        toast.error("Falha ao enviar teste no Telegram");
+      }
+    }
+  }, [user]);
+
   // ─── Sound/alert triggers ─────────────────────────────────────────
   const prevLongRef = useRef<boolean[]>([]);
   const prevShortRef = useRef<boolean[]>([]);
@@ -223,10 +281,7 @@ export default function ChartPage() {
             tag: `entry-${sig.symbol}-${Date.now()}`,
             data: { url: `/grafico?symbol=${sig.symbol}` },
           });
-          // Telegram notification
-          supabase.functions.invoke("send-telegram", {
-            body: { user_id: user.id, title: notifTitle, body: notifBody },
-          }).catch(() => {});
+          void sendTelegramSignalNotification(sig);
         }
       }
     } else if (!triggered) {
@@ -235,7 +290,7 @@ export default function ChartPage() {
 
     prevLongRef.current = longBools;
     prevShortRef.current = shortBools;
-  }, [longResults, shortResults, longSummary, shortSummary, buildEntrySignal]);
+  }, [longResults, shortResults, longSummary, shortSummary, buildEntrySignal, sendTelegramSignalNotification, user]);
 
   return (
     <div className="space-y-3 md:space-y-4 animate-slide-in">
@@ -313,6 +368,7 @@ export default function ChartPage() {
                 targetPrice: sig.target1Price,
                 strategyName: sig.strategyName,
               });
+              void sendTelegramSignalNotification(sig, { isTest: true });
             }
           }}
         >
