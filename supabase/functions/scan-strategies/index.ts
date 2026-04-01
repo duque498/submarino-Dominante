@@ -553,9 +553,35 @@ serve(async (req) => {
               }
             }
 
-            // Telegram notification
+            // Telegram notification — full details + site link
             try {
               const telegramUrl = `${SUPABASE_URL}/functions/v1/send-telegram`;
+              const pctFromEntry = ((currentPrice - levels.entryPrice) / levels.entryPrice * 100).toFixed(2);
+              const passedList = passedFilters.length > 0 ? passedFilters.join(", ") : "—";
+              const failedList = failedFilters.length > 0 ? failedFilters.join(", ") : "—";
+              const siteUrl = "https://radar-alpha-bybit.lovable.app";
+
+              const tgBody = [
+                `${dirLabel} <b>${symbol}</b> — Score <b>${score}/100</b>`,
+                ``,
+                `📊 <b>Estratégia:</b> ${strategy.name}`,
+                `⏰ <b>Timeframe:</b> ${timeframe}`,
+                `🏪 <b>Mercado:</b> ${strategy.market.toUpperCase()}`,
+                ``,
+                `💰 <b>Preço Atual:</b> $${currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`,
+                `📍 <b>Entry:</b> $${levels.entryPrice.toFixed(2)}`,
+                `🎯 <b>TP1:</b> $${levels.target1Price.toFixed(2)}`,
+                `🎯 <b>TP2:</b> $${levels.target2Price.toFixed(2)}`,
+                `🛑 <b>SL:</b> $${levels.stopPrice.toFixed(2)}`,
+                `📈 <b>R/R:</b> ${levels.rrRatio.toFixed(2)}`,
+                ``,
+                `✅ <b>Condições OK:</b> ${passedFilters.length}/${conditions.length}`,
+                `<i>${passedList}</i>`,
+                failedFilters.length > 0 ? `❌ <b>Falharam:</b> ${failedList}` : ``,
+                ``,
+                `🔗 <a href="${siteUrl}/alertas">Abrir no Radar Alpha</a>`,
+              ].filter(Boolean).join("\n");
+
               await fetch(telegramUrl, {
                 method: "POST",
                 headers: {
@@ -565,7 +591,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                   user_id: strategy.user_id,
                   title: `${dirLabel} ${symbol} — Score ${score}`,
-                  body: `📊 ${strategy.name}\n💰 Entry: $${levels.entryPrice.toFixed(2)}\n🎯 TP: $${levels.target1Price.toFixed(2)}\n🛑 SL: $${levels.stopPrice.toFixed(2)}\n📈 R/R: ${levels.rrRatio.toFixed(2)}`,
+                  body: tgBody,
                 }),
               });
             } catch (tgErr) {
