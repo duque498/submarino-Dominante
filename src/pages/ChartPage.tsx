@@ -213,13 +213,19 @@ export default function ChartPage() {
         // Server-side Web Push (works even when app is closed)
         if (user?.id) {
           const pFmt = (n: number) => n < 1 ? n.toFixed(6) : n < 100 ? n.toFixed(4) : n.toFixed(2);
+          const notifTitle = `🎯 ${sig.symbol} — ${sig.direction === "long" ? "🟢 LONG" : "🔴 SHORT"} (Score ${sig.score})`;
+          const notifBody = `Entrada: $${pFmt(sig.entryPrice)} | SL: $${pFmt(sig.stopPrice)} | TP: $${pFmt(sig.target1Price)}\n${sig.passedConditions}/${sig.totalConditions} condições — ${sig.strategyName}`;
           triggerPushNotification({
             userId: user.id,
-            title: `🎯 ${sig.symbol} — ${sig.direction === "long" ? "🟢 LONG" : "🔴 SHORT"} (Score ${sig.score})`,
-            body: `Entrada: $${pFmt(sig.entryPrice)} | SL: $${pFmt(sig.stopPrice)} | TP: $${pFmt(sig.target1Price)}\n${sig.passedConditions}/${sig.totalConditions} condições — ${sig.strategyName}`,
+            title: notifTitle,
+            body: notifBody,
             tag: `entry-${sig.symbol}-${Date.now()}`,
-            data: { url: `/chart?symbol=${sig.symbol}` },
+            data: { url: `/grafico?symbol=${sig.symbol}` },
           });
+          // Telegram notification
+          supabase.functions.invoke("send-telegram", {
+            body: { user_id: user.id, title: notifTitle, body: notifBody },
+          }).catch(() => {});
         }
       }
     } else if (!triggered) {

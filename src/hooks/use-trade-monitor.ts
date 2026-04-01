@@ -4,6 +4,7 @@ import { useTickers } from "./use-bybit";
 import { useAuth } from "./use-auth";
 import { toast } from "sonner";
 import { triggerPushNotification } from "@/lib/push-subscription";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Monitors open paper trades against live prices.
