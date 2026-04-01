@@ -51,8 +51,16 @@ export default function ChartPage() {
   const latestOI = oiData?.[0];
   const latestFunding = fundingData?.[0];
 
-  const activeStrategy = strategies?.find((s) => s.id === selectedStrategyId);
   const activeStrategies = strategies?.filter((s) => s.active) || [];
+
+  // Auto-select first active strategy when none is selected
+  useEffect(() => {
+    if (!selectedStrategyId && activeStrategies.length > 0) {
+      setSelectedStrategyId(activeStrategies[0].id);
+    }
+  }, [activeStrategies, selectedStrategyId]);
+
+  const activeStrategy = strategies?.find((s) => s.id === selectedStrategyId);
 
   const setSymbol = (s: string) => {
     setSearchParams({ symbol: s, category, tf: timeframe });
