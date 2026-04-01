@@ -45,7 +45,8 @@ serve(async (req) => {
       );
     }
 
-    const text = `<b>${title}</b>\n\n${body}`;
+    // If body already contains HTML tags, use it directly; otherwise wrap with title
+    const text = body.includes("<b>") ? body : `<b>${title}</b>\n\n${body}`;
 
     const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
       method: "POST",
