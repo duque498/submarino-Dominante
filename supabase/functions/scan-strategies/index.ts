@@ -517,6 +517,37 @@ serve(async (req) => {
                 status: "pending",
               });
             }
+
+            // Send push notification to ALL user devices
+            const dirLabel = direction === "long" ? "🟢 LONG" : "🔴 SHORT";
+            const { data: subs } = await supabase
+              .from("push_subscriptions")
+              .select("endpoint, p256dh, auth")
+              .eq("user_id", strategy.user_id);
+
+            if (subs && subs.length > 0) {
+              try {
+                const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
+                const pushUrl = `${SUPABASE_URL}/functions/v1/send-push`;
+                await fetch(pushUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                  },
+                  body: JSON.stringify({
+                    user_id: strategy.user_id,
+                    title: `${dirLabel} ${symbol} — Score ${score}`,
+                    body: `${strategy.name} | Entry: $${levels.entryPrice.toFixed(2)} | TP: $${levels.target1Price.toFixed(2)} | SL: $${levels.stopPrice.toFixed(2)}`,
+                    tag: `signal-${symbol}-${direction}`,
+                    data: { url: `/chart?symbol=${symbol}` },
+                    requireInteraction: true,
+                  }),
+                });
+              } catch (pushErr) {
+                console.error("Push notification error:", pushErr);
+              }
+            }
           }
         }
       }
