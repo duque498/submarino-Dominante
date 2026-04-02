@@ -445,13 +445,72 @@ serve(async (req) => {
           const minScore = strategy.score_min || 60;
           if (score < minScore) continue;
 
-          // Determine direction
+          // Determine direction based on condition bias
           let direction = strategy.direction;
           if (direction === "both") {
-            // Simple heuristic: if price > EMA200 → long, else short
+            // Count bullish vs bearish signals from indicators
+            let longScore = 0;
+            let shortScore = 0;
+
+            for (const [id, vals] of indicatorValues) {
+              const ind = indicators.find(i => i.id === id);
+              if (!ind) continue;
+
+              switch (ind.indicator_type) {
+                case "rsi": {
+                  const rsi = vals.value;
+                  if (rsi < 40) longScore += 2;  // oversold = long bias
+                  else if (rsi < 50) longScore += 1;
+                  else if (rsi > 60) shortScore += 2; // overbought = short bias
+                  else if (rsi > 50) shortScore += 1;
+                  break;
+                }
+                case "macd": {
+                  if (vals.histogram > 0) longScore += 1;
+                  else if (vals.histogram < 0) shortScore += 1;
+                  // Crossover signals
+                  if (vals.prev_histogram !== undefined) {
+                    if (vals.prev_histogram <= 0 && vals.histogram > 0) longScore += 2;
+                    if (vals.prev_histogram >= 0 && vals.histogram < 0) shortScore += 2;
+                  }
+                  break;
+                }
+                case "ema":
+                case "sma": {
+                  if (currentPrice > vals.value) longScore += 1;
+                  else shortScore += 1;
+                  // Trend direction
+                  if (vals.prev_value !== undefined) {
+                    if (vals.value > vals.prev_value) longScore += 1;
+                    else shortScore += 1;
+                  }
+                  break;
+                }
+                case "supertrend": {
+                  if (vals.direction === 1) longScore += 2;
+                  else if (vals.direction === -1) shortScore += 2;
+                  break;
+                }
+                case "bbands": {
+                  if (currentPrice <= vals.lower) longScore += 2; // near lower band = long
+                  else if (currentPrice >= vals.upper) shortScore += 2; // near upper band = short
+                  break;
+                }
+                case "pct_change": {
+                  if (vals.value > 0) longScore += 1;
+                  else if (vals.value < 0) shortScore += 1;
+                  break;
+                }
+              }
+            }
+
+            // Also factor in EMA200 as tiebreaker
             const ema200 = calcEMA(candles.map(c => c.close), Math.min(200, candles.length - 1));
             const emaVal = ema200[ema200.length - 1];
-            direction = currentPrice > emaVal ? "long" : "short";
+            if (currentPrice > emaVal) longScore += 1;
+            else shortScore += 1;
+
+            direction = longScore >= shortScore ? "long" : "short";
           }
 
           // Check R/R minimum
