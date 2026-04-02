@@ -116,9 +116,13 @@ export default function ChartPage() {
 
   // ─── Build entry signal for hub modal ─────────────────────────────
   const buildEntrySignal = useCallback((dir: "long" | "short", test = false): EntrySignalData | null => {
-    if (!candles || candles.length < 20) return null;
-    const price = candles[candles.length - 1].close;
-    const atr = calcATR(candles, 14);
+    const latestCandlePrice = candles?.length ? candles[candles.length - 1].close : null;
+    const fallbackPrice = ticker?.lastPrice ?? null;
+    const price = latestCandlePrice ?? fallbackPrice ?? (test ? 65000 : null);
+
+    if (!price) return null;
+
+    const atr = candles && candles.length >= 20 ? calcATR(candles, 14) : NaN;
     const atrVal = isNaN(atr) ? price * 0.01 : atr;
     const isLong = dir === "long";
     const stopDist = atrVal * 1.5;
@@ -166,7 +170,7 @@ export default function ChartPage() {
       ] : []),
       indicatorSnapshot: indSnap,
     };
-  }, [candles, longParsed, shortParsed, longResults, shortResults, longSummary, shortSummary, activeStrategy, symbol, timeframe, category, marketCtx]);
+  }, [candles, ticker, longParsed, shortParsed, longResults, shortResults, longSummary, shortSummary, activeStrategy, symbol, timeframe, category, marketCtx]);
 
   const sendTelegramSignalNotification = useCallback(async (
     sig: EntrySignalData,
@@ -351,25 +355,30 @@ export default function ChartPage() {
           size="sm"
           className="ml-auto text-[10px] md:text-xs gap-1 h-7 md:h-8"
           onClick={() => {
-            playEntryAlert();
-            const sig = buildEntrySignal("long", true);
-            if (sig) {
-              setEntrySignal(sig);
-              setIsTestEntry(true);
-              setEntryHubOpen(true);
-              sendEntryPushNotification({
-                symbol: sig.symbol,
-                direction: sig.direction,
-                score: sig.score,
-                passedConditions: sig.passedConditions,
-                totalConditions: sig.totalConditions,
-                entryPrice: sig.entryPrice,
-                stopPrice: sig.stopPrice,
-                targetPrice: sig.target1Price,
-                strategyName: sig.strategyName,
-              });
-              void sendTelegramSignalNotification(sig, { isTest: true });
+            const preferredDirection = bestSummary.passed > 0 ? bestDirection : "long";
+            const sig = buildEntrySignal(preferredDirection, true);
+
+            if (!sig) {
+              toast.error("Aguarde o carregamento do gráfico para testar o alerta");
+              return;
             }
+
+            playEntryAlert();
+            setEntrySignal(sig);
+            setIsTestEntry(true);
+            setEntryHubOpen(true);
+            sendEntryPushNotification({
+              symbol: sig.symbol,
+              direction: sig.direction,
+              score: sig.score,
+              passedConditions: sig.passedConditions,
+              totalConditions: sig.totalConditions,
+              entryPrice: sig.entryPrice,
+              stopPrice: sig.stopPrice,
+              targetPrice: sig.target1Price,
+              strategyName: sig.strategyName,
+            });
+            void sendTelegramSignalNotification(sig, { isTest: true });
           }}
         >
           <Volume2 className="h-3 w-3 md:h-3.5 md:w-3.5" />
