@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useUnreadAlerts } from "@/hooks/use-signals";
+import { useBybitConnection } from "@/hooks/use-bybit-connection";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -33,7 +35,7 @@ const navItems = [
 // Main tabs shown in the bottom bar on mobile (max 5)
 const mobileMainTabs = [
   { to: "/", icon: LayoutDashboard, label: "Home" },
-  { to: "/mercado", icon: Globe, label: "Mercado" },
+  { to: "/alertas", icon: Bell, label: "Alertas" },
   { to: "/grafico", icon: LineChart, label: "Gráfico" },
   { to: "/estrategias", icon: Puzzle, label: "Estratégias" },
 ];
@@ -41,6 +43,8 @@ const mobileMainTabs = [
 export function AppSidebar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: unreadCount } = useUnreadAlerts();
+  const connection = useBybitConnection();
 
   const isActive = (to: string) =>
     location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
@@ -56,47 +60,77 @@ export function AppSidebar() {
           </span>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isActive(item.to)
-                  ? "bg-primary/10 text-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              <span className="hidden lg:block">{item.label}</span>
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const isAlertas = item.to === "/alertas";
+            const badge = isAlertas && (unreadCount ?? 0) > 0 ? unreadCount : null;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  isActive(item.to)
+                    ? "bg-primary/10 text-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+              >
+                <div className="relative shrink-0">
+                  <item.icon className="h-4 w-4" />
+                  {badge && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  )}
+                </div>
+                <span className="hidden lg:block">{item.label}</span>
+                {badge && (
+                  <span className="ml-auto hidden lg:flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
         <div className="border-t border-border p-3">
           <div className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">
-            <div className="h-2 w-2 rounded-full bg-bull animate-pulse-glow" />
-            <span>Bybit Online</span>
+            <div className={cn(
+              "h-2 w-2 rounded-full",
+              connection.connected ? "bg-bull animate-pulse-glow" : "bg-bear"
+            )} />
+            <span>{connection.connected ? "Bybit Online" : "Bybit Offline"}</span>
           </div>
         </div>
       </aside>
 
       {/* ─── Mobile bottom tab bar ─── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-center justify-around border-t border-border bg-card/95 backdrop-blur-md md:hidden safe-area-bottom">
-        {mobileMainTabs.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-md transition-colors min-w-[56px]",
-              isActive(item.to)
-                ? "text-primary"
-                : "text-muted-foreground"
-            )}
-          >
-            <item.icon className={cn("h-5 w-5", isActive(item.to) && "drop-shadow-[0_0_6px_hsl(var(--primary)/0.5)]")} />
-            <span className="text-[10px] font-medium leading-none">{item.label}</span>
-          </NavLink>
-        ))}
+        {mobileMainTabs.map((item) => {
+          const isAlertas = item.to === "/alertas";
+          const badge = isAlertas && (unreadCount ?? 0) > 0 ? unreadCount : null;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={cn(
+                "flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-md transition-colors min-w-[56px]",
+                isActive(item.to)
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              <div className="relative">
+                <item.icon className={cn("h-5 w-5", isActive(item.to) && "drop-shadow-[0_0_6px_hsl(var(--primary)/0.5)]")} />
+                {badge && (
+                  <span className="absolute -right-2 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium leading-none">{item.label}</span>
+            </NavLink>
+          );
+        })}
         {/* More menu button */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}

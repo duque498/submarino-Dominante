@@ -124,8 +124,8 @@ export default function AlertsPage() {
                         <span className="font-mono font-bold text-foreground text-base md:text-lg">
                           {signal.symbol}
                         </span>
-                        <Badge variant={signal.direction === "buy" ? "bull" : "bear"}>
-                          {signal.direction === "buy" ? (
+                        <Badge variant={signal.direction === "long" ? "bull" : "bear"}>
+                          {signal.direction === "long" ? (
                             <><TrendingUp className="mr-1 h-3 w-3" />Compra</>
                           ) : (
                             <><TrendingDown className="mr-1 h-3 w-3" />Venda</>
