@@ -94,8 +94,8 @@ export function NotificationPanel() {
                       <span className="font-mono font-bold text-foreground">
                         {signal.symbol}
                       </span>
-                      <Badge variant={signal.direction === "buy" ? "bull" : "bear"} className="text-[10px]">
-                        {signal.direction === "buy" ? (
+                      <Badge variant={signal.direction === "long" ? "bull" : "bear"} className="text-[10px]">
+                        {signal.direction === "long" ? (
                           <><TrendingUp className="mr-1 h-3 w-3" />Compra</>
                         ) : (
                           <><TrendingDown className="mr-1 h-3 w-3" />Venda</>
