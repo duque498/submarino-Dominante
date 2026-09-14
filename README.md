@@ -264,7 +264,7 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 | `profundidade 4500` | depuração: força a profundidade do cenário |
 | `som` | toca todos os efeitos em sequência, pra conferir os alto-falantes |
 | `ambiente` | liga/desliga o som de fundo do oceano |
-| `voz` | alterna entre a voz do sistema e o mp3 gravado |
+| `vozes`, `voz 2`, `voz mp3`, `voz sistema` | lista e troca a voz da narração |
 
 Comando não reconhecido **nunca** vira "comando inválido" seco — no palco isso
 parece defeito. A IA responde `Comando não reconhecido pelo sistema de bordo.`,
@@ -409,9 +409,15 @@ soam robóticas. O app já escolhe a melhor por uma nota (pt-BR > pt, nome com
 Natural/Neural/WaveNet, Google, voz de rede), mas dá pra conferir e trocar:
 
 ```
-/  vozes      lista as instaladas, da melhor pra pior, marcando a em uso
-/  voz 2      passa a usar a de número 2
+/  vozes          lista as instaladas, da melhor pra pior, marcando a em uso
+/  voz 2          passa a usar a de número 2   (vozes 2 também vale)
+/  voz mp3        usa a gravação em vez da voz do sistema
+/  voz sistema    volta pra voz do sistema
 ```
+
+Singular e plural valem igual, com ou sem argumento: na hora de digitar na
+frente da plateia, ninguém lembra qual era qual. E um argumento inválido
+responde com a forma certa, em vez de cair no "comando não reconhecido".
 
 **Se a voz estiver ruim, esse é o primeiro lugar pra olhar** — pode haver uma
 melhor instalada que não ganhou a nota.

@@ -21,7 +21,7 @@ const ATALHOS: Array<[string, string]> = [
   ['/ + ambiente', 'liga/desliga o som do mar'],
   ['/ + vozes', 'lista as vozes instaladas'],
   ['/ + voz 2', 'usa a voz número 2 da lista'],
-  ['/ + voz', 'troca entre voz do sistema e mp3'],
+  ['/ + voz mp3', 'usa a gravação em vez da voz do sistema'],
   ['Esc', 'fecha o console ou o painel aberto'],
   ['Tab', 'completa o comando no console'],
   ['↑ / ↓', 'histórico de comandos'],

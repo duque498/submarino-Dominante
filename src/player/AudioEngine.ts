@@ -431,10 +431,9 @@ export class AudioEngine {
     return falou
   }
 
-  /** O operador manda: mp3 quando existir, ou sempre a voz do navegador. */
-  alternarVozNavegador(): boolean {
-    this.forcarVozNavegador = !this.forcarVozNavegador
-    return this.forcarVozNavegador
+  /** O operador manda: mp3 gravado ou voz do sistema. */
+  definirMotorDeVoz(motor: 'mp3' | 'sistema'): void {
+    this.forcarVozNavegador = motor === 'sistema'
   }
 
   vozNavegadorForcada(): boolean {

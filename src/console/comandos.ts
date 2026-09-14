@@ -25,12 +25,18 @@ export type Comando =
         | 'voltar'
         | 'som'
         | 'ambiente'
-        | 'voz'
       resposta: string
       chaveAudio?: ChaveResposta
     }
   | { tipo: 'profundidade'; metros: number; resposta: string }
-  | { tipo: 'vozes'; numero?: number; resposta: string }
+  | {
+      tipo: 'vozes'
+      /** Número da voz na lista. Sem ele, o comando só lista. */
+      numero?: number
+      /** Troca a fonte da narração. */
+      motor?: 'mp3' | 'sistema'
+      resposta: string
+    }
   | { tipo: 'desconhecido'; entrada: string; resposta: string; chaveAudio?: ChaveResposta }
 
 /** Minúsculas, sem acento, sem espaço sobrando. */
@@ -67,8 +73,10 @@ export function vocabulario(): string[] {
     'profundidade 4500',
     'som',
     'ambiente',
-    'voz',
     'vozes',
+    'voz 1',
+    'voz sistema',
+    'voz mp3',
   ]
 }
 
@@ -134,16 +142,34 @@ export function interpretar(entrada: string): Comando {
     }
   }
 
-  // 4) vozes: listar as instaladas e trocar pela de número N
-  if (texto === 'vozes' || texto === 'listar vozes') {
-    return { tipo: 'vozes', resposta: 'Listando vozes instaladas no log de bordo.' }
-  }
-  const escolha = /^voz\s+(\d+)$/.exec(texto)
-  if (escolha) {
+  // 4) voz. Tudo que começa com voz/vozes cai aqui, porque na hora de digitar
+  // ninguém lembra se o comando era no singular ou no plural.
+  const comandoDeVoz = /^(?:voz|vozes|narrador|trocar voz|listar vozes)(?:\s+(.+))?$/.exec(
+    texto,
+  )
+  if (comandoDeVoz) {
+    const argumento = (comandoDeVoz[1] ?? '').trim()
+    if (!argumento) {
+      return { tipo: 'vozes', resposta: 'Listando vozes instaladas no log de bordo.' }
+    }
+    if (/^\d+$/.test(argumento)) {
+      return {
+        tipo: 'vozes',
+        numero: Number(argumento),
+        resposta: 'Trocando o sintetizador de voz.',
+      }
+    }
+    if (/^(mp3|gravacao|gravada|arquivo|bordo)$/.test(argumento)) {
+      return { tipo: 'vozes', motor: 'mp3', resposta: 'Usando a gravação de bordo.' }
+    }
+    if (/^(sistema|navegador|sintetizador|ao vivo)$/.test(argumento)) {
+      return { tipo: 'vozes', motor: 'sistema', resposta: 'Usando a voz do sistema.' }
+    }
+    // Chegou aqui: quis mexer na voz mas errou a forma. Responder com a forma
+    // certa é mais útil que mandar de volta pro "não reconhecido".
     return {
       tipo: 'vozes',
-      numero: Number(escolha[1]),
-      resposta: 'Trocando o sintetizador de voz.',
+      resposta: 'Use: vozes (lista), voz 2 (escolhe), voz mp3 ou voz sistema.',
     }
   }
 
@@ -190,14 +216,6 @@ export function interpretar(entrada: string): Comando {
         acao: 'limpar',
         resposta: RESPOSTAS.paineisEncerrados,
         chaveAudio: 'paineisEncerrados',
-      }
-    case 'voz':
-    case 'trocar voz':
-    case 'narrador':
-      return {
-        tipo: 'sistema',
-        acao: 'voz',
-        resposta: 'Alternando sintetizador de voz.',
       }
     case 'ambiente':
     case 'fundo':

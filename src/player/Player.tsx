@@ -426,15 +426,6 @@ export function Player({ roteiro, engine }: Props) {
             void reiniciarDaPane()
             return
           }
-          if (comando.acao === 'voz') {
-            const navegador = engine.alternarVozNavegador()
-            setRajadaLog([
-              navegador
-                ? `Voz de bordo: sintetizador do sistema (${engine.descricaoDaVoz()})`
-                : 'Voz de bordo: gravação de bordo (mp3)',
-            ])
-            break
-          }
           if (comando.acao === 'ambiente') {
             const ligado = engine.alternarAmbiente(() => motor.profundidade())
             setRajadaLog([
@@ -463,16 +454,31 @@ export function Player({ roteiro, engine }: Props) {
           engine.tocarSfx('ok')
           break
         case 'vozes': {
-          if (comando.numero === undefined) {
-            setRajadaLog(['Vozes instaladas:', ...engine.vozesDisponiveis()])
+          if (comando.motor) {
+            engine.definirMotorDeVoz(comando.motor)
+            setRajadaLog([
+              comando.motor === 'sistema'
+                ? `Narração: voz do sistema — ${engine.descricaoDaVoz()}`
+                : 'Narração: gravação de bordo (mp3)',
+            ])
+          } else if (comando.numero === undefined) {
+            setRajadaLog([
+              'Vozes instaladas:',
+              ...engine.vozesDisponiveis(),
+              'Para trocar: voz 2 · voz mp3 · voz sistema',
+            ])
           } else {
             const nome = engine.escolherVoz(comando.numero)
-            setRajadaLog([
-              nome
-                ? `Voz de bordo trocada para: ${nome}`
-                : `WARN: não existe voz número ${comando.numero}. Use "vozes" pra listar.`,
-            ])
-            if (nome) void engine.falarComNavegador(['Voz de bordo reconfigurada.'])
+            if (nome) {
+              engine.definirMotorDeVoz('sistema')
+              setRajadaLog([`Narração: voz do sistema — ${nome}`])
+              void engine.falarComNavegador(['Voz de bordo reconfigurada.'])
+            } else {
+              setRajadaLog([
+                `WARN: não existe voz número ${comando.numero}.`,
+                'Digite "vozes" pra ver a lista.',
+              ])
+            }
           }
           engine.tocarSfx('ok')
           break
