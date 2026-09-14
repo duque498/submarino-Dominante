@@ -420,6 +420,18 @@ export function Player({ roteiro, engine }: Props) {
             void reiniciarDaPane()
             return
           }
+          if (comando.acao === 'som') {
+            const ms = engine.testarSom()
+            setRajadaLog([
+              'Teste de som iniciado.',
+              `AudioContext: ${engine.estadoDoContexto()}`,
+              'ok · sonar · bipe · estática · alarme · pressurização',
+              ms > 0
+                ? `Duração do teste: ${(ms / 1000).toFixed(1)} s`
+                : 'ERR: sem contexto de áudio neste navegador',
+            ])
+            break
+          }
           if (comando.acao === 'ajuda') {
             // Ajuda vai pro log de bordo, não pra legenda: é referência, não fala.
             setRajadaLog(['Comandos disponíveis:', ...vocabulario().slice(0, 14)])

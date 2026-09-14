@@ -1,4 +1,4 @@
-import { tocarSintetico, type NomeSfx } from '../audio/sfx'
+import { tocarSintetico, tocarTesteDeSom, type NomeSfx } from '../audio/sfx'
 import type { Sfx } from '../roteiros/tipos'
 
 /**
@@ -74,6 +74,8 @@ export class AudioEngine {
   private buffers = new Map<string, AudioBuffer>()
   private contexto: AudioContext | null = null
   private analisador: AnalyserNode | null = null
+  /** Saída dos efeitos sintetizados, com compressor pra não estourar. */
+  private saidaSfx: AudioNode | null = null
   private amostras: Uint8Array<ArrayBuffer> | null = null
 
   private fonteAtual: AudioBufferSourceNode | null = null
@@ -124,6 +126,18 @@ export class AudioEngine {
     this.analisador.fftSize = 1024
     this.analisador.connect(this.contexto.destination)
     this.amostras = new Uint8Array(new ArrayBuffer(this.analisador.fftSize))
+
+    // Os efeitos sintetizados passam por um compressor: eles são altos de
+    // propósito (caixa de som na quadra, não fone), e o eco do sonar podia
+    // somar acima de 1 e distorcer.
+    const compressor = this.contexto.createDynamicsCompressor()
+    compressor.threshold.value = -12
+    compressor.ratio.value = 6
+    compressor.attack.value = 0.003
+    compressor.release.value = 0.15
+    compressor.connect(this.contexto.destination)
+    this.saidaSfx = compressor
+
     return this.contexto
   }
 
@@ -348,8 +362,24 @@ export class AudioEngine {
 
   private tocarSfxSintetico(sfx: Sfx): void {
     const contexto = this.obterContexto()
-    if (!contexto) return
-    tocarSintetico(contexto, contexto.destination, sfx as NomeSfx)
+    if (!contexto || !this.saidaSfx) return
+    tocarSintetico(contexto, this.saidaSfx, sfx as NomeSfx)
+  }
+
+  /**
+   * Toca todos os efeitos em sequência e devolve quanto tempo isso leva.
+   * Serve pra conferir o som da máquina antes da apresentação.
+   */
+  testarSom(): number {
+    const contexto = this.obterContexto()
+    if (!contexto || !this.saidaSfx) return 0
+    void contexto.resume()
+    return tocarTesteDeSom(contexto, this.saidaSfx)
+  }
+
+  /** Estado do AudioContext, pro diagnóstico do operador. */
+  estadoDoContexto(): string {
+    return this.contexto?.state ?? 'não criado'
   }
 
   /** Offsets reais das linhas de uma cena, se o tempos.json foi gerado. */

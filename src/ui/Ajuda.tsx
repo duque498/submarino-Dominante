@@ -17,6 +17,7 @@ const ATALHOS: Array<[string, string]> = [
   ['O', 'volta o orbe pra esfera'],
   ['[ / ]', 'diminui / aumenta o orbe'],
   ['/', 'abre o console de comandos'],
+  ['/ + som', 'testa os alto-falantes'],
   ['Esc', 'fecha o console ou o painel aberto'],
   ['Tab', 'completa o comando no console'],
   ['↑ / ↓', 'histórico de comandos'],

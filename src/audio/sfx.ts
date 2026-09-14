@@ -34,7 +34,7 @@ function tom(
   frequencia: number,
   inicio: number,
   duracao: number,
-  pico = 0.22,
+  pico = 0.55,
   tipo: OscillatorType = 'sine',
 ) {
   const osc = ctx.createOscillator()
@@ -71,13 +71,13 @@ function sonar(ctx: AudioContext, destino: AudioNode, t: number) {
   const eco = ctx.createDelay(1)
   eco.delayTime.value = 0.26
   const ganhoEco = ctx.createGain()
-  ganhoEco.gain.value = 0.38
+  ganhoEco.gain.value = 0.34
   eco.connect(ganhoEco).connect(destino)
   // Realimenta uma vez só: eco de gruta, não de catedral.
   const eco2 = ctx.createDelay(1)
   eco2.delayTime.value = 0.26
   const ganhoEco2 = ctx.createGain()
-  ganhoEco2.gain.value = 0.18
+  ganhoEco2.gain.value = 0.16
   ganhoEco.connect(eco2).connect(ganhoEco2).connect(destino)
 
   const osc = ctx.createOscillator()
@@ -85,7 +85,7 @@ function sonar(ctx: AudioContext, destino: AudioNode, t: number) {
   osc.type = 'sine'
   osc.frequency.setValueAtTime(820, t)
   osc.frequency.exponentialRampToValueAtTime(760, t + 0.6)
-  envelope(ganho, t, 0.3, 0.005, 0.7)
+  envelope(ganho, t, 0.7, 0.005, 0.7)
   osc.connect(ganho)
   ganho.connect(destino)
   ganho.connect(eco)
@@ -96,8 +96,8 @@ function sonar(ctx: AudioContext, destino: AudioNode, t: number) {
 /** Alarme: dois tons alternando, três vezes. */
 function alarme(ctx: AudioContext, destino: AudioNode, t: number) {
   for (let i = 0; i < 3; i++) {
-    tom(ctx, destino, 880, t + i * 0.42, 0.18, 0.2, 'square')
-    tom(ctx, destino, 620, t + i * 0.42 + 0.21, 0.18, 0.2, 'square')
+    tom(ctx, destino, 880, t + i * 0.42, 0.18, 0.5, 'square')
+    tom(ctx, destino, 620, t + i * 0.42 + 0.21, 0.18, 0.5, 'square')
   }
 }
 
@@ -109,7 +109,7 @@ function estatica(ctx: AudioContext, destino: AudioNode, t: number) {
   passa.frequency.value = 1800
   passa.Q.value = 0.7
   const ganho = ctx.createGain()
-  envelope(ganho, t, 0.22, 0.01, 0.34)
+  envelope(ganho, t, 1.0, 0.01, 0.34)
   fonte.connect(passa).connect(ganho).connect(destino)
   fonte.start(t)
   fonte.stop(t + 0.4)
@@ -117,8 +117,8 @@ function estatica(ctx: AudioContext, destino: AudioNode, t: number) {
 
 /** Confirmação: dois bipes curtos ascendentes. */
 function ok(ctx: AudioContext, destino: AudioNode, t: number) {
-  tom(ctx, destino, 880, t, 0.07, 0.2)
-  tom(ctx, destino, 1320, t + 0.09, 0.09, 0.2)
+  tom(ctx, destino, 880, t, 0.07, 0.6)
+  tom(ctx, destino, 1320, t + 0.09, 0.09, 0.6)
 }
 
 /** Pressurização: ruído grave que sobe e desce, acompanhando a descida. */
@@ -132,7 +132,7 @@ function pressurizacao(ctx: AudioContext, destino: AudioNode, t: number) {
   passa.Q.value = 3
   const ganho = ctx.createGain()
   ganho.gain.setValueAtTime(0.0001, t)
-  ganho.gain.linearRampToValueAtTime(0.16, t + 0.5)
+  ganho.gain.linearRampToValueAtTime(1.8, t + 0.5)
   ganho.gain.linearRampToValueAtTime(0.0001, t + 1.5)
   fonte.connect(passa).connect(ganho).connect(destino)
   fonte.start(t)
@@ -141,7 +141,7 @@ function pressurizacao(ctx: AudioContext, destino: AudioNode, t: number) {
 
 /** Bipe seco do timer das dinâmicas. */
 function bipeTimer(ctx: AudioContext, destino: AudioNode, t: number) {
-  tom(ctx, destino, 1200, t, 0.05, 0.16, 'triangle')
+  tom(ctx, destino, 1200, t, 0.05, 0.5, 'triangle')
 }
 
 const SINTETIZADORES: Record<
@@ -161,4 +161,27 @@ export function tocarSintetico(ctx: AudioContext, destino: AudioNode, nome: Nome
   const sintetizador = SINTETIZADORES[nome]
   if (!sintetizador) return
   sintetizador(ctx, destino, ctx.currentTime + 0.01)
+}
+
+/** Ordem do teste de som disparado pelo comando `som`. */
+export const SEQUENCIA_TESTE: NomeSfx[] = [
+  'ok',
+  'sonar',
+  'bipe-timer',
+  'estatica',
+  'alarme',
+  'pressurizacao',
+]
+
+/**
+ * Toca todos os efeitos em sequência, espaçados. Serve pra conferir, antes da
+ * apresentação, se o som da máquina está chegando na caixa.
+ */
+export function tocarTesteDeSom(ctx: AudioContext, destino: AudioNode): number {
+  let t = ctx.currentTime + 0.05
+  for (const nome of SEQUENCIA_TESTE) {
+    SINTETIZADORES[nome](ctx, destino, t)
+    t += nome === 'alarme' ? 1.5 : nome === 'pressurizacao' ? 1.8 : 0.9
+  }
+  return Math.round((t - ctx.currentTime) * 1000)
 }

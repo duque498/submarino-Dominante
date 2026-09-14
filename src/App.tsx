@@ -96,6 +96,9 @@ export default function App() {
         `tempos reais em ${comTempos}/${cenasComAudio} cenas · ` +
         `sfx ${sfxProprio > 0 ? 'de arquivo' : 'sintético'}`,
     )
+    // Bipe de confirmação: a primeira tecla já produz som. Serve de UX e de
+    // diagnóstico — se isso não sai, o problema é o áudio da máquina, não o app.
+    engine.tocarSfx('ok')
     setAtivado(true)
   }, [resultado, carregando, engine])
 

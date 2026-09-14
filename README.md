@@ -262,6 +262,7 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 | `cena 5`, `ir bio`, `proximo`, `voltar` | navega no roteiro |
 | `pane`, `reiniciar`, `limpar`, `ajuda` | comandos de sistema |
 | `profundidade 4500` | depuração: força a profundidade do cenário |
+| `som` | toca todos os efeitos em sequência, pra conferir os alto-falantes |
 
 Comando não reconhecido **nunca** vira "comando inválido" seco — no palco isso
 parece defeito. A IA responde `Comando não reconhecido pelo sistema de bordo.`,
@@ -449,6 +450,19 @@ feira: o projeto roda completo sem nenhum mp3 de efeito.
 Se você quiser efeitos "de verdade", é só jogar o arquivo em
 `public/audio/sfx/<nome>.mp3` — ele passa a ter prioridade sobre o sintético,
 um a um. Dá pra ter o `sonar` de arquivo e o resto sintetizado.
+
+Os níveis foram calibrados pra caixa de som em quadra, não pra fone: os picos
+ficam entre 0,35 e 0,7, e tudo passa por um compressor pra o eco do sonar não
+somar acima de 1 e distorcer.
+
+### Conferir o som antes da apresentação
+
+A primeira tecla (a da ativação) já dá um **bipe duplo** de confirmação. Se
+esse bipe não sai, o problema é o áudio da máquina, não o app.
+
+Pra um teste completo, `/` e depois `som`: toca os seis efeitos em sequência
+(cerca de 7 s) e escreve no log o estado do `AudioContext`. `running` significa
+que o navegador liberou o áudio.
 
 ## Estrutura
 

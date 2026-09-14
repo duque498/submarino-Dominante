@@ -15,7 +15,15 @@ export type Comando =
   | { tipo: 'cena'; alvo: number | string; resposta: string }
   | {
       tipo: 'sistema'
-      acao: 'pane' | 'reiniciar' | 'limpar' | 'ajuda' | 'status' | 'proximo' | 'voltar'
+      acao:
+        | 'pane'
+        | 'reiniciar'
+        | 'limpar'
+        | 'ajuda'
+        | 'status'
+        | 'proximo'
+        | 'voltar'
+        | 'som'
       resposta: string
       chaveAudio?: ChaveResposta
     }
@@ -54,6 +62,7 @@ export function vocabulario(): string[] {
     'camera 1',
     'camera 2',
     'profundidade 4500',
+    'som',
   ]
 }
 
@@ -162,6 +171,15 @@ export function interpretar(entrada: string): Comando {
         acao: 'limpar',
         resposta: RESPOSTAS.paineisEncerrados,
         chaveAudio: 'paineisEncerrados',
+      }
+    case 'som':
+    case 'testar som':
+    case 'audio':
+    case 'teste de som':
+      return {
+        tipo: 'sistema',
+        acao: 'som',
+        resposta: 'Testando os alto-falantes de bordo.',
       }
     case 'ajuda':
     case 'help':
