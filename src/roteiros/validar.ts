@@ -73,6 +73,10 @@ export function validarRoteiro(dado: unknown): string[] {
       erros.push(`${onde}: campo "sfx" invalido. Use um de: ${SFX_VALIDOS.join(', ')}.`)
     }
 
+    if (cena.log !== undefined && !ehListaDeTextos(cena.log)) {
+      erros.push(`${onde}: campo "log" deve ser uma lista de textos nao vazia.`)
+    }
+
     switch (cena.tipo) {
       case 'fala': {
         if (!ehListaDeTextos(cena.tela?.linhas)) {

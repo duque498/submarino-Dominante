@@ -5,3 +5,6 @@ dist
 
 # cache do gerador de audios (Fase 3)
 scripts/.cache.json
+
+# gerado por scripts/embutir_audios.py (camada A) — pesa dezenas de MB
+public/audios.js

@@ -15,6 +15,11 @@ export type CenaBase = {
   /** auto = avanca quando o audio termina; manual = espera a seta direita */
   avanco?: Avanco
   sfx?: Sfx
+  /**
+   * Linhas ficticias do painel de log, intercaladas com as genericas enquanto
+   * esta cena estiver no ar. So cenario — nao afetam o audio nem o avanco.
+   */
+  log?: string[]
 }
 
 export type CenaFala = CenaBase & {

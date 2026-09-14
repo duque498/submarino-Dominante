@@ -71,7 +71,15 @@ export default function App() {
     if (!resultado?.roteiro || carregando) return
     setCarregando(true)
     await engine.desbloquear()
-    await engine.preload([...audiosDoRoteiro(resultado.roteiro), ...AudioEngine.urlsSfx()])
+    const audios = audiosDoRoteiro(resultado.roteiro)
+    await engine.preload([...audios, ...AudioEngine.urlsSfx()])
+    // Diagnóstico: diz de cara se o audios.js foi encontrado (camada A, com
+    // nível de áudio real) ou se a apresentação vai rodar na camada B.
+    const camadaA = audios.filter((url) => engine.camadaDe(url) === 'A').length
+    console.info(
+      `[audio] camada A (nível real) em ${camadaA}/${audios.length} arquivos; ` +
+        `o resto usa a camada B (envelope sintético).`,
+    )
     setAtivado(true)
   }, [resultado, carregando, engine])
 

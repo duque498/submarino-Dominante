@@ -1,12 +1,12 @@
 import type { CenaTransicao } from '../roteiros/tipos'
-import { Digitacao } from '../ui/Digitacao'
+import { Legenda } from '../ui/Legenda'
 
-type Props = { cena: CenaTransicao; duracaoMs: number | null; completo: boolean }
+type Props = { cena: CenaTransicao; duracaoMs: number | null; ativa: boolean }
 
-export function Transicao({ cena, duracaoMs, completo }: Props) {
+export function Transicao({ cena, duracaoMs, ativa }: Props) {
   return (
     <>
-      <Digitacao linhas={cena.tela.linhas} duracaoMs={duracaoMs} completo={completo} />
+      <Legenda linhas={cena.tela.linhas} duracaoTotalMs={duracaoMs} ativa={ativa} />
       <p className="transicao__destino">destino: {cena.destino}</p>
       <div className="transicao__trilho" />
     </>

@@ -141,9 +141,8 @@ body {
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: center;
   min-height: 0;
-  padding: clamp(16px, 3vh, 48px) clamp(20px, 4vw, 72px);
+  padding: clamp(12px, 2vh, 28px) clamp(14px, 2.2vw, 36px);
 }
 
 /* --- tipografia das cenas ------------------------------------------------ */
@@ -151,7 +150,7 @@ body {
 .titulo {
   margin: 0 0 clamp(12px, 2.5vh, 32px);
   color: var(--verde);
-  font-size: clamp(2rem, 7vh, 5.5rem);
+  font-size: clamp(1.8rem, 6vh, 4.6rem);
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1.05;
@@ -167,48 +166,199 @@ body {
   text-transform: uppercase;
 }
 
-.linhas {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 1.6vh, 22px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: clamp(1.1rem, 3.4vh, 2.6rem);
-  line-height: 1.3;
+/* --- palco: orbe + texto + log --------------------------------------------
+   O orbe e o log ficam montados a sessao inteira e sao irmaos da cena; se
+   morassem dentro do componente de cada cena, remontariam a cada troca de tipo
+   e a animacao (e o historico do log) reiniciaria do zero.
+   -------------------------------------------------------------------------- */
+
+.palco {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(190px, 22%, 330px);
+  gap: clamp(12px, 2vw, 32px);
+  flex: 1;
+  min-height: 0;
 }
 
-.linhas li::before {
-  content: '> ';
+.palco__cena {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.6vh, 20px);
+  min-width: 0;
+  min-height: 0;
+}
+
+.palco__texto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1.2vh, 16px);
+  width: 100%;
+  min-height: 0;
+  text-align: center;
+}
+
+.orbe {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Modo central: orbe grande, legenda logo abaixo. Canvas quadrado — a esfera
+   e desenhada a partir da menor dimensao, entao um canvas largo so desperdicaria
+   pixels dos lados. */
+.palco--central .orbe {
+  flex: 0 1 auto;
+  width: auto;
+  height: 46vh;
+  min-height: 0;
+  max-width: 100%;
+  aspect-ratio: 1;
+}
+
+/* Modo canto: a tela e dos alunos, o orbe so marca presenca. */
+.palco--canto .orbe {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: clamp(110px, 14vw, 190px);
+  height: clamp(110px, 14vw, 190px);
+  opacity: 0.75;
+}
+
+.palco--canto .palco__texto {
+  flex: 1;
+  justify-content: center;
+}
+
+.palco__rotulo {
+  margin: 0;
+  color: var(--ciano);
+  font-size: clamp(0.75rem, 1.7vh, 1.15rem);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.palco__status {
+  margin: 0;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.75rem, 1.7vh, 1.1rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* --- legenda ------------------------------------------------------------- */
+
+.legenda {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  /* Altura fixa: a legenda nao pode empurrar o orbe quando a frase e longa. */
+  min-height: clamp(70px, 13vh, 140px);
+  margin: 0;
+  padding: 0 clamp(8px, 3vw, 48px);
+  color: var(--texto);
+  font-size: clamp(1.1rem, 3.2vh, 2.4rem);
+  line-height: 1.25;
+  text-shadow: 0 0 18px rgba(77, 255, 166, 0.25);
+  text-wrap: balance;
+}
+
+.legenda__contador {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.6rem, 1.3vh, 0.85rem);
+  letter-spacing: 0.15em;
+}
+
+/* --- log de sistemas ----------------------------------------------------- */
+
+.log {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-left: clamp(10px, 1.4vw, 20px);
+  border-left: 1px solid var(--ciano-fraco);
+  color: var(--ciano);
+  font-size: clamp(0.62rem, 1.35vh, 0.92rem);
+  line-height: 1.5;
+  transition: opacity 400ms ease;
+}
+
+.log--apagado {
+  opacity: 0.5;
+}
+
+.log--erro {
+  border-left-color: var(--vermelho);
+  color: var(--vermelho);
+}
+
+.log__titulo {
+  margin: 0 0 0.6em;
+  color: var(--ciano-fraco);
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.log__lista {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.25em;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.log__linha {
+  animation: entrar-log 300ms ease-out;
+  overflow-wrap: anywhere;
+}
+
+/* As mais antigas somem por cima. */
+.log__lista .log__linha:nth-child(1) {
+  opacity: 0.2;
+}
+.log__lista .log__linha:nth-child(2) {
+  opacity: 0.35;
+}
+.log__lista .log__linha:nth-child(3) {
+  opacity: 0.55;
+}
+.log__lista .log__linha:nth-child(4) {
+  opacity: 0.75;
+}
+
+.log__linha--erro {
+  color: var(--vermelho);
+}
+
+.log__hora {
   color: var(--ciano-fraco);
 }
 
-/* Falas longas (o parágrafo da missão, por exemplo) encolhem pra caber sem
-   scroll — continua grande o bastante pra ler a 15 metros. */
-.linhas--denso {
-  gap: clamp(6px, 1.1vh, 14px);
-  font-size: clamp(0.95rem, 2.4vh, 1.8rem);
+.log--erro .log__hora {
+  color: rgba(255, 77, 94, 0.6);
 }
 
-.linhas + .status {
-  margin-top: clamp(12px, 2.5vh, 32px);
-}
-
-/* Cursor piscando no fim da linha que está sendo digitada. */
-.cursor {
-  display: inline-block;
-  width: 0.55em;
-  margin-left: 0.08em;
-  background: var(--verde);
-  animation: piscar 1s steps(2, start) infinite;
-}
-.cursor::before {
-  content: '\00a0';
-}
-
-@keyframes piscar {
-  50% {
+@keyframes entrar-log {
+  from {
     opacity: 0;
+    transform: translateY(6px);
   }
 }
 
@@ -275,7 +425,7 @@ body {
 /* --- transição ----------------------------------------------------------- */
 
 .transicao__destino {
-  margin-top: clamp(16px, 3vh, 40px);
+  margin: 0;
   color: var(--ambar);
   font-size: clamp(1.6rem, 5.5vh, 4rem);
   font-weight: 700;
@@ -287,8 +437,9 @@ body {
 /* Faixa que corre da esquerda pra direita, sugerindo deslocamento. */
 .transicao__trilho {
   position: relative;
+  width: min(100%, 640px);
   height: 4px;
-  margin-top: clamp(16px, 3vh, 40px);
+  margin-top: clamp(8px, 1.5vh, 20px);
   overflow: hidden;
   border-radius: 2px;
   background: rgba(56, 232, 255, 0.15);

@@ -7,6 +7,27 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Camada A do áudio: gerado por scripts/embutir_audios.py, define
+      window.__AUDIOS com os mp3 em data URL. Script clássico de propósito —
+      é o que carrega via file://. Se o arquivo não existir, o Chrome só
+      registra um 404 e o app cai na camada B sozinho.
+    -->
+    <script>
+      // Injetado por JS em vez de uma tag estática: o Vite tenta resolver
+      // <script src> do index.html em tempo de build e removeria a tag, já que
+      // o audios.js só existe depois que o script Python roda.
+      ;(function () {
+        var tag = document.createElement('script')
+        tag.src = './audios.js'
+        tag.async = false
+        window.__AUDIOS_PRONTO = new Promise(function (resolve) {
+          tag.onload = function () { resolve() }
+          tag.onerror = function () { resolve() }
+        })
+        document.head.appendChild(tag)
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

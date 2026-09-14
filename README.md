@@ -9,8 +9,9 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 1 concluída.** Funcionam: seleção de turma, tela de ativação, cenas de
-`fala`, `apresentacao` e `transicao`, HUD e efeito de digitação.
+**Fase 1.5 concluída.** Funcionam: seleção de turma, tela de ativação, cenas de
+`fala`, `apresentacao` e `transicao`, HUD, orbe animado da IA, legenda
+sincronizada com o áudio e painel de log de sistemas.
 As cenas `quiz`, `vf` e `pane` estão no roteiro mas ainda aparecem como
 "a implementar (Fase 2)". Os mp3 ainda não existem (Fase 3).
 
@@ -48,6 +49,7 @@ Depois copie para o Chromebook, **mantendo a estrutura**:
 ```
 submarino-domi/
   index.html        <- dist/index.html
+  audios.js         <- dist/audios.js (camada A; opcional)
   audio/            <- dist/audio/ (vem de public/audio/)
 ```
 
@@ -76,6 +78,64 @@ Sem `?turma=`, o app mostra uma tela pedindo pra escolher a turma (teclas 1, 2, 
 libera a reprodução de áudio depois de uma interação do usuário. Esse gesto
 desbloqueia o áudio e pré-carrega todos os mp3 da turma.
 
+## A tela durante uma fala
+
+Três elementos, todos cenográficos menos a legenda:
+
+- **Orbe** — a "presença" da IA. Uma esfera de pontos e linhas em Canvas 2D puro
+  (sem WebGL, sem biblioteca) que ondula, gira e reage ao áudio. Tem quatro
+  estados: `ocioso`, `falando`, `processando` e `pane`.
+- **Legenda** — uma linha por vez, grande, embaixo do orbe, revelada palavra a
+  palavra junto com a voz. As linhas anteriores não ficam na tela.
+- **Log de sistemas** — coluna da direita. **Nada ali é real**: é um painel
+  decorativo que sorteia linhas técnicas de um pool (`src/ui/logPool.ts`) e as
+  intercala com as linhas do campo `log` da cena atual.
+
+Nas cenas de `apresentacao` o orbe encolhe pro canto inferior esquerdo e o log
+fica com metade da opacidade — a tela ali é dos alunos, não da IA.
+
+## As duas camadas de áudio
+
+O orbe reage ao nível do som. Ler esse nível via `file://` é o problema:
+o Chrome trata um `<audio>` de arquivo local como origem opaca e **silencia**
+`createMediaElementSource`, além de bloquear `fetch` de arquivo local. Daí duas
+camadas, escolhidas automaticamente por arquivo:
+
+**Camada A — nível real (preferida).** Depende de rodar o script de áudio:
+
+```bash
+python3 scripts/embutir_audios.py
+```
+
+Ele lê todos os `public/audio/<turma>/*.mp3` e gera `public/audios.js`, um
+script clássico que define `window.__AUDIOS = { "2a/entrada": "data:audio/mpeg;base64,..." }`.
+Script clássico com `src` relativo carrega via `file://` sem reclamar, e um
+`data:` URL é same-origin — então o `fetch` → `decodeAudioData` funciona.
+O áudio toca num `AudioBufferSourceNode` ligado a um `AnalyserNode`, e o nível
+é o RMS da forma de onda, suavizado.
+
+Os buffers são decodificados sob demanda, uma cena por vez (só a próxima é
+pré-decodificada), pra não estourar a memória do Chromebook.
+
+**Camada B — envelope sintético (fallback).** Sem `audios.js`, ou se a
+decodificação falhar, o áudio volta a ser um `HTMLAudioElement` comum e o nível
+vira um sinal falso enquanto o áudio toca: "sílabas" a 4–6 Hz com amplitude
+variável e pausas curtas a cada 2–4 s. Visualmente convence; só não está
+sincronizado com a voz de verdade.
+
+O componente do orbe não sabe qual camada está ativa — ele só recebe uma função
+que devolve o nível. Ao ativar os sistemas, o console diz qual camada pegou:
+
+```
+[audio] camada A (nível real) em 17/17 arquivos; o resto usa a camada B (envelope sintético).
+```
+
+Os SFX (`sonar`, `alarme`, ...) ficam sempre como `<audio>` comum: não precisam
+de análise e só engordariam o `audios.js`.
+
+> `public/audios.js` é gerado e **não vai pro git** — ele carrega os mp3 inteiros
+> em base64 e pesa dezenas de MB. Copie ele junto do `index.html` pro Chromebook.
+
 ## Editando o roteiro
 
 Todo o conteúdo (textos, áudios, perguntas) vive em `src/roteiros/2a.json`,
@@ -91,6 +151,9 @@ Campos comuns a todas:
 - `avanco` — `"auto"` (avança sozinha quando o áudio termina) ou `"manual"`
   (espera o operador apertar `→`).
 - `sfx` — efeito sonoro opcional: `"sonar"`, `"alarme"`, `"estatica"` ou `"ok"`.
+- `log` — lista opcional de linhas fictícias pro painel da direita, exibidas
+  enquanto essa cena estiver no ar. Ex.: `["Carregando setor: BIOLOGIA",
+  "Consultando catálogo de espécies..."]`.
 
 O roteiro é validado ao carregar. Se algo estiver errado, o app mostra uma tela
 vermelha dizendo **qual cena e qual campo** estão com problema — não é preciso
@@ -112,6 +175,8 @@ src/
   App.tsx            seleção de turma, tela de ativação, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
   cenas/             um componente por tipo de cena
-  ui/                Hud, Digitacao (e Timer, na Fase 2)
+  ui/                Hud, Orbe, Legenda, LogSistemas, logPool (e Timer, na Fase 2)
   roteiros/          tipos.ts, validar.ts e os JSONs de cada turma
+scripts/
+  embutir_audios.py  gera public/audios.js (camada A)
 ```

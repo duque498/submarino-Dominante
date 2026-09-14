@@ -4,6 +4,8 @@ import { Apresentacao } from '../cenas/Apresentacao'
 import { Fala } from '../cenas/Fala'
 import { Transicao } from '../cenas/Transicao'
 import { Hud } from '../ui/Hud'
+import { LogSistemas, type ModoLog } from '../ui/LogSistemas'
+import { Orbe, type EstadoOrbe } from '../ui/Orbe'
 import type { AudioEngine } from './AudioEngine'
 import { useTeclado } from './useTeclado'
 
@@ -69,9 +71,12 @@ export function Player({ roteiro, engine }: Props) {
   )
 
   const [indice, setIndice] = useState(0)
-  /** Digitação já mostrada por inteiro (fala terminou ou operador pulou). */
-  const [completo, setCompleto] = useState(false)
-  const [duracaoMs, setDuracaoMs] = useState<number | null>(null)
+  /** Cronômetro da legenda: só arranca quando o áudio da cena arrancou. */
+  const [sinc, setSinc] = useState<{ duracaoMs: number | null; ativa: boolean }>({
+    duracaoMs: null,
+    ativa: false,
+  })
+  const [falando, setFalando] = useState(false)
 
   const cena = sequencia[indice]
 
@@ -82,6 +87,10 @@ export function Player({ roteiro, engine }: Props) {
   const voltar = useCallback(() => {
     setIndice((atual) => Math.max(atual - 1, 0))
   }, [])
+
+  // Definido antes de qualquer return: hook não pode ficar dentro do JSX que
+  // só é alcançado em alguns caminhos.
+  const lerNivel = useCallback(() => engine.nivel(), [engine])
 
   useTeclado(
     useCallback(
@@ -106,12 +115,13 @@ export function Player({ roteiro, engine }: Props) {
     ),
   )
 
-  // Toca a cena atual: sfx, áudio, e avanço automático quando a fala termina.
+  // Toca a cena atual: sfx, áudio, legenda e avanço automático.
   useEffect(() => {
     if (!cena) return
 
     let cancelado = false
-    setCompleto(false)
+    setSinc({ duracaoMs: null, ativa: false })
+    setFalando(false)
 
     if (cena.sfx) engine.tocarSfx(cena.sfx)
 
@@ -120,21 +130,26 @@ export function Player({ roteiro, engine }: Props) {
       MS_POR_LINHA_SEM_AUDIO,
       linhasDaCena(cena).length * MS_POR_LINHA_SEM_AUDIO,
     )
-    // Sincroniza a digitação com o áudio real; sem mp3, com o tempo estimado.
-    setDuracaoMs(url ? (engine.duracaoMs(url) ?? fallbackMs) : null)
 
     const executar = async () => {
-      const resultado = url ? await engine.tocar(url) : { tocou: false }
+      const reproducao = url ? await engine.tocar(url) : null
       if (cancelado) return
 
-      // Degradação: sem mp3 a cena respeita o tempo estimado de leitura,
-      // em vez de piscar e avançar na hora.
-      if (!resultado.tocou) {
-        await esperar(fallbackMs)
-        if (cancelado) return
-      }
+      // A legenda só existe depois que sabemos a duração real: é ela que define
+      // o ritmo das linhas. Sem mp3, cai no tempo estimado.
+      const duracaoMs = reproducao?.tocou ? (reproducao.duracaoMs ?? fallbackMs) : fallbackMs
+      setSinc({ duracaoMs, ativa: true })
+      setFalando(true)
 
-      setCompleto(true)
+      // Pré-decodifica só a próxima cena, pra não encher a memória de buffers.
+      const proxima = sequencia[indice + 1]
+      if (proxima) void engine.preparar(audioDaCena(proxima))
+
+      if (reproducao?.tocou) await reproducao.fim
+      else await esperar(fallbackMs)
+      if (cancelado) return
+
+      setFalando(false)
       if (cena.avanco === 'auto') avancar()
     }
 
@@ -144,7 +159,7 @@ export function Player({ roteiro, engine }: Props) {
       cancelado = true
       engine.pararVoz()
     }
-  }, [cena, engine, avancar])
+  }, [cena, indice, sequencia, engine, avancar])
 
   if (!cena) {
     return (
@@ -153,6 +168,11 @@ export function Player({ roteiro, engine }: Props) {
       </Hud>
     )
   }
+
+  const estadoOrbe = estadoDoOrbe(cena, falando)
+  // Apresentação é o único layout em que o orbe recua pro canto: a tela é dos
+  // alunos, não da IA.
+  const modo = cena.tipo === 'apresentacao' ? 'canto' : 'central'
 
   return (
     <Hud
@@ -163,19 +183,60 @@ export function Player({ roteiro, engine }: Props) {
       rodapeEsquerda={`turma ${roteiro.turma}`}
       rodapeDireita={`cena ${indice + 1}/${sequencia.length} · ${cena.id}`}
     >
-      {conteudoDaCena(cena, duracaoMs, completo)}
+      <div className={`palco palco--${modo}`}>
+        <div className="palco__cena">
+          {/* Fica montado a sessão inteira: se trocasse de lugar na árvore a
+              cada cena, a animação reiniciaria a cada troca. */}
+          <Orbe
+            estado={estadoOrbe}
+            lerNivel={lerNivel}
+            compacto={modo === 'canto'}
+          />
+          <div className="palco__texto">
+            {conteudoDaCena(cena, sinc.duracaoMs, sinc.ativa)}
+          </div>
+        </div>
+        <LogSistemas
+          especificas={cena.log}
+          modo={modoDoLog(estadoOrbe)}
+          apagado={modo === 'canto'}
+        />
+      </div>
     </Hud>
   )
 }
 
-function conteudoDaCena(cena: Cena, duracaoMs: number | null, completo: boolean) {
+function estadoDoOrbe(cena: Cena, falando: boolean): EstadoOrbe {
+  switch (cena.tipo) {
+    case 'pane':
+      return 'pane'
+    case 'quiz':
+    case 'vf':
+      return 'processando'
+    case 'apresentacao':
+      return 'ocioso'
+    default:
+      return falando ? 'falando' : 'ocioso'
+  }
+}
+
+function modoDoLog(estado: EstadoOrbe): ModoLog {
+  if (estado === 'pane') return 'erro'
+  if (estado === 'processando') return 'rapido'
+  return 'normal'
+}
+
+function conteudoDaCena(cena: Cena, duracaoMs: number | null, ativa: boolean) {
+  // O `key` por id garante que cada cena começa com estado limpo: sem ele, duas
+  // falas seguidas reaproveitam o mesmo componente e a legenda herda a posicao
+  // da cena anterior.
   switch (cena.tipo) {
     case 'fala':
-      return <Fala cena={cena} duracaoMs={duracaoMs} completo={completo} />
+      return <Fala key={cena.id} cena={cena} duracaoMs={duracaoMs} ativa={ativa} />
     case 'apresentacao':
-      return <Apresentacao cena={cena} />
+      return <Apresentacao key={cena.id} cena={cena} />
     case 'transicao':
-      return <Transicao cena={cena} duracaoMs={duracaoMs} completo={completo} />
+      return <Transicao key={cena.id} cena={cena} duracaoMs={duracaoMs} ativa={ativa} />
     default:
       // quiz, vf e pane chegam na Fase 2.
       return <p className="pendente">cena "{cena.tipo}" — a implementar (Fase 2)</p>

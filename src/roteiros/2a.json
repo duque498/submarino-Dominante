@@ -19,7 +19,13 @@
           "Tripulação, preparem-se. Nossa expedição vai começar.",
           "Iniciando apresentação do 2º ano do Ensino Médio A."
         ]
-      }
+      },
+      "log": [
+        "Inicializando núcleo de bordo...",
+        "Checando integridade dos sensores... OK",
+        "Tripulação identificada: 2º ano A",
+        "Plano de mergulho carregado"
+      ]
     },
     {
       "id": "bio-intro",
@@ -34,7 +40,13 @@
           "Ajustando profundidade...",
           "Iniciando exploração da vida nos oceanos."
         ]
-      }
+      },
+      "log": [
+        "Carregando setor: BIOLOGIA",
+        "Consultando catálogo de espécies...",
+        "Profundidade alvo: 600 m",
+        "Lanternas externas: ligadas"
+      ]
     },
     {
       "id": "bio",
@@ -59,7 +71,13 @@
           "Próximo setor: Arte.",
           "Preparando nova exploração."
         ]
-      }
+      },
+      "log": [
+        "Setor BIOLOGIA arquivado",
+        "Carregando setor: ARTE",
+        "Indexando registros visuais da expedição...",
+        "Calibrando câmeras de documentação"
+      ]
     },
     {
       "id": "arte",
@@ -84,7 +102,13 @@
           "O próximo setor nos leva a uma relação diferente entre o ser humano e o ambiente marinho. Educação Física.",
           "Iniciando exploração."
         ]
-      }
+      },
+      "log": [
+        "Setor ARTE arquivado",
+        "Carregando setor: EDUCAÇÃO FÍSICA",
+        "Medindo resistência da corrente...",
+        "Monitorando sinais vitais da tripulação"
+      ]
     },
     {
       "id": "ef",
@@ -107,14 +131,23 @@
           "Setores explorados. Antes de alterar a rota, o sistema precisa calibrar o sonar com dados da tripulação.",
           "Responda em voz alta. Três perguntas."
         ]
-      }
+      },
+      "log": [
+        "Sonar em modo de calibração",
+        "Aguardando entrada da tripulação...",
+        "Três amostras necessárias"
+      ]
     },
     {
       "id": "quiz-1",
       "tipo": "quiz",
       "avanco": "manual",
       "pergunta": "Que porcentagem da superfície da Terra é coberta pelos oceanos?",
-      "alternativas": ["51%", "71%", "89%"],
+      "alternativas": [
+        "51%",
+        "71%",
+        "89%"
+      ],
       "correta": 1,
       "tempo": 15,
       "audio": {
@@ -128,7 +161,11 @@
       "tipo": "quiz",
       "avanco": "manual",
       "pergunta": "Quantas espécies marinhas já foram identificadas pela ciência?",
-      "alternativas": ["Cerca de 24 mil", "Cerca de 240 mil", "Cerca de 2 milhões"],
+      "alternativas": [
+        "Cerca de 24 mil",
+        "Cerca de 240 mil",
+        "Cerca de 2 milhões"
+      ],
       "correta": 1,
       "tempo": 15,
       "audio": {
@@ -142,7 +179,11 @@
       "tipo": "quiz",
       "avanco": "manual",
       "pergunta": "Qual destes é um recife de coral brasileiro?",
-      "alternativas": ["Abrolhos", "Fernando de Magalhães", "Grande Barreira"],
+      "alternativas": [
+        "Abrolhos",
+        "Fernando de Magalhães",
+        "Grande Barreira"
+      ],
       "correta": 0,
       "tempo": 15,
       "audio": {
@@ -165,14 +206,28 @@
           "Destino: 2º ano B.",
           "Preparando transferência da expedição."
         ]
-      }
+      },
+      "log": [
+        "Consolidando dados do 2º ano A",
+        "Traçando nova rota...",
+        "Destino travado: 2º ano B",
+        "Transferência de expedição autorizada"
+      ]
     },
     {
       "id": "pane",
       "tipo": "pane",
       "sfx": "alarme",
-      "subsistemas": ["SONAR", "NAVEGAÇÃO", "COMUNICAÇÃO"],
-      "estados": ["OFFLINE", "INSTÁVEL", "INTERROMPIDA"],
+      "subsistemas": [
+        "SONAR",
+        "NAVEGAÇÃO",
+        "COMUNICAÇÃO"
+      ],
+      "estados": [
+        "OFFLINE",
+        "INSTÁVEL",
+        "INTERROMPIDA"
+      ],
       "falaEntrada": [
         "Processando informações...",
         "Analisando dados coletados durante a expedição...",
@@ -192,7 +247,11 @@
       "audio": {
         "entrada": "./audio/2a/pane-entrada.mp3",
         "retorno": "./audio/2a/pane-retorno.mp3"
-      }
+      },
+      "log": [
+        "Verificando barramento principal...",
+        "Diagnóstico automático iniciado"
+      ]
     }
   ]
 }
