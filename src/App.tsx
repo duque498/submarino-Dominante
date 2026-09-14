@@ -120,7 +120,7 @@ function TelaSelecao({ aoEscolher }: { aoEscolher: (turma: Turma) => void }) {
   )
 
   return (
-    <Hud rota="AGUARDANDO" profundidade={0} sonar="STANDBY" rodapeEsquerda="submarino domi">
+    <Hud rota="AGUARDANDO" sonar="STANDBY" rodapeEsquerda="submarino domi">
       <div className="centro">
         <p className="status">identifique a tripulação</p>
         <div className="opcoes">
@@ -161,7 +161,7 @@ function TelaAtivacao({
   }, [carregando, aoAtivar])
 
   return (
-    <Hud rota="STANDBY" profundidade={0} sonar="DESLIGADO" rodapeEsquerda="submarino domi">
+    <Hud rota="STANDBY" sonar="DESLIGADO" rodapeEsquerda="submarino domi">
       <div className="centro">
         {carregando ? (
           <p className="chamada">carregando sistemas de bordo...</p>

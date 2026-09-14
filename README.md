@@ -9,11 +9,11 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 2 concluída.** Todos os tipos de cena funcionam: `fala`, `apresentacao`,
-`transicao`, `quiz`, `vf` e `pane`. Mais HUD, orbe que morfa em silhuetas,
-legenda sincronizada, log de sistemas, console de comandos, painéis e o
-overlay de atalhos. Falta só o pipeline de áudio (Fase 3) e os roteiros do
-2B e do 3A (Fase 4).
+**Fase 2.5 concluída.** Todos os tipos de cena funcionam: `fala`,
+`apresentacao`, `transicao`, `quiz`, `vf` e `pane`. Mais HUD, orbe que morfa em
+silhuetas, legenda sincronizada, log de sistemas, console de comandos, painéis,
+câmeras externas com o oceano procedural e profundidade real. Falta o pipeline
+de áudio (Fase 3) e os roteiros do 2B e do 3A (Fase 4).
 As cenas `quiz`, `vf` e `pane` estão no roteiro mas ainda aparecem como
 "a implementar (Fase 2)". Os mp3 ainda não existem (Fase 3).
 
@@ -192,6 +192,58 @@ bloqueadas, pra a cena não avançar por baixo.
 > teclas são texto, e um `p` digitado dispararia a pane no meio de uma palavra.
 > Com o console aberto, use o comando `pane`, ou `Esc` e depois `P`.
 
+## Profundidade e câmeras externas
+
+O submarino tem câmeras apontadas pra fora, e o que elas mostram depende de uma
+coisa só: **quantos metros**. As câmeras não sabem qual turma está apresentando.
+
+### Profundidade
+
+`CenaBase.profundidade` (metros) é a profundidade-alvo da cena. Ao entrar nela o
+submarino **desce ou sobe animado** até lá — 3 a 6 s conforme a distância, com o
+número do HUD tickando. Cena sem o campo herda a da cena anterior.
+
+Referência pra quem preencher os JSONs do 2B e do 3A (provisório, ajustável):
+
+| Turma | Faixa | Cenas |
+|---|---|---|
+| **2A** | 50 → 900 m | `entrada` 50, `bio` 120, `arte` 300, `ef` 450, `quiz-intro` 600, `transicao-2b` 900 |
+| **2B** | ~900 → 3000 m | começa onde o 2A parou e desce até a batipelágica |
+| **3A** | ~3000 → 5500 m | chega ao abissal; a **cena final volta pra 0** (retorno à superfície) |
+
+### Zonas
+
+A transição é **contínua**: luz, densidade de fauna, partículas e cor de fundo
+são interpoladas pela profundidade. Passar de 190 pra 210 m não muda a tela de
+repente.
+
+| Zona | Faixa | O que aparece |
+|---|---|---|
+| Eufótica | 0–200 m | raios de sol, superfície ondulando, cardume denso, corais no fundo, bolhas |
+| Mesopelágica | 200–1000 m | azul escuro, peixes esparsos, águas-vivas, neve marinha, primeiras luzes |
+| Batipelágica | 1000–4000 m | quase preto, farol do submarino, bioluminescência frequente |
+| Abissal | 4000+ m | preto fora do farol, fauna rara, tremor de pressão no feed |
+
+### Onde as câmeras aparecem
+
+- **Dois mini-feeds** nos cantos inferiores da área central, com rótulo, `● REC`,
+  relógio, profundidade e zona, scanlines, grão e vinheta. Bombordo e estibordo
+  veem lados diferentes do mesmo cardume. Perda de sinal ocasional (`SINAL
+  FRACO`) a cada 30–90 s. Na pane, as duas caem em estática até o `R`.
+  `CenaBase.cameras: false` esconde os dois (as cenas de quiz usam isso).
+- **Retículo de rastreamento** que segue a fauna grande quando ela cruza o
+  quadro, com rótulo tipo `CETÁCEO · 26 M`.
+- **Painel `camera`** (`camera`, `camera 1`, `camera 2`) abre um feed grande.
+- **Fundo do palco**: nas apresentações em modo `palco`, o mesmo mundo aparece
+  bem apagado atrás do orbe.
+
+Existe **um** mundo, simulado uma vez por quadro em `src/mundo/`. Os canvases
+registrados só desenham o mesmo estado de pontos de vista diferentes — simular
+três vezes custaria o triplo por nenhum ganho.
+
+> Comando de depuração: `profundidade 4500` (ou `prof 4500`) força a
+> profundidade sem mexer no roteiro. Útil pra conferir o cenário de cada zona.
+
 ## Console de comandos
 
 `/` abre uma barra de comando na parte de baixo da área central. **O que o
@@ -208,9 +260,10 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 |---|---|
 | `baleia`, `virar tartaruga`, `forma esfera` | morfa o orbe numa forma registrada |
 | `estrela`, `coracao`, `espiral`, `letra x`, `numero 7` | desenha a primitiva na hora e morfa |
-| `sonar`, `abrir status`, `mapa`, `ficha baleia` | abre um painel |
+| `sonar`, `abrir status`, `mapa`, `ficha baleia`, `camera 1` | abre um painel |
 | `cena 5`, `ir bio`, `proximo`, `voltar` | navega no roteiro |
 | `pane`, `reiniciar`, `limpar`, `ajuda` | comandos de sistema |
+| `profundidade 4500` | depuração: força a profundidade do cenário |
 
 Comando não reconhecido **nunca** vira "comando inválido" seco — no palco isso
 parece defeito. A IA responde `Comando não reconhecido pelo sistema de bordo.`,
@@ -339,6 +392,7 @@ src/
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
   console/           barra de comando e o parser
   paineis/           sonar, status, ficha, mapa e o registro
+  mundo/             o oceano procedural: perfil por profundidade, motor e Feed
   formas/            registro das silhuetas, amostragem e primitivas
   roteiros/          tipos.ts, validar.ts, fichas.json e os JSONs de cada turma
 scripts/

@@ -25,7 +25,8 @@
         "Checando integridade dos sensores... OK",
         "Tripulação identificada: 2º ano A",
         "Plano de mergulho carregado"
-      ]
+      ],
+      "profundidade": 50
     },
     {
       "id": "bio-intro",
@@ -68,7 +69,8 @@
         "circulo",
         "triangulo",
         "letra-d"
-      ]
+      ],
+      "profundidade": 120
     },
     {
       "id": "arte-intro",
@@ -100,7 +102,8 @@
         "titulo": "SETOR: ARTE",
         "status": "EXPLORAÇÃO EM CURSO"
       },
-      "orbe": "discreto"
+      "orbe": "discreto",
+      "profundidade": 300
     },
     {
       "id": "ef-intro",
@@ -143,7 +146,8 @@
         "esfera",
         "triangulo",
         "circulo"
-      ]
+      ],
+      "profundidade": 450
     },
     {
       "id": "quiz-intro",
@@ -162,7 +166,8 @@
         "Sonar em modo de calibração",
         "Aguardando entrada da tripulação...",
         "Três amostras necessárias"
-      ]
+      ],
+      "profundidade": 600
     },
     {
       "id": "quiz-1",
@@ -190,7 +195,8 @@
       "log": [
         "Aguardando resposta da tripulação...",
         "Amostra registrada"
-      ]
+      ],
+      "cameras": false
     },
     {
       "id": "quiz-2",
@@ -218,7 +224,8 @@
       "log": [
         "Aguardando resposta da tripulação...",
         "Amostra registrada"
-      ]
+      ],
+      "cameras": false
     },
     {
       "id": "quiz-3",
@@ -246,7 +253,8 @@
       "log": [
         "Aguardando resposta da tripulação...",
         "Amostra registrada"
-      ]
+      ],
+      "cameras": false
     },
     {
       "id": "transicao-2b",
@@ -268,7 +276,8 @@
         "Traçando nova rota...",
         "Destino travado: 2º ano B",
         "Transferência de expedição autorizada"
-      ]
+      ],
+      "profundidade": 900
     },
     {
       "id": "pane",

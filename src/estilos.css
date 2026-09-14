@@ -213,7 +213,7 @@ body {
 .palco--central .orbe {
   flex: 0 1 auto;
   width: auto;
-  height: 46vh;
+  height: 40vh;
   min-height: 0;
   max-width: 100%;
   aspect-ratio: 1;
@@ -224,7 +224,7 @@ body {
 .palco--palco .orbe {
   flex: 0 1 auto;
   width: auto;
-  height: 60vh;
+  height: 52vh;
   min-height: 0;
   max-width: 100%;
   aspect-ratio: 1;
@@ -1082,6 +1082,190 @@ body {
   width: clamp(90px, 14vh, 150px);
   height: clamp(90px, 14vh, 150px);
   opacity: 0.85;
+}
+
+/* --- feeds de camera ------------------------------------------------------
+   Canvas em resolucao baixa (256x144) escalado: barato e ainda parece camera.
+   -------------------------------------------------------------------------- */
+
+.palco {
+  --feed-largura: clamp(170px, 19vw, 262px);
+}
+
+.feed {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--ciano-fraco);
+  border-radius: 4px;
+  background: #030a0d;
+  color: var(--ciano);
+  font-size: clamp(0.45rem, 1vh, 0.62rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.feed__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Scanlines mais fortes que as do resto da tela, mais vinheta. */
+.feed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 1px,
+      rgba(0, 0, 0, 0.34) 2px,
+      rgba(0, 0, 0, 0.34) 3px
+    ),
+    radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.feed--mini {
+  position: absolute;
+  bottom: 0;
+  z-index: 3;
+  width: var(--feed-largura);
+  aspect-ratio: 16 / 9;
+}
+
+.feed--bombordo {
+  left: 0;
+}
+.feed--estibordo {
+  right: 0;
+}
+
+.feed--grande {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  font-size: clamp(0.55rem, 1.3vh, 0.85rem);
+}
+
+.feed__barra {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35em 0.5em;
+}
+
+.feed__barra--topo {
+  top: 0;
+  background: linear-gradient(rgba(2, 12, 15, 0.72), transparent);
+}
+
+.feed__barra--base {
+  bottom: 0;
+  color: var(--verde);
+  background: linear-gradient(transparent, rgba(2, 12, 15, 0.72));
+}
+
+.feed__rec {
+  color: var(--vermelho);
+  animation: piscar-rec 1.4s ease-in-out infinite;
+}
+
+/* Cruz fina no centro. */
+.feed__cruz {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  background:
+    linear-gradient(var(--ciano), var(--ciano)) center / 1px 100% no-repeat,
+    linear-gradient(var(--ciano), var(--ciano)) center / 100% 1px no-repeat;
+  opacity: 0.35;
+}
+
+/* Reticulo que segue a fauna grande atravessando o quadro. */
+.feed__reticulo {
+  position: absolute;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px solid var(--ambar);
+  opacity: 0;
+  transition:
+    left 120ms linear,
+    top 120ms linear,
+    opacity 200ms;
+  clip-path: polygon(
+    0 0, 34% 0, 34% 12%, 12% 12%, 12% 34%, 0 34%, 0 0,
+    100% 0, 100% 34%, 88% 34%, 88% 12%, 66% 12%, 66% 0, 100% 0,
+    100% 100%, 66% 100%, 66% 88%, 88% 88%, 88% 66%, 100% 66%, 100% 100%,
+    0 100%, 0 66%, 12% 66%, 12% 88%, 34% 88%, 34% 100%, 0 100%
+  );
+}
+
+.feed__reticulo--ativo {
+  opacity: 1;
+}
+
+.feed__alvo {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  padding-top: 0.3em;
+  color: var(--ambar);
+  white-space: nowrap;
+}
+
+.feed__perdido {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  color: var(--ambar);
+  opacity: 0;
+  text-align: center;
+}
+
+.feed__perdido--ativo {
+  opacity: 1;
+}
+
+/* Fundo do palco: o mesmo mundo, bem apagado atras do orbe. */
+.palco__fundo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.palco--palco .palco__texto,
+.palco--palco .orbe,
+.palco--palco .palco__forma {
+  position: relative;
+  z-index: 1;
+}
+
+/* Com os feeds no ar, o conteudo em fluxo reserva a faixa deles embaixo, e o
+   que e ancorado no rodape recua pelos lados. Sem isso a legenda da cena cai
+   por cima da CAM 01. */
+.palco--cameras .palco__cena {
+  padding-bottom: calc(var(--feed-largura) * 0.5625 + 10px);
+}
+
+.palco--cameras .palco__resposta,
+.palco--cameras .console {
+  right: calc(var(--feed-largura) + 12px);
+  left: calc(var(--feed-largura) + 12px);
 }
 
 /* --- dinamicas: quiz e verdadeiro/falso ----------------------------------

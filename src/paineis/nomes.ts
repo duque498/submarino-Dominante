@@ -10,6 +10,7 @@ export const PAINEIS: Array<{ nome: string; aliases: string[]; precisaArgumento?
   { nome: 'status', aliases: ['sistemas', 'diagnostico', 'subsistemas'] },
   { nome: 'ficha', aliases: ['catalogo', 'especie', 'dados'], precisaArgumento: true },
   { nome: 'mapa', aliases: ['rota', 'carta'] },
+  { nome: 'camera', aliases: ['cam', 'cameras', 'externa', 'feed'] },
 ]
 
 /** Resolve um nome ou apelido pro nome canônico do painel. */

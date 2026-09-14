@@ -7,7 +7,7 @@ import { TURMAS } from './tipos'
 // qual cena e qual campo estao errados, em portugues.
 
 const TIPOS_VALIDOS = ['fala', 'apresentacao', 'transicao', 'quiz', 'vf', 'pane']
-const SFX_VALIDOS = ['sonar', 'alarme', 'estatica', 'ok']
+const SFX_VALIDOS = ['sonar', 'alarme', 'estatica', 'ok', 'pressurizacao']
 
 function ehTextoPreenchido(valor: unknown): valor is string {
   return typeof valor === 'string' && valor.trim().length > 0
@@ -77,6 +77,21 @@ export function validarRoteiro(dado: unknown): string[] {
 
     if (cena.log !== undefined && !ehListaDeTextos(cena.log)) {
       erros.push(`${onde}: campo "log" deve ser uma lista de textos nao vazia.`)
+    }
+
+    if (cena.profundidade !== undefined) {
+      if (typeof cena.profundidade !== 'number' || Number.isNaN(cena.profundidade)) {
+        erros.push(`${onde}: "profundidade" deve ser um numero em metros.`)
+      } else if (cena.profundidade < 0 || cena.profundidade > 11000) {
+        erros.push(
+          `${onde}: "profundidade" fora da faixa (${cena.profundidade} m). ` +
+            `Use de 0 a 11000 — o ponto mais fundo do oceano tem ~10994 m.`,
+        )
+      }
+    }
+
+    if (cena.cameras !== undefined && typeof cena.cameras !== 'boolean') {
+      erros.push(`${onde}: "cameras" deve ser true ou false.`)
     }
 
     if (cena.comandos !== undefined) {

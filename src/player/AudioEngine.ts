@@ -30,6 +30,7 @@ const CAMINHOS_SFX: Record<Sfx, string> = {
   alarme: './audio/sfx/alarme.mp3',
   estatica: './audio/sfx/estatica.mp3',
   ok: './audio/sfx/ok.mp3',
+  pressurizacao: './audio/sfx/pressurizacao.mp3',
 }
 
 /** Quantos AudioBuffer decodificados ficam na memória (cena atual + vizinhas). */

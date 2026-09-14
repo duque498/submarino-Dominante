@@ -5,7 +5,7 @@ export type Turma = '2A' | '2B' | '3A'
 
 export const TURMAS: Turma[] = ['2A', '2B', '3A']
 
-export type Sfx = 'sonar' | 'alarme' | 'estatica' | 'ok'
+export type Sfx = 'sonar' | 'alarme' | 'estatica' | 'ok' | 'pressurizacao'
 
 export type Avanco = 'auto' | 'manual'
 
@@ -32,6 +32,15 @@ export type CenaBase = {
    * que "o sistema" acesse algo sozinho.
    */
   comandos?: ComandoRoteirizado[]
+  /**
+   * Profundidade-alvo em metros. O submarino desce (ou sobe) ate ela ao entrar
+   * na cena, animado. Sem o campo, herda a profundidade da cena anterior.
+   * E o unico input do cenario das cameras: elas nao sabem a turma, sabem os
+   * metros.
+   */
+  profundidade?: number
+  /** Mini-feeds das cameras externas. Padrao true. */
+  cameras?: boolean
 }
 
 export type ComandoRoteirizado = {

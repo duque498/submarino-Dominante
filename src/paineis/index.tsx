@@ -1,3 +1,4 @@
+import { PainelCamera } from './PainelCamera'
 import { PainelFicha } from './PainelFicha'
 import { PainelMapa } from './PainelMapa'
 import { PainelSonar } from './PainelSonar'
@@ -20,6 +21,7 @@ const TITULOS: Record<string, string> = {
   status: 'status dos subsistemas',
   ficha: 'ficha de catálogo',
   mapa: 'rota da expedição',
+  camera: 'câmera externa',
 }
 
 type Props = { painel: PainelAberto }
@@ -52,6 +54,8 @@ function corpoDoPainel({ nome, argumento, quedas, congelado }: PainelAberto) {
       return <PainelFicha argumento={argumento} />
     case 'mapa':
       return <PainelMapa />
+    case 'camera':
+      return <PainelCamera argumento={argumento} />
     default:
       return <p className="painel__vazio">painel "{nome}" não existe.</p>
   }

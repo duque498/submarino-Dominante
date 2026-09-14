@@ -17,6 +17,7 @@ export type Comando =
       acao: 'pane' | 'reiniciar' | 'limpar' | 'ajuda' | 'status' | 'proximo' | 'voltar'
       resposta: string
     }
+  | { tipo: 'profundidade'; metros: number; resposta: string }
   | { tipo: 'desconhecido'; entrada: string; resposta: string }
 
 /** Minúsculas, sem acento, sem espaço sobrando. */
@@ -48,6 +49,9 @@ export function vocabulario(): string[] {
     'voltar',
     'letra a',
     'numero 1',
+    'camera 1',
+    'camera 2',
+    'profundidade 4500',
   ]
 }
 
@@ -116,14 +120,25 @@ export function interpretar(entrada: string): Comando {
     }
   }
 
-  // 4) navegação
+  // 4) profundidade (comando de depuração: força o cenário numa faixa)
+  const profundidade = /^(?:profundidade|prof|descer|subir)\s+(\d+)$/.exec(texto)
+  if (profundidade) {
+    const metros = Math.max(0, Math.min(11000, Number(profundidade[1])))
+    return {
+      tipo: 'profundidade',
+      metros,
+      resposta: `Ajustando profundidade para ${metros} metros.`,
+    }
+  }
+
+  // 5) navegação
   if (VERBOS_CENA.includes(palavras[0]) && palavras[1]) {
     const numero = Number(palavras[1])
     const alvo = Number.isInteger(numero) && numero > 0 ? numero : palavras.slice(1).join('-')
     return { tipo: 'cena', alvo, resposta: `Navegando para ${palavras.slice(1).join(' ')}.` }
   }
 
-  // 5) sistema
+  // 6) sistema
   switch (texto) {
     case 'pane':
     case 'falha':
@@ -144,7 +159,7 @@ export function interpretar(entrada: string): Comando {
       return { tipo: 'sistema', acao: 'voltar', resposta: 'Retornando.' }
   }
 
-  // 6) primitivas procedurais, desenhadas na hora
+  // 7) primitivas procedurais, desenhadas na hora
   if (semVerboForma in PRIMITIVAS) {
     return {
       tipo: 'forma',
@@ -153,7 +168,7 @@ export function interpretar(entrada: string): Comando {
     }
   }
 
-  // 7) fallback — nunca "comando inválido" seco: no palco isso parece defeito
+  // 8) fallback — nunca "comando inválido" seco: no palco isso parece defeito
   return {
     tipo: 'desconhecido',
     entrada: bruto,

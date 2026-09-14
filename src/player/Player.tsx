@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConsoleComandos } from '../console/Console'
 import { interpretar, vocabulario } from '../console/comandos'
 import { carregarFormas, FORMA_PADRAO, prepararGlifo } from '../formas'
+import { Feed } from '../mundo/Feed'
+import { motor } from '../mundo/motor'
 import { Painel, type PainelAberto } from '../paineis'
 import type { Queda } from '../paineis/PainelStatus'
 import type { Cena, CenaPane, Roteiro } from '../roteiros/tipos'
@@ -144,6 +146,8 @@ export function Player({ roteiro, engine }: Props) {
 
   // --- pane ---
   const [pane, setPane] = useState<EstadoPane | null>(null)
+  /** Última profundidade declarada; cenas sem o campo herdam esta. */
+  const refProfundidade = useRef(50)
   /** Lido dentro do efeito da cena, que não pode avançar por baixo da pane. */
   const refPaneAtiva = useRef(false)
   const refFimDaFalaPane = useRef(0)
@@ -420,6 +424,11 @@ export function Player({ roteiro, engine }: Props) {
           }
           engine.tocarSfx('ok')
           break
+        case 'profundidade':
+          refProfundidade.current = comando.metros
+          motor.definirAlvo(comando.metros, 2500)
+          engine.tocarSfx('pressurizacao')
+          break
         case 'desconhecido':
           engine.tocarSfx('estatica')
           setRajadaLog([`WARN: entrada não mapeada: "${comando.entrada}"`])
@@ -584,6 +593,31 @@ export function Player({ roteiro, engine }: Props) {
     }
   }, [cena, indice, sequencia, engine, avancar])
 
+  // O mundo das câmeras roda enquanto o player estiver montado, mesmo que
+  // nenhum feed esteja visível: a profundidade do HUD depende dele.
+  useEffect(() => {
+    const inicial = sequencia.find((c) => c.profundidade !== undefined)?.profundidade ?? 50
+    refProfundidade.current = inicial
+    motor.fixarProfundidade(inicial)
+    motor.iniciar()
+    return () => motor.parar()
+  }, [sequencia])
+
+  // Profundidade: cada cena pode declarar a sua, e o motor desce (ou sobe) até
+  // lá animado. Cena sem o campo herda a da anterior.
+  useEffect(() => {
+    if (!cena || cena.profundidade === undefined) return
+    if (cena.profundidade === refProfundidade.current) return
+    refProfundidade.current = cena.profundidade
+    motor.definirAlvo(cena.profundidade)
+    engine.tocarSfx('pressurizacao')
+  }, [cena, engine])
+
+  // Nos feeds, a pane é perda total de sinal.
+  useEffect(() => {
+    motor.estaticaGlobal = pane !== null && pane.fase !== 'voltando'
+  }, [pane])
+
   // Comandos roteirizados: a IA abre o console e digita sozinha.
   useEffect(() => {
     if (!cena?.comandos?.length) return
@@ -610,7 +644,7 @@ export function Player({ roteiro, engine }: Props) {
 
   if (!cena) {
     return (
-      <Hud rota="FIM" profundidade={0}>
+      <Hud rota="FIM">
         <p className="status">expedição encerrada</p>
       </Hud>
     )
@@ -622,6 +656,9 @@ export function Player({ roteiro, engine }: Props) {
       : 'pane'
     : (orbeForcado ?? estadoDoOrbe(cena, falando, faseDinamica))
   const modo = layoutDaCena(cena)
+  // Os mini-feeds só saem do ar quando a cena pede (quiz, por exemplo). Na pane
+  // eles continuam na tela, em estática — quem cuida disso é o motor.
+  const mostrarCameras = cena.cameras !== false
   const quedasVisiveis = pane
     ? pane.quedas.filter((queda) => !restaurados.includes(queda.nome))
     : undefined
@@ -629,7 +666,6 @@ export function Player({ roteiro, engine }: Props) {
   return (
     <Hud
       rota={pane ? 'FALHA DE SISTEMA' : rotaDaCena(cena)}
-      profundidade={120 + indice * 240}
       sonar={pane ? 'OFFLINE' : cena.tipo === 'transicao' ? 'VARRENDO' : 'ATIVO'}
       rodapeEsquerda={`turma ${roteiro.turma}`}
       rodapeDireita={
@@ -638,7 +674,7 @@ export function Player({ roteiro, engine }: Props) {
           : `cena ${indice + 1}/${sequencia.length} · ${cena.id}`
       }
     >
-      <div className={`palco palco--${modo}`}>
+      <div className={`palco palco--${modo}${mostrarCameras ? ' palco--cameras' : ''}`}>
         <div className="palco__cena">
           {/* Fica montado a sessão inteira: se trocasse de lugar na árvore a
               cada cena, a animação reiniciaria a cada troca. */}
@@ -651,6 +687,18 @@ export function Player({ roteiro, engine }: Props) {
             pulso={pulso}
             compacto={modo === 'canto'}
           />
+          {/* Fundo do palco: o mesmo mundo das câmeras, bem apagado atrás do
+              orbe. Só nas apresentações em modo palco. */}
+          {modo === 'palco' && (
+            <Feed
+              className="palco__fundo"
+              rotulo=""
+              moldura={false}
+              camera={{ x0: 0.9, abertura: 1.8, opacidade: 0.18, simples: true }}
+              largura={320}
+              altura={180}
+            />
+          )}
           <div className="palco__texto">
             {conteudoDaCena(cena, sinc, modo, falando, lerNivel)}
           </div>
@@ -698,6 +746,20 @@ export function Player({ roteiro, engine }: Props) {
                 dica: pane ? 'r pra reiniciar o sistema' : undefined,
               }}
             />
+          )}
+          {mostrarCameras && (
+            <>
+              <Feed
+                className="feed--mini feed--bombordo"
+                rotulo="CAM 01 · EXT BOMBORDO"
+                camera={{ x0: 0, abertura: 1 }}
+              />
+              <Feed
+                className="feed--mini feed--estibordo"
+                rotulo="CAM 02 · EXT ESTIBORDO"
+                camera={{ x0: 1.4, abertura: 1, espelhado: true }}
+              />
+            </>
           )}
           <ConsoleComandos
             aberto={consoleAberto}
