@@ -462,17 +462,30 @@ Com ele, a legenda troca de linha no instante exato em que a voz troca, em vez
 de estimar por número de caracteres. Medido: erro de **até 11 ms** (um quadro).
 Sem o arquivo, o modo proporcional continua valendo.
 
-## Som de fundo do oceano
+## Som de fundo: por dentro do casco
 
-`src/audio/ambiente.ts` sintetiza o mar continuamente, com a **mesma
-profundidade** que alimenta as câmeras:
+`src/audio/ambiente.ts` sintetiza o ambiente continuamente. O ponto de escuta é
+**a cabine do submarino**, não a praia — o que muda tudo:
 
-- **superfície** — água mexendo, bolhas subindo, estalos de recife;
-- **meio** — o zumbido da pressão ganha corpo, canto distante de cetáceo;
-- **fundo** — pressão grave, casco rangendo, ecos sem origem.
+1. **Nada é brilhante.** A água absorve agudo rápido e o casco abafa o resto;
+   tudo passa por um passa-baixa geral em 1,5 kHz. Foi o que faltava na
+   primeira versão, que soava como onda quebrando.
+2. **O que domina é um zumbido tonal de maquinário** — quatro frequências
+   ligeiramente desafinadas entre si, com uma pulsação lenta de motor. Ruído
+   sozinho não dá a sensação de estar dentro de uma máquina.
+3. **O espaço é fechado e metálico**: tudo tem uma cauda curta de reverberação,
+   com a resposta ao impulso gerada em código.
 
-Nada disso é arquivo em loop, então não dá pra ouvir a emenda repetindo. Quando
-a IA fala, o ambiente abaixa sozinho. `/` + `ambiente` liga e desliga.
+Aí entra a profundidade, a mesma que alimenta as câmeras:
+
+| onde | o que se ouve |
+|---|---|
+| superfície | massa d'água mexendo, cachos de bolhas graves pelo casco, hélice distante de embarcação |
+| meio | ventilação da cabine, canto de cetáceo bem abafado |
+| fundo | pressão grave, casco rangendo, estalos de válvula, gotejamento, ecos sem origem |
+
+Nada é arquivo em loop, então não existe emenda audível se repetindo. Quando a
+IA fala, o ambiente abaixa sozinho. `/` + `ambiente` liga e desliga.
 
 ## Efeitos sonoros
 
