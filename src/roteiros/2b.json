@@ -1,0 +1,46 @@
+{
+  "turma": "2B",
+  "cenas": [
+    {
+      "id": "entrada",
+      "tipo": "fala",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "audio": "./audio/2b/entrada.mp3",
+      "tela": {
+        "titulo": "SUBMARINO DOMI",
+        "status": "NOVA TRIPULAÇÃO IDENTIFICADA",
+        "linhas": ["[PENDENTE] Texto da entrada do 2º ano B — preencher na Fase 4."]
+      }
+    },
+    {
+      "id": "bio",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": { "titulo": "SETOR: BIOLOGIA", "status": "EXPLORAÇÃO EM CURSO" }
+    },
+    {
+      "id": "arte",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": { "titulo": "SETOR: ARTE", "status": "EXPLORAÇÃO EM CURSO" }
+    },
+    {
+      "id": "ef",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": { "titulo": "SETOR: EDUCAÇÃO FÍSICA", "status": "EXPLORAÇÃO EM CURSO" }
+    },
+    {
+      "id": "transicao-3a",
+      "tipo": "transicao",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "destino": "3º ano A",
+      "audio": "./audio/2b/transicao-3a.mp3",
+      "tela": {
+        "linhas": ["[PENDENTE] Texto da transição do 2º ano B — preencher na Fase 4."]
+      }
+    }
+  ]
+}

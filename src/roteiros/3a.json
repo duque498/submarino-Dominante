@@ -1,0 +1,46 @@
+{
+  "turma": "3A",
+  "cenas": [
+    {
+      "id": "entrada",
+      "tipo": "fala",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "audio": "./audio/3a/entrada.mp3",
+      "tela": {
+        "titulo": "SUBMARINO DOMI",
+        "status": "NOVA TRIPULAÇÃO IDENTIFICADA",
+        "linhas": ["[PENDENTE] Texto da entrada do 3º ano A — preencher na Fase 4."]
+      }
+    },
+    {
+      "id": "bio",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": { "titulo": "SETOR: BIOLOGIA", "status": "EXPLORAÇÃO EM CURSO" }
+    },
+    {
+      "id": "arte",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": { "titulo": "SETOR: ARTE", "status": "EXPLORAÇÃO EM CURSO" }
+    },
+    {
+      "id": "ef",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": { "titulo": "SETOR: EDUCAÇÃO FÍSICA", "status": "EXPLORAÇÃO EM CURSO" }
+    },
+    {
+      "id": "final",
+      "tipo": "fala",
+      "avanco": "manual",
+      "audio": "./audio/3a/final.mp3",
+      "tela": {
+        "titulo": "EXPEDIÇÃO CONCLUÍDA",
+        "status": "RETORNANDO À SUPERFÍCIE",
+        "linhas": ["[PENDENTE] Texto do encerramento do 3º ano A — preencher na Fase 4."]
+      }
+    }
+  ]
+}

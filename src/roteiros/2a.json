@@ -1,0 +1,198 @@
+{
+  "turma": "2A",
+  "cenas": [
+    {
+      "id": "entrada",
+      "tipo": "fala",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "audio": "./audio/2a/entrada.mp3",
+      "tela": {
+        "titulo": "SUBMARINO DOMI",
+        "status": "INICIALIZANDO SISTEMAS",
+        "linhas": [
+          "Sistemas de bordo ativados...",
+          "Sonar funcionando.",
+          "Rota definida.",
+          "Bem-vindos ao Submarino DOMI.",
+          "Hoje, nossa missão é embarcar em uma expedição pelas profundezas do oceano, explorando suas formas de vida, suas relações com o ser humano e diferentes maneiras de compreender esse imenso ambiente.",
+          "Tripulação, preparem-se. Nossa expedição vai começar.",
+          "Iniciando apresentação do 2º ano do Ensino Médio A."
+        ]
+      }
+    },
+    {
+      "id": "bio-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/bio-intro.mp3",
+      "tela": {
+        "titulo": "SETOR LOCALIZADO",
+        "status": "AJUSTANDO PROFUNDIDADE",
+        "linhas": [
+          "Primeiro setor localizado: Biologia.",
+          "Ajustando profundidade...",
+          "Iniciando exploração da vida nos oceanos."
+        ]
+      }
+    },
+    {
+      "id": "bio",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": {
+        "titulo": "SETOR: BIOLOGIA",
+        "status": "EXPLORAÇÃO EM CURSO"
+      }
+    },
+    {
+      "id": "arte-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/arte-intro.mp3",
+      "tela": {
+        "titulo": "PRÓXIMO SETOR",
+        "status": "PREPARANDO NOVA EXPLORAÇÃO",
+        "linhas": [
+          "Exploração concluída.",
+          "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
+          "Próximo setor: Arte.",
+          "Preparando nova exploração."
+        ]
+      }
+    },
+    {
+      "id": "arte",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": {
+        "titulo": "SETOR: ARTE",
+        "status": "EXPLORAÇÃO EM CURSO"
+      }
+    },
+    {
+      "id": "ef-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/ef-intro.mp3",
+      "tela": {
+        "titulo": "PRÓXIMO SETOR",
+        "status": "INICIANDO EXPLORAÇÃO",
+        "linhas": [
+          "Setor Arte explorado com sucesso.",
+          "Nossa expedição continua.",
+          "O próximo setor nos leva a uma relação diferente entre o ser humano e o ambiente marinho. Educação Física.",
+          "Iniciando exploração."
+        ]
+      }
+    },
+    {
+      "id": "ef",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": {
+        "titulo": "SETOR: EDUCAÇÃO FÍSICA",
+        "status": "EXPLORAÇÃO EM CURSO"
+      }
+    },
+    {
+      "id": "quiz-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/quiz-intro.mp3",
+      "tela": {
+        "titulo": "CALIBRAÇÃO DO SONAR",
+        "status": "AGUARDANDO DADOS DA TRIPULAÇÃO",
+        "linhas": [
+          "Setores explorados. Antes de alterar a rota, o sistema precisa calibrar o sonar com dados da tripulação.",
+          "Responda em voz alta. Três perguntas."
+        ]
+      }
+    },
+    {
+      "id": "quiz-1",
+      "tipo": "quiz",
+      "avanco": "manual",
+      "pergunta": "Que porcentagem da superfície da Terra é coberta pelos oceanos?",
+      "alternativas": ["51%", "71%", "89%"],
+      "correta": 1,
+      "tempo": 15,
+      "audio": {
+        "pergunta": "./audio/2a/quiz-1-pergunta.mp3",
+        "acerto": "./audio/2a/quiz-1-acerto.mp3",
+        "erro": "./audio/2a/quiz-1-erro.mp3"
+      }
+    },
+    {
+      "id": "quiz-2",
+      "tipo": "quiz",
+      "avanco": "manual",
+      "pergunta": "Quantas espécies marinhas já foram identificadas pela ciência?",
+      "alternativas": ["Cerca de 24 mil", "Cerca de 240 mil", "Cerca de 2 milhões"],
+      "correta": 1,
+      "tempo": 15,
+      "audio": {
+        "pergunta": "./audio/2a/quiz-2-pergunta.mp3",
+        "acerto": "./audio/2a/quiz-2-acerto.mp3",
+        "erro": "./audio/2a/quiz-2-erro.mp3"
+      }
+    },
+    {
+      "id": "quiz-3",
+      "tipo": "quiz",
+      "avanco": "manual",
+      "pergunta": "Qual destes é um recife de coral brasileiro?",
+      "alternativas": ["Abrolhos", "Fernando de Magalhães", "Grande Barreira"],
+      "correta": 0,
+      "tempo": 15,
+      "audio": {
+        "pergunta": "./audio/2a/quiz-3-pergunta.mp3",
+        "acerto": "./audio/2a/quiz-3-acerto.mp3",
+        "erro": "./audio/2a/quiz-3-erro.mp3"
+      }
+    },
+    {
+      "id": "transicao-2b",
+      "tipo": "transicao",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "destino": "2º ano B",
+      "audio": "./audio/2a/transicao-2b.mp3",
+      "tela": {
+        "linhas": [
+          "Setores do 2º ano A explorados com sucesso.",
+          "Alterando rota...",
+          "Destino: 2º ano B.",
+          "Preparando transferência da expedição."
+        ]
+      }
+    },
+    {
+      "id": "pane",
+      "tipo": "pane",
+      "sfx": "alarme",
+      "subsistemas": ["SONAR", "NAVEGAÇÃO", "COMUNICAÇÃO"],
+      "estados": ["OFFLINE", "INSTÁVEL", "INTERROMPIDA"],
+      "falaEntrada": [
+        "Processando informações...",
+        "Analisando dados coletados durante a expedição...",
+        "Atenção.",
+        "Pressão instável.",
+        "Sonar apresentando falhas.",
+        "Sistema de navegação comprometido.",
+        "ALERTA. FALHA NO SISTEMA DE BORDO."
+      ],
+      "falaRetorno": [
+        "...sistema reiniciado.",
+        "Sonar restaurado.",
+        "Comunicação estabelecida.",
+        "Rota recalculada.",
+        "Expedição retomada."
+      ],
+      "audio": {
+        "entrada": "./audio/2a/pane-entrada.mp3",
+        "retorno": "./audio/2a/pane-retorno.mp3"
+      }
+    }
+  ]
+}

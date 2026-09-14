@@ -1,0 +1,345 @@
+/* ==========================================================================
+   Estética de terminal / HUD de submarino.
+   Tudo pensado pra ser lido a 15 metros: fonte monoespaçada, fundo escuro,
+   verde/ciano fosforescente, pouca coisa na tela por vez, zero scroll.
+   ========================================================================== */
+
+:root {
+  --fundo: #020a0c;
+  --fundo-painel: #04161a;
+  --verde: #4dffa6;
+  --ciano: #38e8ff;
+  --ciano-fraco: #1b6a78;
+  --ambar: #ffc24d;
+  --vermelho: #ff4d5e;
+  --texto: #bdfff0;
+  --mono: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", Menlo, Consolas,
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--mono);
+  /* Sem seleção acidental: a apresentação é 100% teclado. */
+  user-select: none;
+  cursor: none;
+}
+
+/* --- moldura + scanlines ------------------------------------------------- */
+
+.hud {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: clamp(12px, 2vh, 28px);
+  background:
+    radial-gradient(ellipse at 50% 40%, #063038 0%, var(--fundo) 70%);
+}
+
+/* Linhas horizontais sutis, imitando um CRT. */
+.hud::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.22) 3px,
+    rgba(0, 0, 0, 0.22) 4px
+  );
+  z-index: 5;
+}
+
+.hud__moldura {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border: 2px solid var(--ciano-fraco);
+  border-radius: 6px;
+  background: rgba(2, 20, 24, 0.55);
+  box-shadow:
+    inset 0 0 60px rgba(56, 232, 255, 0.08),
+    0 0 30px rgba(56, 232, 255, 0.06);
+}
+
+/* Cantinhos tipo mira de sonar. */
+.hud__canto {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ciano);
+  opacity: 0.7;
+}
+.hud__canto--ne {
+  top: -2px;
+  right: -2px;
+  border-left: none;
+  border-bottom: none;
+}
+.hud__canto--no {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+.hud__canto--se {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+}
+.hud__canto--so {
+  bottom: -2px;
+  left: -2px;
+  border-right: none;
+  border-top: none;
+}
+
+.hud__barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(12px, 3vw, 40px);
+  padding: clamp(8px, 1.4vh, 16px) clamp(14px, 2vw, 28px);
+  border-bottom: 1px solid var(--ciano-fraco);
+  color: var(--ciano);
+  font-size: clamp(0.7rem, 1.5vh, 1.05rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hud__barra--rodape {
+  border-top: 1px solid var(--ciano-fraco);
+  border-bottom: none;
+  justify-content: space-between;
+  opacity: 0.75;
+}
+
+.hud__campo strong {
+  color: var(--verde);
+  font-weight: 700;
+}
+
+.hud__corpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+  padding: clamp(16px, 3vh, 48px) clamp(20px, 4vw, 72px);
+}
+
+/* --- tipografia das cenas ------------------------------------------------ */
+
+.titulo {
+  margin: 0 0 clamp(12px, 2.5vh, 32px);
+  color: var(--verde);
+  font-size: clamp(2rem, 7vh, 5.5rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+  text-shadow: 0 0 24px rgba(77, 255, 166, 0.45);
+  text-transform: uppercase;
+}
+
+.status {
+  margin: 0;
+  color: var(--ciano);
+  font-size: clamp(1rem, 3vh, 2.2rem);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.linhas {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.6vh, 22px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(1.1rem, 3.4vh, 2.6rem);
+  line-height: 1.3;
+}
+
+.linhas li::before {
+  content: '> ';
+  color: var(--ciano-fraco);
+}
+
+/* Falas longas (o parágrafo da missão, por exemplo) encolhem pra caber sem
+   scroll — continua grande o bastante pra ler a 15 metros. */
+.linhas--denso {
+  gap: clamp(6px, 1.1vh, 14px);
+  font-size: clamp(0.95rem, 2.4vh, 1.8rem);
+}
+
+.linhas + .status {
+  margin-top: clamp(12px, 2.5vh, 32px);
+}
+
+/* Cursor piscando no fim da linha que está sendo digitada. */
+.cursor {
+  display: inline-block;
+  width: 0.55em;
+  margin-left: 0.08em;
+  background: var(--verde);
+  animation: piscar 1s steps(2, start) infinite;
+}
+.cursor::before {
+  content: '\00a0';
+}
+
+@keyframes piscar {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* --- telas de abertura --------------------------------------------------- */
+
+.centro {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 4vh, 48px);
+  text-align: center;
+}
+
+.chamada {
+  color: var(--verde);
+  font-size: clamp(1.2rem, 4.5vh, 3.2rem);
+  letter-spacing: 0.12em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  animation: pulsar 1.6s ease-in-out infinite;
+}
+
+@keyframes pulsar {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(16px, 3vw, 40px);
+  justify-content: center;
+}
+
+.opcao {
+  padding: clamp(14px, 3vh, 36px) clamp(24px, 5vw, 64px);
+  border: 2px solid var(--ciano);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--verde);
+  font-family: inherit;
+  font-size: clamp(1.6rem, 6vh, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.opcao:hover,
+.opcao:focus-visible {
+  background: rgba(56, 232, 255, 0.12);
+  outline: none;
+}
+
+.dica {
+  color: var(--ciano-fraco);
+  font-size: clamp(0.8rem, 1.8vh, 1.2rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* --- transição ----------------------------------------------------------- */
+
+.transicao__destino {
+  margin-top: clamp(16px, 3vh, 40px);
+  color: var(--ambar);
+  font-size: clamp(1.6rem, 5.5vh, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 0 24px rgba(255, 194, 77, 0.4);
+}
+
+/* Faixa que corre da esquerda pra direita, sugerindo deslocamento. */
+.transicao__trilho {
+  position: relative;
+  height: 4px;
+  margin-top: clamp(16px, 3vh, 40px);
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(56, 232, 255, 0.15);
+}
+
+.transicao__trilho::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--ciano), transparent);
+  animation: deslocar 2.2s linear infinite;
+}
+
+@keyframes deslocar {
+  to {
+    left: 100%;
+  }
+}
+
+/* --- erro de roteiro ----------------------------------------------------- */
+
+.erro {
+  padding: clamp(16px, 4vh, 48px);
+  color: var(--vermelho);
+  overflow-y: auto;
+}
+
+.erro h1 {
+  font-size: clamp(1.4rem, 4vh, 2.6rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.erro ul {
+  font-size: clamp(0.9rem, 2.2vh, 1.4rem);
+  line-height: 1.6;
+}
+
+.erro__ajuda {
+  color: var(--ambar);
+  font-size: clamp(0.85rem, 2vh, 1.2rem);
+}
+
+/* --- cena ainda não implementada (Fase 2) -------------------------------- */
+
+.pendente {
+  color: var(--ambar);
+  font-size: clamp(1rem, 3vh, 2rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

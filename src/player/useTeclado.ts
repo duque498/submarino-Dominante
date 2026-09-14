@@ -1,0 +1,70 @@
+import { useEffect, useRef } from 'react'
+
+/** Ações do operador, já normalizadas a partir das teclas físicas. */
+export type Acao =
+  | { tipo: 'avancar' }
+  | { tipo: 'voltar' }
+  | { tipo: 'pular' }
+  | { tipo: 'alternativa'; indice: number }
+  | { tipo: 'vf'; resposta: boolean }
+  | { tipo: 'pane' }
+  | { tipo: 'reiniciar' }
+  | { tipo: 'ajuda' }
+
+function traduzir(evento: KeyboardEvent): Acao | null {
+  switch (evento.key) {
+    case 'ArrowRight':
+    case 'Enter':
+      return { tipo: 'avancar' }
+    case 'ArrowLeft':
+      return { tipo: 'voltar' }
+    case ' ':
+    case 'Spacebar':
+      return { tipo: 'pular' }
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+      return { tipo: 'alternativa', indice: Number(evento.key) - 1 }
+  }
+
+  switch (evento.key.toLowerCase()) {
+    case 'v':
+      return { tipo: 'vf', resposta: true }
+    case 'f':
+      return { tipo: 'vf', resposta: false }
+    case 'p':
+      return { tipo: 'pane' }
+    case 'r':
+      return { tipo: 'reiniciar' }
+    case 'h':
+      return { tipo: 'ajuda' }
+    default:
+      return null
+  }
+}
+
+/**
+ * Escuta o teclado globalmente (o operador nunca usa mouse).
+ * O handler fica numa ref pra não religar o listener a cada render.
+ */
+export function useTeclado(aoAgir: (acao: Acao) => void, ativo = true): void {
+  const handler = useRef(aoAgir)
+  handler.current = aoAgir
+
+  useEffect(() => {
+    if (!ativo) return
+
+    const aoPressionar = (evento: KeyboardEvent) => {
+      if (evento.repeat || evento.ctrlKey || evento.altKey || evento.metaKey) return
+      const acao = traduzir(evento)
+      if (!acao) return
+      // Evita a barra de espaço rolar a página e as setas moverem o foco.
+      evento.preventDefault()
+      handler.current(acao)
+    }
+
+    window.addEventListener('keydown', aoPressionar)
+    return () => window.removeEventListener('keydown', aoPressionar)
+  }, [ativo])
+}
