@@ -462,6 +462,21 @@ export function Player({ roteiro, engine }: Props) {
           }
           engine.tocarSfx('ok')
           break
+        case 'vozes': {
+          if (comando.numero === undefined) {
+            setRajadaLog(['Vozes instaladas:', ...engine.vozesDisponiveis()])
+          } else {
+            const nome = engine.escolherVoz(comando.numero)
+            setRajadaLog([
+              nome
+                ? `Voz de bordo trocada para: ${nome}`
+                : `WARN: não existe voz número ${comando.numero}. Use "vozes" pra listar.`,
+            ])
+            if (nome) void engine.falarComNavegador(['Voz de bordo reconfigurada.'])
+          }
+          engine.tocarSfx('ok')
+          break
+        }
         case 'profundidade':
           refProfundidade.current = comando.metros
           motor.definirAlvo(comando.metros, 2500)

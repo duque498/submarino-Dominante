@@ -1,6 +1,8 @@
 import { AmbienteOceano } from '../audio/ambiente'
 import {
   aguardarVozes,
+  escolherVoz,
+  listarVozes,
   nomeDaVoz,
   temVozPortugues,
   VozNavegador,
@@ -442,6 +444,16 @@ export class AudioEngine {
   /** Nome da voz do navegador, pro diagnóstico na tela. */
   descricaoDaVoz(): string {
     return nomeDaVoz()
+  }
+
+  /** Vozes em português instaladas, da melhor pra pior. */
+  vozesDisponiveis(): string[] {
+    return listarVozes()
+  }
+
+  /** Troca a voz pelo número da lista. */
+  escolherVoz(numero: number): string | null {
+    return escolherVoz(numero)
   }
 
   /** Liga o som de fundo do oceano, que segue a profundidade. */

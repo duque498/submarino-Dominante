@@ -22,15 +22,60 @@ function vozesDisponiveis(): SpeechSynthesisVoice[] {
   return speechSynthesis.getVoices()
 }
 
-/** Melhor voz pt-BR disponível, ou qualquer pt, ou nada. */
+/** Voz escolhida na mão pelo operador. Vence a escolha automática. */
+let vozEscolhida: SpeechSynthesisVoice | null = null
+
+/**
+ * Nota de qualidade de uma voz. O Chrome OS costuma trazer várias em pt-BR, e
+ * a diferença entre elas é enorme: as "Natural"/"Neural" e as servidas pela
+ * rede soam humanas; as locais soam robóticas. Escolher errado aqui é a
+ * diferença entre a IA convencer ou não.
+ */
+function nota(voz: SpeechSynthesisVoice): number {
+  const nome = voz.name.toLowerCase()
+  let pontos = 0
+  if (voz.lang === 'pt-BR') pontos += 100
+  else if (voz.lang?.toLowerCase().startsWith('pt')) pontos += 50
+  else return -1
+  if (/natural|neural|wavenet|studio|premium/.test(nome)) pontos += 40
+  if (/google/.test(nome)) pontos += 20
+  // Voz de rede costuma ser a boa; a local é a de emergência do sistema.
+  if (!voz.localService) pontos += 15
+  return pontos
+}
+
+/** Vozes em português, da melhor pra pior. */
+export function vozesEmPortugues(): SpeechSynthesisVoice[] {
+  return vozesDisponiveis()
+    .filter((v) => nota(v) >= 0)
+    .sort((a, b) => nota(b) - nota(a))
+}
+
+/** Melhor voz pt-BR disponível, ou a escolhida à mão. */
 function melhorVoz(): SpeechSynthesisVoice | null {
-  const vozes = vozesDisponiveis()
-  return (
-    vozes.find((v) => v.lang === 'pt-BR' && !v.localService) ??
-    vozes.find((v) => v.lang === 'pt-BR') ??
-    vozes.find((v) => v.lang?.startsWith('pt')) ??
-    null
+  if (vozEscolhida) return vozEscolhida
+  return vozesEmPortugues()[0] ?? null
+}
+
+/** Lista pro operador ver e escolher, já na ordem de qualidade. */
+export function listarVozes(): string[] {
+  const vozes = vozesEmPortugues()
+  if (vozes.length === 0) return ['Nenhuma voz em português instalada neste sistema.']
+  const atual = melhorVoz()
+  return vozes.map(
+    (v, i) =>
+      `${i + 1}. ${v.name} (${v.lang})${v.localService ? ' [local]' : ' [rede]'}` +
+      `${v === atual ? '  <= em uso' : ''}`,
   )
+}
+
+/** Troca a voz pelo número da lista. Devolve o nome, ou null se não existir. */
+export function escolherVoz(numero: number): string | null {
+  const vozes = vozesEmPortugues()
+  const voz = vozes[numero - 1]
+  if (!voz) return null
+  vozEscolhida = voz
+  return `${voz.name} (${voz.lang})`
 }
 
 /** O sistema tem voz em português instalada? É o que decide o padrão. */

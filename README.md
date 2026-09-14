@@ -401,6 +401,21 @@ Duas fontes, nesta ordem:
 `Narração: voz do sistema — <nome da voz>` ou `Narração: gravação de bordo
 (mp3)`.
 
+### Escolher a voz
+
+Uma máquina costuma ter várias vozes em português, e a diferença entre elas é
+enorme: as "Natural"/"Neural" e as servidas pela rede soam humanas, as locais
+soam robóticas. O app já escolhe a melhor por uma nota (pt-BR > pt, nome com
+Natural/Neural/WaveNet, Google, voz de rede), mas dá pra conferir e trocar:
+
+```
+/  vozes      lista as instaladas, da melhor pra pior, marcando a em uso
+/  voz 2      passa a usar a de número 2
+```
+
+**Se a voz estiver ruim, esse é o primeiro lugar pra olhar** — pode haver uma
+melhor instalada que não ganhou a nota.
+
 ## Gerar a voz
 
 A voz da IA é sintetizada **em casa, antes da feira** — essa etapa precisa de

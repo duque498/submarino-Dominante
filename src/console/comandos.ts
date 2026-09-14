@@ -30,6 +30,7 @@ export type Comando =
       chaveAudio?: ChaveResposta
     }
   | { tipo: 'profundidade'; metros: number; resposta: string }
+  | { tipo: 'vozes'; numero?: number; resposta: string }
   | { tipo: 'desconhecido'; entrada: string; resposta: string; chaveAudio?: ChaveResposta }
 
 /** Minúsculas, sem acento, sem espaço sobrando. */
@@ -67,6 +68,7 @@ export function vocabulario(): string[] {
     'som',
     'ambiente',
     'voz',
+    'vozes',
   ]
 }
 
@@ -132,7 +134,20 @@ export function interpretar(entrada: string): Comando {
     }
   }
 
-  // 4) profundidade (comando de depuração: força o cenário numa faixa)
+  // 4) vozes: listar as instaladas e trocar pela de número N
+  if (texto === 'vozes' || texto === 'listar vozes') {
+    return { tipo: 'vozes', resposta: 'Listando vozes instaladas no log de bordo.' }
+  }
+  const escolha = /^voz\s+(\d+)$/.exec(texto)
+  if (escolha) {
+    return {
+      tipo: 'vozes',
+      numero: Number(escolha[1]),
+      resposta: 'Trocando o sintetizador de voz.',
+    }
+  }
+
+  // 5) profundidade (comando de depuração: força o cenário numa faixa)
   const profundidade = /^(?:profundidade|prof|descer|subir)\s+(\d+)$/.exec(texto)
   if (profundidade) {
     const metros = Math.max(0, Math.min(11000, Number(profundidade[1])))
@@ -143,14 +158,14 @@ export function interpretar(entrada: string): Comando {
     }
   }
 
-  // 5) navegação
+  // 6) navegação
   if (VERBOS_CENA.includes(palavras[0]) && palavras[1]) {
     const numero = Number(palavras[1])
     const alvo = Number.isInteger(numero) && numero > 0 ? numero : palavras.slice(1).join('-')
     return { tipo: 'cena', alvo, resposta: MOLDES.navegando(palavras.slice(1).join(' ')) }
   }
 
-  // 6) sistema
+  // 7) sistema
   switch (texto) {
     case 'pane':
     case 'falha':
@@ -221,7 +236,7 @@ export function interpretar(entrada: string): Comando {
       }
   }
 
-  // 7) primitivas procedurais, desenhadas na hora
+  // 8) primitivas procedurais, desenhadas na hora
   if (semVerboForma in PRIMITIVAS) {
     return {
       tipo: 'forma',
@@ -230,7 +245,7 @@ export function interpretar(entrada: string): Comando {
     }
   }
 
-  // 8) fallback — nunca "comando inválido" seco: no palco isso parece defeito
+  // 9) fallback — nunca "comando inválido" seco: no palco isso parece defeito
   return {
     tipo: 'desconhecido',
     entrada: bruto,
