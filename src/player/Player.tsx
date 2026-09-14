@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { FORMA_PADRAO } from '../formas'
 import type { Cena, Roteiro } from '../roteiros/tipos'
 import { Apresentacao } from '../cenas/Apresentacao'
 import { Fala } from '../cenas/Fala'
 import { Transicao } from '../cenas/Transicao'
+import { Ajuda } from '../ui/Ajuda'
 import { Hud } from '../ui/Hud'
 import { LogSistemas, type ModoLog } from '../ui/LogSistemas'
 import { Orbe, type EstadoOrbe } from '../ui/Orbe'
@@ -11,6 +13,12 @@ import { useTeclado } from './useTeclado'
 
 /** Tempo estimado de leitura por linha, usado quando o mp3 não existe. */
 const MS_POR_LINHA_SEM_AUDIO = 2500
+/** Limites do ajuste de tamanho do orbe pelo operador ([ e ]). */
+const ESCALA_MIN = 0.5
+const ESCALA_MAX = 2
+const ESCALA_PASSO = 0.1
+/** Marca "esfera forçada": o operador apertou O e saiu da lista da cena. */
+const SEM_FORMA = -1
 
 /** Caminho do mp3 principal da cena, quando ela tem um. */
 export function audioDaCena(cena: Cena): string | null {
@@ -77,8 +85,17 @@ export function Player({ roteiro, engine }: Props) {
     ativa: false,
   })
   const [falando, setFalando] = useState(false)
+  /** Índice na lista `formas` da cena; SEM_FORMA quando o operador forçou esfera. */
+  const [indiceForma, setIndiceForma] = useState(SEM_FORMA)
+  const [escala, setEscala] = useState(1)
+  const [ajudaVisivel, setAjudaVisivel] = useState(false)
 
   const cena = sequencia[indice]
+  const formasDaCena = useMemo(() => cena?.formas ?? [], [cena])
+  const formaAtual =
+    indiceForma >= 0 && indiceForma < formasDaCena.length
+      ? formasDaCena[indiceForma]
+      : FORMA_PADRAO
 
   const avancar = useCallback(() => {
     setIndice((atual) => Math.min(atual + 1, sequencia.length - 1))
@@ -106,12 +123,39 @@ export function Player({ roteiro, engine }: Props) {
             engine.pararVoz()
             avancar()
             break
-          // quiz, vf, pane e overlay de ajuda entram na Fase 2.
+          case 'proximaForma':
+            // Vindo de SEM_FORMA (-1), o +1 cai naturalmente na primeira da lista.
+            if (formasDaCena.length > 0) {
+              setIndiceForma((atual) => (atual + 1) % formasDaCena.length)
+            }
+            break
+          case 'formaAnterior':
+            if (formasDaCena.length > 0) {
+              setIndiceForma((atual) =>
+                atual <= 0 ? formasDaCena.length - 1 : atual - 1,
+              )
+            }
+            break
+          case 'esfera':
+            setIndiceForma(SEM_FORMA)
+            break
+          case 'escala':
+            setEscala((atual) =>
+              Math.min(
+                ESCALA_MAX,
+                Math.max(ESCALA_MIN, Number((atual + acao.passo * ESCALA_PASSO).toFixed(2))),
+              ),
+            )
+            break
+          case 'ajuda':
+            setAjudaVisivel((visivel) => !visivel)
+            break
+          // quiz, vf e pane entram na Fase 2.
           default:
             break
         }
       },
-      [avancar, voltar, engine],
+      [avancar, voltar, engine, formasDaCena],
     ),
   )
 
@@ -122,6 +166,8 @@ export function Player({ roteiro, engine }: Props) {
     let cancelado = false
     setSinc({ duracaoMs: null, ativa: false })
     setFalando(false)
+    // A primeira forma da cena entra sozinha ao abrir.
+    setIndiceForma(cena.formas && cena.formas.length > 0 ? 0 : SEM_FORMA)
 
     if (cena.sfx) engine.tocarSfx(cena.sfx)
 
@@ -170,9 +216,9 @@ export function Player({ roteiro, engine }: Props) {
   }
 
   const estadoOrbe = estadoDoOrbe(cena, falando)
-  // Apresentação é o único layout em que o orbe recua pro canto: a tela é dos
-  // alunos, não da IA.
-  const modo = cena.tipo === 'apresentacao' ? 'canto' : 'central'
+  // Só a apresentação escolhe: em "palco" o orbe é o cenário do que os alunos
+  // estão falando; em "discreto" ele recua pro canto e a tela é deles.
+  const modo = layoutDaCena(cena)
 
   return (
     <Hud
@@ -190,20 +236,37 @@ export function Player({ roteiro, engine }: Props) {
           <Orbe
             estado={estadoOrbe}
             lerNivel={lerNivel}
+            forma={formaAtual}
+            escala={escala}
             compacto={modo === 'canto'}
           />
           <div className="palco__texto">
-            {conteudoDaCena(cena, sinc.duracaoMs, sinc.ativa)}
+            {conteudoDaCena(cena, sinc.duracaoMs, sinc.ativa, modo)}
           </div>
+          {formasDaCena.length > 0 && (
+            <p className="palco__forma">
+              {formaAtual}
+              {' · '}
+              {indiceForma >= 0 ? `${indiceForma + 1}/${formasDaCena.length}` : '—'}
+            </p>
+          )}
         </div>
         <LogSistemas
           especificas={cena.log}
           modo={modoDoLog(estadoOrbe)}
-          apagado={modo === 'canto'}
+          apagado={modo !== 'central'}
         />
       </div>
+      {ajudaVisivel && <Ajuda cena={cena.id} forma={formaAtual} escala={escala} />}
     </Hud>
   )
+}
+
+type Layout = 'central' | 'palco' | 'canto'
+
+function layoutDaCena(cena: Cena): Layout {
+  if (cena.tipo !== 'apresentacao') return 'central'
+  return cena.orbe === 'palco' ? 'palco' : 'canto'
 }
 
 function estadoDoOrbe(cena: Cena, falando: boolean): EstadoOrbe {
@@ -226,7 +289,12 @@ function modoDoLog(estado: EstadoOrbe): ModoLog {
   return 'normal'
 }
 
-function conteudoDaCena(cena: Cena, duracaoMs: number | null, ativa: boolean) {
+function conteudoDaCena(
+  cena: Cena,
+  duracaoMs: number | null,
+  ativa: boolean,
+  layout: Layout,
+) {
   // O `key` por id garante que cada cena começa com estado limpo: sem ele, duas
   // falas seguidas reaproveitam o mesmo componente e a legenda herda a posicao
   // da cena anterior.
@@ -234,7 +302,7 @@ function conteudoDaCena(cena: Cena, duracaoMs: number | null, ativa: boolean) {
     case 'fala':
       return <Fala key={cena.id} cena={cena} duracaoMs={duracaoMs} ativa={ativa} />
     case 'apresentacao':
-      return <Apresentacao key={cena.id} cena={cena} />
+      return <Apresentacao key={cena.id} cena={cena} palco={layout === 'palco'} />
     case 'transicao':
       return <Transicao key={cena.id} cena={cena} duracaoMs={duracaoMs} ativa={ativa} />
     default:

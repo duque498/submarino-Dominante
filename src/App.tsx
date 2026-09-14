@@ -5,10 +5,12 @@ import roteiro3a from './roteiros/3a.json'
 import type { Cena, Roteiro, Turma } from './roteiros/tipos'
 import { TURMAS } from './roteiros/tipos'
 import { validarRoteiro } from './roteiros/validar'
+import { carregarFormas } from './formas'
 import { AudioEngine } from './player/AudioEngine'
 import { Player } from './player/Player'
 import { useTeclado } from './player/useTeclado'
 import { Hud } from './ui/Hud'
+import { QTD_PONTOS } from './ui/Orbe'
 
 const ROTEIROS: Record<Turma, unknown> = {
   '2A': roteiro2a,
@@ -22,6 +24,11 @@ function turmaDaUrl(): Turma | null {
   if (!bruto) return null
   const normalizada = bruto.trim().toUpperCase() as Turma
   return TURMAS.includes(normalizada) ? normalizada : null
+}
+
+/** Todas as formas citadas no roteiro, pra amostrar de uma vez no gesto inicial. */
+function formasDoRoteiro(roteiro: Roteiro): string[] {
+  return (roteiro.cenas as Cena[]).flatMap((cena) => cena.formas ?? [])
 }
 
 /** Todos os mp3 citados no roteiro, pro preload depois do gesto inicial. */
@@ -72,7 +79,12 @@ export default function App() {
     setCarregando(true)
     await engine.desbloquear()
     const audios = audiosDoRoteiro(resultado.roteiro)
-    await engine.preload([...audios, ...AudioEngine.urlsSfx()])
+    // As silhuetas são amostradas aqui, não na hora de morfar: dez getImageData
+    // no meio da apresentação seriam um engasgo visível.
+    await Promise.all([
+      engine.preload([...audios, ...AudioEngine.urlsSfx()]),
+      carregarFormas(formasDoRoteiro(resultado.roteiro), QTD_PONTOS),
+    ])
     // Diagnóstico: diz de cara se o audios.js foi encontrado (camada A, com
     // nível de áudio real) ou se a apresentação vai rodar na camada B.
     const camadaA = audios.filter((url) => engine.camadaDe(url) === 'A').length

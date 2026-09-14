@@ -55,7 +55,14 @@
       "tela": {
         "titulo": "SETOR: BIOLOGIA",
         "status": "EXPLORAÇÃO EM CURSO"
-      }
+      },
+      "orbe": "palco",
+      "formas": [
+        "esfera",
+        "circulo",
+        "triangulo",
+        "letra-d"
+      ]
     },
     {
       "id": "arte-intro",
@@ -86,7 +93,8 @@
       "tela": {
         "titulo": "SETOR: ARTE",
         "status": "EXPLORAÇÃO EM CURSO"
-      }
+      },
+      "orbe": "discreto"
     },
     {
       "id": "ef-intro",
@@ -117,7 +125,13 @@
       "tela": {
         "titulo": "SETOR: EDUCAÇÃO FÍSICA",
         "status": "EXPLORAÇÃO EM CURSO"
-      }
+      },
+      "orbe": "palco",
+      "formas": [
+        "esfera",
+        "triangulo",
+        "circulo"
+      ]
     },
     {
       "id": "quiz-intro",

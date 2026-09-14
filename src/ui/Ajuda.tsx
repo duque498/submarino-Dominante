@@ -1,0 +1,41 @@
+type Props = {
+  /** Nome e posição da cena atual, pro operador se localizar no roteiro. */
+  cena: string
+  forma: string
+  escala: number
+}
+
+const ATALHOS: Array<[string, string]> = [
+  ['→ / Enter', 'próxima cena'],
+  ['←', 'cena anterior'],
+  ['Espaço', 'corta o áudio e avança'],
+  ['1 2 3 4', 'resposta do quiz (Fase 2)'],
+  ['V / F', 'verdadeiro ou falso (Fase 2)'],
+  ['P', 'dispara a pane (Fase 2)'],
+  ['R', 'reinicia o sistema (Fase 2)'],
+  ['M / N', 'próxima / anterior forma do orbe'],
+  ['O', 'volta o orbe pra esfera'],
+  ['[ / ]', 'diminui / aumenta o orbe'],
+  ['H', 'mostra ou esconde esta ajuda'],
+]
+
+/** Overlay discreto de atalhos. Fica sempre por cima, mas sem tampar a cena. */
+export function Ajuda({ cena, forma, escala }: Props) {
+  return (
+    <div className="ajuda">
+      <h2 className="ajuda__titulo">atalhos do operador</h2>
+      <dl className="ajuda__lista">
+        {ATALHOS.map(([tecla, acao]) => (
+          <div className="ajuda__item" key={tecla}>
+            <dt>{tecla}</dt>
+            <dd>{acao}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="ajuda__estado">
+        cena: <strong>{cena}</strong> · forma: <strong>{forma}</strong> · escala:{' '}
+        <strong>{Math.round(escala * 100)}%</strong>
+      </p>
+    </div>
+  )
+}

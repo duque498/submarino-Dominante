@@ -9,9 +9,10 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 1.5 concluída.** Funcionam: seleção de turma, tela de ativação, cenas de
-`fala`, `apresentacao` e `transicao`, HUD, orbe animado da IA, legenda
-sincronizada com o áudio e painel de log de sistemas.
+**Fase 1.75 concluída.** Funcionam: seleção de turma, tela de ativação, cenas de
+`fala`, `apresentacao` e `transicao`, HUD, orbe animado da IA (que morfa em
+silhuetas), legenda sincronizada com o áudio, painel de log de sistemas e o
+overlay de atalhos.
 As cenas `quiz`, `vf` e `pane` estão no roteiro mas ainda aparecem como
 "a implementar (Fase 2)". Os mp3 ainda não existem (Fase 3).
 
@@ -72,7 +73,10 @@ Sem `?turma=`, o app mostra uma tela pedindo pra escolher a turma (teclas 1, 2, 
 | `V` / `F` | marca resposta no verdadeiro/falso *(Fase 2)* |
 | `P` | dispara a cena de pane a qualquer momento *(Fase 2)* |
 | `R` | durante a pane: reinicia e volta pra cena onde estava *(Fase 2)* |
-| `H` | mostra/esconde o overlay de atalhos *(Fase 2)* |
+| `H` | mostra/esconde o overlay de atalhos |
+| `M` / `N` | próxima / anterior forma do orbe na cena atual |
+| `O` | volta o orbe pra esfera, de qualquer cena |
+| `[` / `]` | diminui / aumenta o orbe em 10% (ajuste ao vivo; não persiste) |
 
 **A primeira tela pede uma tecla qualquer.** Isso não é decoração: o Chrome só
 libera a reprodução de áudio depois de uma interação do usuário. Esse gesto
@@ -84,15 +88,66 @@ Três elementos, todos cenográficos menos a legenda:
 
 - **Orbe** — a "presença" da IA. Uma esfera de pontos e linhas em Canvas 2D puro
   (sem WebGL, sem biblioteca) que ondula, gira e reage ao áudio. Tem quatro
-  estados: `ocioso`, `falando`, `processando` e `pane`.
+  estados: `ocioso`, `falando`, `processando` e `pane`. Também **morfa em
+  silhuetas** (ver abaixo).
 - **Legenda** — uma linha por vez, grande, embaixo do orbe, revelada palavra a
   palavra junto com a voz. As linhas anteriores não ficam na tela.
 - **Log de sistemas** — coluna da direita. **Nada ali é real**: é um painel
   decorativo que sorteia linhas técnicas de um pool (`src/ui/logPool.ts`) e as
   intercala com as linhas do campo `log` da cena atual.
 
-Nas cenas de `apresentacao` o orbe encolhe pro canto inferior esquerdo e o log
-fica com metade da opacidade — a tela ali é dos alunos, não da IA.
+## Os dois modos da cena `apresentacao`
+
+A IA não é o centro da apresentação, mas às vezes é o cenário. O campo `orbe`
+da cena escolhe:
+
+- `"discreto"` (padrão) — título grande do setor, status embaixo, orbe pequeno
+  no canto inferior esquerdo em `ocioso`. O campo `formas` é ignorado. A tela é
+  dos alunos.
+- `"palco"` — orbe grande e centralizado morfando nas `formas` da cena; título e
+  status viram rótulos pequenos no topo. Um indicador discreto no rodapé
+  (`circulo · 2/4`) diz ao operador qual forma está no ar.
+
+Nos dois modos o log continua na direita, com metade da opacidade.
+
+## Formas do orbe
+
+As ~760 partículas do orbe podem assumir a silhueta de uma imagem: cada uma
+ganha um ponto-alvo dentro do desenho e o orbe interpola até lá em 1,4 s.
+
+O campo `formas` da cena lista, na ordem, o que o operador percorre com `M` e
+`N`. A primeira entra sozinha ao abrir a cena. `"esfera"` é um nome válido e é o
+padrão quando a cena não tem o campo.
+
+```json
+{ "id": "bio", "tipo": "apresentacao", "avanco": "manual",
+  "orbe": "palco",
+  "formas": ["esfera", "baleia", "tartaruga", "coral"] }
+```
+
+### Como adicionar uma forma
+
+1. Salve o PNG em `src/formas/` — **silhueta preta**, fundo transparente (ou
+   branco), no mínimo 256px no maior lado. Sem detalhe interno: o que define a
+   figura é o contorno.
+2. Registre em `src/formas/index.ts`:
+   ```ts
+   import baleia from './baleia.png'
+
+   export const IMAGENS_FORMAS: Record<string, string> = {
+     baleia,
+   }
+   ```
+3. Cite o nome (`"baleia"`) no campo `formas` da cena, no JSON do roteiro.
+
+Nome errado no JSON dá erro legível na tela, com a lista das formas disponíveis.
+
+O `import` tem que passar pelo Vite: com `assetsInlineLimit` alto o PNG vira
+data URI e entra no bundle. Uma imagem carregada por caminho de arquivo via
+`file://` contamina o canvas e o `getImageData` lança `SecurityError`.
+
+> Enquanto os PNGs não chegam, `src/formas/teste.ts` gera três formas em código
+> — `circulo`, `triangulo` e `letra-d` — usadas provisoriamente no `2a.json`.
 
 ## As duas camadas de áudio
 
@@ -175,7 +230,8 @@ src/
   App.tsx            seleção de turma, tela de ativação, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
   cenas/             um componente por tipo de cena
-  ui/                Hud, Orbe, Legenda, LogSistemas, logPool (e Timer, na Fase 2)
+  ui/                Hud, Orbe, Legenda, LogSistemas, logPool, Ajuda
+  formas/            registro das silhuetas, amostragem e formas de teste
   roteiros/          tipos.ts, validar.ts e os JSONs de cada turma
 scripts/
   embutir_audios.py  gera public/audios.js (camada A)

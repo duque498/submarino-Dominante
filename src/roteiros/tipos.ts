@@ -20,6 +20,12 @@ export type CenaBase = {
    * esta cena estiver no ar. So cenario — nao afetam o audio nem o avanco.
    */
   log?: string[]
+  /**
+   * Silhuetas que o orbe pode assumir nesta cena, na ordem em que o operador
+   * percorre com M e N. A primeira entra ao abrir a cena. "esfera" e valido.
+   * Sem o campo, o orbe fica em esfera.
+   */
+  formas?: string[]
 }
 
 export type CenaFala = CenaBase & {
@@ -36,6 +42,11 @@ export type CenaApresentacao = CenaBase & {
   /** fala de abertura opcional */
   audio?: string
   avanco: 'manual'
+  /**
+   * "palco": o orbe e grande e central, morfando nas `formas` da cena.
+   * "discreto" (padrao): titulo grande, orbe pequeno no canto, `formas` ignorado.
+   */
+  orbe?: 'palco' | 'discreto'
 }
 
 /** Animacao do submarino se deslocando ate a proxima turma. */

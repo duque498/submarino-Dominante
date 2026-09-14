@@ -10,6 +10,10 @@ export type Acao =
   | { tipo: 'pane' }
   | { tipo: 'reiniciar' }
   | { tipo: 'ajuda' }
+  | { tipo: 'proximaForma' }
+  | { tipo: 'formaAnterior' }
+  | { tipo: 'esfera' }
+  | { tipo: 'escala'; passo: number }
 
 function traduzir(evento: KeyboardEvent): Acao | null {
   switch (evento.key) {
@@ -26,6 +30,10 @@ function traduzir(evento: KeyboardEvent): Acao | null {
     case '3':
     case '4':
       return { tipo: 'alternativa', indice: Number(evento.key) - 1 }
+    case '[':
+      return { tipo: 'escala', passo: -1 }
+    case ']':
+      return { tipo: 'escala', passo: 1 }
   }
 
   switch (evento.key.toLowerCase()) {
@@ -39,6 +47,12 @@ function traduzir(evento: KeyboardEvent): Acao | null {
       return { tipo: 'reiniciar' }
     case 'h':
       return { tipo: 'ajuda' }
+    case 'm':
+      return { tipo: 'proximaForma' }
+    case 'n':
+      return { tipo: 'formaAnterior' }
+    case 'o':
+      return { tipo: 'esfera' }
     default:
       return null
   }

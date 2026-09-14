@@ -75,10 +75,21 @@ export const POOL_ERRO: GeradorLog[] = [
   () => `ERR: checksum inválido no pacote de telemetria`,
 ]
 
+/** Evita sortear o mesmo gerador duas vezes seguidas: repetição denuncia o truque. */
+function sortearSemRepetir(pool: GeradorLog[], ultimo: { indice: number }): string {
+  let indice = Math.floor(Math.random() * pool.length)
+  if (indice === ultimo.indice) indice = (indice + 1) % pool.length
+  ultimo.indice = indice
+  return pool[indice]()
+}
+
+const ultimoGenerico = { indice: -1 }
+const ultimoErro = { indice: -1 }
+
 export function sortearGenerico(): string {
-  return escolher(POOL_GENERICO)()
+  return sortearSemRepetir(POOL_GENERICO, ultimoGenerico)
 }
 
 export function sortearErro(): string {
-  return escolher(POOL_ERRO)()
+  return sortearSemRepetir(POOL_ERRO, ultimoErro)
 }

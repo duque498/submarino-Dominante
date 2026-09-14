@@ -1,3 +1,4 @@
+import { formaRegistrada, NOMES_FORMAS } from '../formas'
 import type { Cena, Roteiro, Turma } from './tipos'
 import { TURMAS } from './tipos'
 
@@ -77,6 +78,22 @@ export function validarRoteiro(dado: unknown): string[] {
       erros.push(`${onde}: campo "log" deve ser uma lista de textos nao vazia.`)
     }
 
+    if (cena.formas !== undefined) {
+      if (!ehListaDeTextos(cena.formas)) {
+        erros.push(`${onde}: campo "formas" deve ser uma lista de nomes de forma.`)
+      } else {
+        for (const nome of cena.formas) {
+          if (!formaRegistrada(nome)) {
+            erros.push(
+              `${onde}: a forma "${nome}" nao esta registrada. ` +
+                `Formas disponiveis: ${NOMES_FORMAS.join(', ')}. ` +
+                `Pra adicionar, ponha o PNG em src/formas/ e registre em src/formas/index.ts.`,
+            )
+          }
+        }
+      }
+    }
+
     switch (cena.tipo) {
       case 'fala': {
         if (!ehListaDeTextos(cena.tela?.linhas)) {
@@ -96,6 +113,9 @@ export function validarRoteiro(dado: unknown): string[] {
         }
         if (cena.avanco !== 'manual') {
           erros.push(`${onde}: cena de apresentacao precisa ter "avanco": "manual".`)
+        }
+        if (cena.orbe !== undefined && cena.orbe !== 'palco' && cena.orbe !== 'discreto') {
+          erros.push(`${onde}: campo "orbe" deve ser "palco" ou "discreto".`)
         }
         break
       }

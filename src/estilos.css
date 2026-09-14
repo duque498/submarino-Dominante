@@ -219,6 +219,32 @@ body {
   aspect-ratio: 1;
 }
 
+/* Modo palco: a apresentacao em que o orbe e o cenario do que os alunos estao
+   falando. Titulo vira rotulo e sobe pro topo; o orbe ocupa o resto. */
+.palco--palco .orbe {
+  flex: 0 1 auto;
+  width: auto;
+  height: 60vh;
+  min-height: 0;
+  max-width: 100%;
+  aspect-ratio: 1;
+}
+
+.palco--palco .palco__texto {
+  order: -1;
+  flex: 0 0 auto;
+  gap: clamp(2px, 0.5vh, 6px);
+}
+
+/* Indicador so pro operador: qual forma esta no ar e a posicao na lista. */
+.palco__forma {
+  margin: 0;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.6rem, 1.3vh, 0.85rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
 /* Modo canto: a tela e dos alunos, o orbe so marca presenca. */
 .palco--canto .orbe {
   position: absolute;
@@ -460,6 +486,66 @@ body {
   to {
     left: 100%;
   }
+}
+
+/* --- overlay de ajuda (tecla H) ------------------------------------------ */
+
+.ajuda {
+  position: fixed;
+  right: clamp(16px, 3vw, 48px);
+  bottom: clamp(48px, 8vh, 96px);
+  z-index: 10;
+  max-width: min(92vw, 420px);
+  padding: clamp(12px, 2vh, 22px) clamp(14px, 2vw, 26px);
+  border: 1px solid var(--ciano);
+  border-radius: 6px;
+  background: rgba(2, 16, 20, 0.94);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  color: var(--texto);
+  font-size: clamp(0.7rem, 1.5vh, 0.95rem);
+}
+
+.ajuda__titulo {
+  margin: 0 0 0.8em;
+  color: var(--ciano);
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.ajuda__lista {
+  display: grid;
+  gap: 0.3em;
+  margin: 0;
+}
+
+.ajuda__item {
+  display: grid;
+  grid-template-columns: 8em 1fr;
+  gap: 0.8em;
+}
+
+.ajuda__item dt {
+  color: var(--verde);
+}
+
+.ajuda__item dd {
+  margin: 0;
+  color: var(--texto);
+  opacity: 0.85;
+}
+
+.ajuda__estado {
+  margin: 1em 0 0;
+  padding-top: 0.8em;
+  border-top: 1px solid var(--ciano-fraco);
+  color: var(--ciano-fraco);
+}
+
+.ajuda__estado strong {
+  color: var(--ciano);
+  font-weight: 400;
 }
 
 /* --- erro de roteiro ----------------------------------------------------- */
