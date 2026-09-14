@@ -10,8 +10,8 @@ Por que isso existe: via file://, o Chrome se recusa a ler o áudio de um
 o nível real do som pra animar o orbe. Com o mp3 em data URL, o fetch é
 same-origin e o decodeAudioData funciona.
 
-Os SFX ficam de fora de propósito: continuam como <audio> comum, não precisam
-de análise e só engordariam o arquivo.
+Leva também os tempos.json de cada turma em window.__TEMPOS: são os offsets de
+cada linha dentro do mp3, que deixam a legenda trocar de linha na hora exata.
 
 Uso:
     python3 scripts/embutir_audios.py
@@ -22,13 +22,14 @@ Na Fase 3 o gerar_audios.py vai chamar isso no fim da geração.
 from __future__ import annotations
 
 import base64
+import json
 import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 PASTA_AUDIO = RAIZ / "public" / "audio"
 SAIDA = RAIZ / "public" / "audios.js"
-TURMAS = ("2a", "2b", "3a")
+PASTAS = ("2a", "2b", "3a", "sfx", "sistema")
 # Acima disso o Chromebook começa a sofrer pra segurar tudo em memória.
 AVISO_TAMANHO_MB = 40
 
@@ -39,14 +40,20 @@ def main() -> int:
         return 1
 
     entradas: dict[str, str] = {}
-    for turma in TURMAS:
-        pasta = PASTA_AUDIO / turma
+    tempos: dict[str, dict] = {}
+    for nome in PASTAS:
+        pasta = PASTA_AUDIO / nome
         if not pasta.is_dir():
             continue
         for mp3 in sorted(pasta.glob("*.mp3")):
-            chave = f"{turma}/{mp3.stem}"
+            chave = f"{nome}/{mp3.stem}"
             dados = base64.b64encode(mp3.read_bytes()).decode("ascii")
             entradas[chave] = f"data:audio/mpeg;base64,{dados}"
+        # Os offsets de cada linha viajam junto: sem eles a legenda cai no
+        # modo proporcional mesmo com o áudio presente.
+        arquivo_tempos = pasta / "tempos.json"
+        if arquivo_tempos.is_file():
+            tempos[nome] = json.loads(arquivo_tempos.read_text(encoding="utf-8"))
 
     if not entradas:
         print("nenhum mp3 encontrado em public/audio/<turma>/ — nada a fazer.")
@@ -57,12 +64,19 @@ def main() -> int:
     for chave, data_url in entradas.items():
         partes.append(f'  "{chave}": "{data_url}",\n')
     partes.append("};\n")
+    partes.append("window.__TEMPOS = ")
+    partes.append(json.dumps(tempos, ensure_ascii=False))
+    partes.append(";\n")
     conteudo = "".join(partes)
 
     SAIDA.write_text(conteudo, encoding="utf-8")
 
     tamanho_mb = len(conteudo) / (1024 * 1024)
-    print(f"public/audios.js gerado: {len(entradas)} áudio(s), {tamanho_mb:.1f} MB")
+    cenas_com_tempos = sum(len(v) for v in tempos.values())
+    print(
+        f"public/audios.js gerado: {len(entradas)} áudio(s), "
+        f"{cenas_com_tempos} cena(s) com tempos reais, {tamanho_mb:.1f} MB"
+    )
     if tamanho_mb > AVISO_TAMANHO_MB:
         print(
             f"aviso: passou de {AVISO_TAMANHO_MB} MB. Considere reduzir o bitrate "

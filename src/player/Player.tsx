@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConsoleComandos } from '../console/Console'
 import { interpretar, vocabulario } from '../console/comandos'
+import { audioDaResposta } from '../console/respostas'
 import { carregarFormas, FORMA_PADRAO, prepararGlifo } from '../formas'
 import { Feed } from '../mundo/Feed'
 import { motor } from '../mundo/motor'
@@ -17,7 +18,7 @@ import { Hud } from '../ui/Hud'
 import { Legenda } from '../ui/Legenda'
 import { LogSistemas, type ModoLog } from '../ui/LogSistemas'
 import { POOL_COMANDO } from '../ui/logPool'
-import { duracaoDaLegenda } from '../ui/ritmoLegenda'
+import { duracaoDaLegenda, type TemposReais } from '../ui/ritmoLegenda'
 import { Orbe, QTD_PONTOS, type EstadoOrbe } from '../ui/Orbe'
 import type { AudioEngine } from './AudioEngine'
 import { useTeclado } from './useTeclado'
@@ -116,10 +117,11 @@ export function Player({ roteiro, engine }: Props) {
 
   const [indice, setIndice] = useState(0)
   /** Cronômetro da legenda: só arranca quando o áudio da cena arrancou. */
-  const [sinc, setSinc] = useState<{ duracaoMs: number | null; ativa: boolean }>({
-    duracaoMs: null,
-    ativa: false,
-  })
+  const [sinc, setSinc] = useState<{
+    duracaoMs: number | null
+    ativa: boolean
+    tempos: TemposReais | null
+  }>({ duracaoMs: null, ativa: false, tempos: null })
   const [falando, setFalando] = useState(false)
   const [indiceForma, setIndiceForma] = useState(SEM_FORMA)
   const [formaForcada, setFormaForcada] = useState<string | null>(null)
@@ -436,7 +438,13 @@ export function Player({ roteiro, engine }: Props) {
           break
       }
 
-      if (comando.resposta) dizer([comando.resposta])
+      if (comando.resposta) {
+        // Respostas fixas têm mp3 gerado pelo script; as com parte variável
+        // (nome de forma, de painel) vão só pra legenda.
+        const chave = 'chaveAudio' in comando ? comando.chaveAudio : undefined
+        if (chave) void falarAvulso(audioDaResposta(chave), [comando.resposta])
+        else dizer([comando.resposta])
+      }
       setOrbeForcado(null)
       setConsoleTravado(false)
       if (!manterAberto) setConsoleAberto(false)
@@ -447,6 +455,7 @@ export function Player({ roteiro, engine }: Props) {
       engine,
       prepararForma,
       dizer,
+      falarAvulso,
       sequencia,
       dispararPane,
       reiniciarDaPane,
@@ -539,7 +548,7 @@ export function Player({ roteiro, engine }: Props) {
     if (!cena) return
 
     let cancelado = false
-    setSinc({ duracaoMs: null, ativa: false })
+    setSinc({ duracaoMs: null, ativa: false, tempos: null })
     setFalando(false)
     setIndiceForma(cena.formas && cena.formas.length > 0 ? 0 : SEM_FORMA)
     setFormaForcada(null)
@@ -565,7 +574,10 @@ export function Player({ roteiro, engine }: Props) {
       // é o que o modo degradado pede; passar o fallback aqui faria ela entrar
       // no ramo proporcional e inflar as linhas curtas.
       const duracaoMs = reproducao?.tocou ? reproducao.duracaoMs : null
-      setSinc({ duracaoMs, ativa: true })
+      // Offsets medidos linha a linha no mp3: quando existem, a legenda troca
+      // exatamente quando a voz troca.
+      const reais = reproducao?.tocou ? engine.temposDaCena(roteiro.turma, cena.id) : null
+      setSinc({ duracaoMs, ativa: true, tempos: reais?.linhas ?? null })
       setFalando(true)
       if (!reproducao?.tocou) engine.simularVoz(fallbackMs)
 
@@ -574,7 +586,9 @@ export function Player({ roteiro, engine }: Props) {
 
       // A cena só termina quando o áudio E a legenda terminarem: se o mp3 for
       // mais curto que os mínimos de leitura, quem manda é a legenda.
-      const naTela = legenda ? duracaoDaLegenda(legenda, duracaoMs) : fallbackMs
+      const naTela = legenda
+        ? duracaoDaLegenda(legenda, duracaoMs, reais?.linhas ?? null)
+        : fallbackMs
       if (reproducao?.tocou) await Promise.all([reproducao.fim, esperar(naTela)])
       else await esperar(naTela)
       if (cancelado) return
@@ -591,7 +605,7 @@ export function Player({ roteiro, engine }: Props) {
       cancelado = true
       engine.pararVoz()
     }
-  }, [cena, indice, sequencia, engine, avancar])
+  }, [cena, indice, sequencia, engine, avancar, roteiro.turma])
 
   // O mundo das câmeras roda enquanto o player estiver montado, mesmo que
   // nenhum feed esteja visível: a profundidade do HUD depende dele.
@@ -847,7 +861,7 @@ function dinamicaDaCena(
 
 function conteudoDaCena(
   cena: Cena,
-  sinc: { duracaoMs: number | null; ativa: boolean },
+  sinc: { duracaoMs: number | null; ativa: boolean; tempos: TemposReais | null },
   layout: Layout,
   falando: boolean,
   lerNivel: () => number,
@@ -862,6 +876,7 @@ function conteudoDaCena(
           ativa={sinc.ativa}
           falando={falando}
           lerNivel={lerNivel}
+          tempos={sinc.tempos}
         />
       )
     case 'apresentacao':
@@ -875,6 +890,7 @@ function conteudoDaCena(
           ativa={sinc.ativa}
           falando={falando}
           lerNivel={lerNivel}
+          tempos={sinc.tempos}
         />
       )
     default:

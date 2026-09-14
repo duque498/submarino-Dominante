@@ -37,16 +37,53 @@ export function duracaoMinima(linha: string): number {
   return Math.max(MS_MINIMO_LINHA, msDeLeitura(linha)) + MS_PAUSA_LINHA
 }
 
+/** Offsets reais de cada linha dentro do mp3, vindos do tempos.json. */
+export type TemposReais = Array<{ inicio: number; fim: number }>
+
 /**
- * Monta a linha do tempo da legenda.
+ * Monta a linha do tempo da legenda. Três modos, nesta ordem de preferência:
  *
- * Sem duração de áudio, cada linha recebe o próprio mínimo. Com áudio, a
- * duração real é repartida proporcional a caracteres — mas nunca abaixo do
- * mínimo: se o mp3 for mais curto que a soma dos mínimos, quem dita o ritmo é
- * a legenda, e a cena espera por ela.
+ *  1. tempos reais — offsets medidos linha a linha no mp3 pelo gerar_audios.py.
+ *     A legenda troca exatamente quando a voz troca;
+ *  2. proporcional — reparte a duração do mp3 por número de caracteres, nunca
+ *     abaixo do mínimo de leitura;
+ *  3. mínimos — sem áudio nenhum, cada linha fica o tempo de ser lida em voz
+ *     alta mais a pausa.
  */
-export function planejar(linhas: string[], duracaoTotalMs: number | null): LinhaPlanejada[] {
+export function planejar(
+  linhas: string[],
+  duracaoTotalMs: number | null,
+  tempos?: TemposReais | null,
+): LinhaPlanejada[] {
   const minimos = linhas.map(duracaoMinima)
+
+  // Modo 1: offsets reais. Só vale se bater linha a linha com o roteiro —
+  // um tempos.json defasado é pior que não ter nenhum.
+  if (tempos && tempos.length === linhas.length) {
+    return linhas.map((linha, indice) => {
+      const inicio = tempos[indice].inicio
+      const fimDaFala = tempos[indice].fim
+      const proximo = tempos[indice + 1]?.inicio ?? (duracaoTotalMs ?? fimDaFala)
+      const palavras = linha.split(/\s+/).filter(Boolean)
+      const janela = Math.max(MS_MINIMO_REVELACAO, fimDaFala - inicio)
+      const pesosPalavra = palavras.map((palavra) => palavra.length + PESO_PAUSA_PALAVRA)
+      const pesoPalavras = somar(pesosPalavra) || 1
+
+      let dentro = 0
+      const temposPalavra = pesosPalavra.map((peso) => {
+        const quando = inicio + dentro
+        dentro += (janela * peso) / pesoPalavras
+        return quando
+      })
+
+      return {
+        inicio,
+        duracao: Math.max(proximo - inicio, janela),
+        palavras,
+        tempos: temposPalavra,
+      }
+    })
+  }
 
   let duracoes: number[]
   if (duracaoTotalMs === null) {
@@ -86,12 +123,20 @@ export function planejar(linhas: string[], duracaoTotalMs: number | null): Linha
   })
 }
 
-/** Quanto tempo a legenda inteira leva. */
+/** Quanto tempo a legenda inteira leva, do zero ao fim da última linha. */
 export function duracaoDoPlano(plano: LinhaPlanejada[]): number {
-  return somar(plano.map((linha) => linha.duracao))
+  if (plano.length === 0) return 0
+  const ultima = plano[plano.length - 1]
+  // Com tempos reais as linhas não começam no fim da anterior, então somar as
+  // durações daria um total errado: o que vale é onde a última termina.
+  return Math.max(ultima.inicio + ultima.duracao, somar(plano.map((l) => l.duracao)))
 }
 
 /** Atalho: duração da legenda dessas linhas com (ou sem) áudio. */
-export function duracaoDaLegenda(linhas: string[], duracaoTotalMs: number | null): number {
-  return duracaoDoPlano(planejar(linhas, duracaoTotalMs))
+export function duracaoDaLegenda(
+  linhas: string[],
+  duracaoTotalMs: number | null,
+  tempos?: TemposReais | null,
+): number {
+  return duracaoDoPlano(planejar(linhas, duracaoTotalMs, tempos))
 }

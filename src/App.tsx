@@ -88,9 +88,13 @@ export default function App() {
     // Diagnóstico: diz de cara se o audios.js foi encontrado (camada A, com
     // nível de áudio real) ou se a apresentação vai rodar na camada B.
     const camadaA = audios.filter((url) => engine.camadaDe(url) === 'A').length
+    const cenasComAudio = new Set(audios.map((url) => url.split('/').pop())).size
+    const comTempos = engine.contarTempos(resultado.roteiro.turma)
+    const sfxProprio = AudioEngine.urlsSfx().filter((url) => engine.camadaDe(url) === 'A').length
     console.info(
-      `[audio] camada A (nível real) em ${camadaA}/${audios.length} arquivos; ` +
-        `o resto usa a camada B (envelope sintético).`,
+      `[audio] camada A em ${camadaA}/${audios.length} · ` +
+        `tempos reais em ${comTempos}/${cenasComAudio} cenas · ` +
+        `sfx ${sfxProprio > 0 ? 'de arquivo' : 'sintético'}`,
     )
     setAtivado(true)
   }, [resultado, carregando, engine])

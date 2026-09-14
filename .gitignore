@@ -3,8 +3,13 @@ dist
 .DS_Store
 *.local
 
-# cache do gerador de audios (Fase 3)
+# tudo que o scripts/gerar_audios.py produz. São artefatos regeneráveis e
+# pesados; quem apresenta gera em casa e copia o dist/ pro Chromebook.
 scripts/.cache.json
+scripts/.cache/
+public/audio/**/*.mp3
+public/audio/**/tempos.json
 
 # gerado por scripts/embutir_audios.py (camada A) — pesa dezenas de MB
 public/audios.js
+scripts/__pycache__/

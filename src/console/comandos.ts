@@ -1,6 +1,7 @@
 import { formaRegistrada, NOMES_FORMAS } from '../formas'
 import { PRIMITIVAS } from '../formas/primitivas'
 import { NOMES_FICHAS, NOMES_PAINEIS, resolverPainel } from '../paineis/nomes'
+import { MOLDES, RESPOSTAS, type ChaveResposta } from './respostas'
 
 /**
  * Parser dos comandos do console. Sintaxe livre e tolerante: no palco, o
@@ -9,16 +10,17 @@ import { NOMES_FICHAS, NOMES_PAINEIS, resolverPainel } from '../paineis/nomes'
  */
 
 export type Comando =
-  | { tipo: 'forma'; nome: string; argumento?: string; resposta: string }
+  | { tipo: 'forma'; nome: string; argumento?: string; resposta: string; chaveAudio?: ChaveResposta }
   | { tipo: 'painel'; nome: string; argumento?: string; resposta: string }
   | { tipo: 'cena'; alvo: number | string; resposta: string }
   | {
       tipo: 'sistema'
       acao: 'pane' | 'reiniciar' | 'limpar' | 'ajuda' | 'status' | 'proximo' | 'voltar'
       resposta: string
+      chaveAudio?: ChaveResposta
     }
   | { tipo: 'profundidade'; metros: number; resposta: string }
-  | { tipo: 'desconhecido'; entrada: string; resposta: string }
+  | { tipo: 'desconhecido'; entrada: string; resposta: string; chaveAudio?: ChaveResposta }
 
 /** Minúsculas, sem acento, sem espaço sobrando. */
 export function normalizar(texto: string): string {
@@ -76,13 +78,12 @@ export function interpretar(entrada: string): Comando {
   // 1) formas registradas — com ou sem verbo antes
   const semVerboForma = semVerbo(palavras, VERBOS_FORMA).join(' ')
   if (formaRegistrada(semVerboForma)) {
+    const ehEsfera = semVerboForma === 'esfera'
     return {
       tipo: 'forma',
       nome: semVerboForma,
-      resposta:
-        semVerboForma === 'esfera'
-          ? 'Retornando à forma padrão.'
-          : `Assumindo forma: ${semVerboForma.toUpperCase()}.`,
+      resposta: ehEsfera ? RESPOSTAS.esfera : MOLDES.forma(semVerboForma),
+      chaveAudio: ehEsfera ? 'esfera' : undefined,
     }
   }
 
@@ -94,7 +95,7 @@ export function interpretar(entrada: string): Comando {
       tipo: 'forma',
       nome: 'glifo',
       argumento: conteudo,
-      resposta: `Assumindo forma: ${conteudo.toUpperCase()}.`,
+      resposta: MOLDES.forma(conteudo),
     }
   }
 
@@ -107,16 +108,14 @@ export function interpretar(entrada: string): Comando {
       return {
         tipo: 'desconhecido',
         entrada: bruto,
-        resposta: `Informe o que catalogar. Disponíveis: ${NOMES_FICHAS.join(', ')}.`,
+        resposta: MOLDES.fichaSemArgumento(NOMES_FICHAS.join(', ')),
       }
     }
     return {
       tipo: 'painel',
       nome: painel,
       argumento,
-      resposta: argumento
-        ? `Abrindo ficha: ${argumento.toUpperCase()}.`
-        : `Abrindo ${painel.toUpperCase()}.`,
+      resposta: argumento ? MOLDES.ficha(argumento) : MOLDES.painel(painel),
     }
   }
 
@@ -127,7 +126,7 @@ export function interpretar(entrada: string): Comando {
     return {
       tipo: 'profundidade',
       metros,
-      resposta: `Ajustando profundidade para ${metros} metros.`,
+      resposta: MOLDES.profundidade(metros),
     }
   }
 
@@ -135,28 +134,53 @@ export function interpretar(entrada: string): Comando {
   if (VERBOS_CENA.includes(palavras[0]) && palavras[1]) {
     const numero = Number(palavras[1])
     const alvo = Number.isInteger(numero) && numero > 0 ? numero : palavras.slice(1).join('-')
-    return { tipo: 'cena', alvo, resposta: `Navegando para ${palavras.slice(1).join(' ')}.` }
+    return { tipo: 'cena', alvo, resposta: MOLDES.navegando(palavras.slice(1).join(' ')) }
   }
 
   // 6) sistema
   switch (texto) {
     case 'pane':
     case 'falha':
-      return { tipo: 'sistema', acao: 'pane', resposta: 'ALERTA. FALHA NO SISTEMA DE BORDO.' }
+      return {
+        tipo: 'sistema',
+        acao: 'pane',
+        resposta: RESPOSTAS.paneAlerta,
+        chaveAudio: 'paneAlerta',
+      }
     case 'reiniciar':
     case 'reset':
-      return { tipo: 'sistema', acao: 'reiniciar', resposta: '...sistema reiniciado.' }
+      return {
+        tipo: 'sistema',
+        acao: 'reiniciar',
+        resposta: RESPOSTAS.reiniciado,
+        chaveAudio: 'reiniciado',
+      }
     case 'limpar':
     case 'fechar':
-      return { tipo: 'sistema', acao: 'limpar', resposta: 'Painéis encerrados.' }
+      return {
+        tipo: 'sistema',
+        acao: 'limpar',
+        resposta: RESPOSTAS.paineisEncerrados,
+        chaveAudio: 'paineisEncerrados',
+      }
     case 'ajuda':
     case 'help':
-      return { tipo: 'sistema', acao: 'ajuda', resposta: 'Listando comandos no log de bordo.' }
+      return { tipo: 'sistema', acao: 'ajuda', resposta: RESPOSTAS.ajuda, chaveAudio: 'ajuda' }
     case 'proximo':
     case 'avancar':
-      return { tipo: 'sistema', acao: 'proximo', resposta: 'Avançando.' }
+      return {
+        tipo: 'sistema',
+        acao: 'proximo',
+        resposta: RESPOSTAS.avancando,
+        chaveAudio: 'avancando',
+      }
     case 'voltar':
-      return { tipo: 'sistema', acao: 'voltar', resposta: 'Retornando.' }
+      return {
+        tipo: 'sistema',
+        acao: 'voltar',
+        resposta: RESPOSTAS.retornando,
+        chaveAudio: 'retornando',
+      }
   }
 
   // 7) primitivas procedurais, desenhadas na hora
@@ -164,7 +188,7 @@ export function interpretar(entrada: string): Comando {
     return {
       tipo: 'forma',
       nome: semVerboForma,
-      resposta: `Assumindo forma: ${semVerboForma.toUpperCase()}.`,
+      resposta: MOLDES.forma(semVerboForma),
     }
   }
 
@@ -172,7 +196,8 @@ export function interpretar(entrada: string): Comando {
   return {
     tipo: 'desconhecido',
     entrada: bruto,
-    resposta: 'Comando não reconhecido pelo sistema de bordo.',
+    resposta: RESPOSTAS.desconhecido,
+    chaveAudio: 'desconhecido',
   }
 }
 

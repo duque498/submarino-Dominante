@@ -1,0 +1,4 @@
+# Geração da voz da IA. Precisa de internet — o edge-tts usa o serviço de
+# síntese da Microsoft. A REPRODUÇÃO na apresentação é 100% offline; só a
+# geração, feita em casa antes da feira, é que precisa de rede.
+edge-tts>=6.1.0

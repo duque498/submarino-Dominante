@@ -1,3 +1,4 @@
+import { tocarSintetico, type NomeSfx } from '../audio/sfx'
 import type { Sfx } from '../roteiros/tipos'
 
 /**
@@ -5,6 +6,12 @@ import type { Sfx } from '../roteiros/tipos'
  * `tocou: false` significa que o áudio não existe ou não pôde ser reproduzido —
  * o Player usa isso pra cair no tempo de fallback em vez de travar.
  */
+/** Offsets de cada linha dentro do mp3 de uma cena, em ms. */
+export type TemposDaCena = {
+  duracaoMs: number
+  linhas: Array<{ inicio: number; fim: number }>
+}
+
 export type Reproducao = {
   tocou: boolean
   /** Só conhecida quando o áudio realmente começou. */
@@ -19,6 +26,11 @@ declare global {
     __AUDIOS?: Record<string, string>
     /** Resolve quando o ./audios.js terminou de carregar (ou falhou). */
     __AUDIOS_PRONTO?: Promise<void>
+    /**
+     * Offsets reais de cada linha dentro do mp3 da cena, por turma e por cena.
+     * Vem do tempos.json que o gerar_audios.py emite, embutido no audios.js.
+     */
+    __TEMPOS?: Record<string, Record<string, TemposDaCena>>
   }
 }
 
@@ -193,7 +205,10 @@ export class AudioEngine {
             const aoCarregar = () => encerrar()
             const aoFalhar = () => {
               this.ausentes.add(url)
-              console.warn(`[audio] arquivo não encontrado: ${url}`)
+              // SFX ausente não é problema: cai no sintetizado.
+              if (!url.includes('/sfx/')) {
+                console.warn(`[audio] arquivo não encontrado: ${url}`)
+              }
               encerrar()
             }
             // Não deixa um arquivo lento travar a tela de ativação.
@@ -314,17 +329,37 @@ export class AudioEngine {
     setTimeout(() => this.pararLoopNivel(), duracaoMs)
   }
 
-  /** Dispara um efeito sonoro no canal paralelo, sem esperar o fim. */
+  /**
+   * Dispara um efeito sonoro. O mp3 tem prioridade; sem ele, o efeito é
+   * sintetizado na hora — assim o projeto roda completo sem nenhum arquivo.
+   */
   tocarSfx(sfx: Sfx): void {
     const url = CAMINHOS_SFX[sfx]
-    if (this.ausentes.has(url)) return
+    if (this.ausentes.has(url)) return this.tocarSfxSintetico(sfx)
+
     const elemento = this.obterElemento(url)
     this.sfxAtual = elemento
     elemento.currentTime = 0
     elemento.play().catch(() => {
       this.ausentes.add(url)
-      console.warn(`[audio] sfx indisponível: ${url}`)
+      this.tocarSfxSintetico(sfx)
     })
+  }
+
+  private tocarSfxSintetico(sfx: Sfx): void {
+    const contexto = this.obterContexto()
+    if (!contexto) return
+    tocarSintetico(contexto, contexto.destination, sfx as NomeSfx)
+  }
+
+  /** Offsets reais das linhas de uma cena, se o tempos.json foi gerado. */
+  temposDaCena(turma: string, grupo: string): TemposDaCena | null {
+    return window.__TEMPOS?.[turma.toLowerCase()]?.[grupo] ?? null
+  }
+
+  /** Quantas cenas da turma têm tempos reais — só pro log de diagnóstico. */
+  contarTempos(turma: string): number {
+    return Object.keys(window.__TEMPOS?.[turma.toLowerCase()] ?? {}).length
   }
 
   /** Interrompe só a voz (usado pelo Espaço, que pula a fala atual). */

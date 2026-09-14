@@ -1,5 +1,6 @@
 import type { CenaTransicao } from '../roteiros/tipos'
 import { Legenda } from '../ui/Legenda'
+import type { TemposReais } from '../ui/ritmoLegenda'
 
 type Props = {
   cena: CenaTransicao
@@ -7,9 +8,10 @@ type Props = {
   ativa: boolean
   falando: boolean
   lerNivel: () => number
+  tempos?: TemposReais | null
 }
 
-export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel }: Props) {
+export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel, tempos }: Props) {
   return (
     <>
       <Legenda
@@ -19,6 +21,7 @@ export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel }: Props) 
         falando={falando}
         lerNivel={lerNivel}
         cena={cena.id}
+        tempos={tempos}
       />
       <p className="transicao__destino">destino: {cena.destino}</p>
       <div className="transicao__trilho" />

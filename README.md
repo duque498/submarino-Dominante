@@ -9,11 +9,11 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 2.5 concluída.** Todos os tipos de cena funcionam: `fala`,
+**Fase 3 concluída.** Todos os tipos de cena funcionam: `fala`,
 `apresentacao`, `transicao`, `quiz`, `vf` e `pane`. Mais HUD, orbe que morfa em
 silhuetas, legenda sincronizada, log de sistemas, console de comandos, painéis,
-câmeras externas com o oceano procedural e profundidade real. Falta o pipeline
-de áudio (Fase 3) e os roteiros do 2B e do 3A (Fase 4).
+câmeras externas com o oceano procedural, profundidade real e o pipeline de
+voz. Falta só preencher os roteiros do 2B e do 3A (Fase 4).
 As cenas `quiz`, `vf` e `pane` estão no roteiro mas ainda aparecem como
 "a implementar (Fase 2)". Os mp3 ainda não existem (Fase 3).
 
@@ -328,10 +328,10 @@ variável e pausas curtas a cada 2–4 s. Visualmente convence; só não está
 sincronizado com a voz de verdade.
 
 O componente do orbe não sabe qual camada está ativa — ele só recebe uma função
-que devolve o nível. Ao ativar os sistemas, o console diz qual camada pegou:
+que devolve o nível. Ao ativar os sistemas, o console resume tudo:
 
 ```
-[audio] camada A (nível real) em 17/17 arquivos; o resto usa a camada B (envelope sintético).
+[audio] camada A em 17/17 · tempos reais em 17/17 cenas · sfx sintético
 ```
 
 Os SFX (`sonar`, `alarme`, ...) ficam sempre como `<audio>` comum: não precisam
@@ -351,6 +351,8 @@ segundo), com mínimo de 1,8 s, mais 0,6 s de pausa antes da próxima entrar.
 - **Com mp3**, a duração real é repartida proporcional a caracteres, mas nunca
   abaixo do mínimo. Se o áudio for mais curto que a soma dos mínimos, quem dita
   o ritmo é a legenda e a cena espera por ela.
+- **Com `tempos.json`** (depois de rodar o script de voz), os offsets reais de
+  cada linha mandam em tudo: a legenda troca quando a voz troca.
 
 Todo o conteúdo (textos, áudios, perguntas) vive em `src/roteiros/2a.json`,
 `2b.json` e `3a.json`. O player só conhece **tipos de cena** — pra mudar o que a
@@ -376,10 +378,79 @@ abrir o console.
 > Enquanto os mp3 não existem, o app avisa no console e a cena `auto` avança
 > sozinha depois de ~2,5s por linha de texto. Nada trava.
 
-## Geração dos áudios
+## Gerar a voz
 
-Ainda não implementada (Fase 3): um script Python com `edge-tts` vai ler os
-JSONs, gerar a voz da IA e aplicar um filtro de intercomunicador via `ffmpeg`.
+A voz da IA é sintetizada **em casa, antes da feira** — essa etapa precisa de
+internet. A apresentação em si roda 100% offline.
+
+### Uma vez, pra preparar a máquina
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r scripts/requirements.txt
+```
+
+E `ffmpeg` no PATH (`sudo apt install ffmpeg`, `brew install ffmpeg`, ou
+[gyan.dev](https://www.gyan.dev/ffmpeg/builds/) no Windows). O `ffprobe` vem
+junto.
+
+### Toda vez que mudar um texto do roteiro
+
+```bash
+python3 scripts/gerar_audios.py          # todas as turmas
+python3 scripts/gerar_audios.py --turma 2a
+npm run build
+```
+
+Quanto demora: a síntese leva uns **2–4 s por linha**. O 2A inteiro tem 53
+linhas, ou seja **uns 2 a 4 minutos** na primeira vez. Depois disso o cache
+(`scripts/.cache.json`, hash de texto + voz + rate + pitch + filtro) faz só o
+que mudou ser regerado — corrigir uma frase leva segundos. `--forcar` ignora o
+cache.
+
+Outras flags: `--voz pt-BR-AntonioNeural`, `--rate -12%`, `--pitch -4Hz`,
+`--sem-filtro` (pra comparar sem o filtro de rádio), `--so-listar` (mostra
+todas as falas sem gerar nada).
+
+Cada turma pode ter voz própria em `scripts/config.json`:
+
+```json
+{ "turmas": { "2b": { "voz": "pt-BR-AntonioNeural" } } }
+```
+
+### O que o script faz
+
+1. lê os JSONs dos roteiros **e** `src/console/respostas.ts` (as respostas
+   fixas do console também ganham voz);
+2. sintetiza **uma linha por vez** com `edge-tts`;
+3. aplica o filtro de intercomunicador
+   (`highpass=300, lowpass=3400, aecho, volume=1.4`);
+4. concatena as linhas de cada cena com **600 ms de silêncio** entre elas →
+   `public/audio/<turma>/<id>.mp3`;
+5. mede cada linha com `ffprobe` e escreve `public/audio/<turma>/tempos.json`
+   com o offset real de cada uma dentro do mp3;
+6. chama o `embutir_audios.py`, que monta a camada A.
+
+Os mp3 gerados e o `tempos.json` **não vão pro git** — são artefatos
+regeneráveis e pesados. Quem apresenta gera em casa e copia o `dist/`.
+
+### Por que o tempos.json importa
+
+Com ele, a legenda troca de linha no instante exato em que a voz troca, em vez
+de estimar por número de caracteres. Medido: erro de **até 11 ms** (um quadro).
+Sem o arquivo, o modo proporcional continua valendo.
+
+## Efeitos sonoros
+
+Os SFX (`sonar`, `alarme`, `estatica`, `ok`, `pressurizacao`, `bipe-timer`)
+são **sintetizados em código** com a Web Audio API, em `src/audio/sfx.ts`. Não
+dá pra depender de o professor baixar arquivos do freesound na véspera da
+feira: o projeto roda completo sem nenhum mp3 de efeito.
+
+Se você quiser efeitos "de verdade", é só jogar o arquivo em
+`public/audio/sfx/<nome>.mp3` — ele passa a ter prioridade sobre o sintético,
+um a um. Dá pra ter o `sonar` de arquivo e o resto sintetizado.
 
 ## Estrutura
 
@@ -390,11 +461,14 @@ src/
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
   cenas/             um componente por tipo de cena (inclui Quiz e VF)
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
-  console/           barra de comando e o parser
+  audio/             efeitos sonoros sintetizados (Web Audio)
+  console/           barra de comando, parser e as respostas fixas da IA
   paineis/           sonar, status, ficha, mapa e o registro
   mundo/             o oceano procedural: perfil por profundidade, motor e Feed
   formas/            registro das silhuetas, amostragem e primitivas
   roteiros/          tipos.ts, validar.ts, fichas.json e os JSONs de cada turma
 scripts/
+  gerar_audios.py    voz da IA: edge-tts + ffmpeg + tempos.json
   embutir_audios.py  gera public/audios.js (camada A)
+  config.json        voz, rate e pitch, com override por turma
 ```

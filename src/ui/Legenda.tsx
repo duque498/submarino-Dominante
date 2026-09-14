@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { planejar } from './ritmoLegenda'
+import { planejar, type TemposReais } from './ritmoLegenda'
 
 type Props = {
   linhas: string[]
@@ -13,6 +13,8 @@ type Props = {
   lerNivel?: () => number
   /** Dispara o glitch de entrada. Trocar o valor = nova cena. */
   cena?: string
+  /** Offsets reais medidos no mp3. Quando existem, mandam no ritmo. */
+  tempos?: TemposReais | null
 }
 
 /** Cada palavra passa por caracteres aleatórios antes de assentar no texto real. */
@@ -40,8 +42,12 @@ export function Legenda({
   falando = false,
   lerNivel,
   cena,
+  tempos,
 }: Props) {
-  const plano = useMemo(() => planejar(linhas, duracaoTotalMs), [linhas, duracaoTotalMs])
+  const plano = useMemo(
+    () => planejar(linhas, duracaoTotalMs, tempos),
+    [linhas, duracaoTotalMs, tempos],
+  )
   const refCaixa = useRef<HTMLDivElement>(null)
   const refContador = useRef<HTMLSpanElement>(null)
   const refFalando = useRef(falando)
