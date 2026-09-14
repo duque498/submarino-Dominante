@@ -420,6 +420,15 @@ export function Player({ roteiro, engine }: Props) {
             void reiniciarDaPane()
             return
           }
+          if (comando.acao === 'ambiente') {
+            const ligado = engine.alternarAmbiente(() => motor.profundidade())
+            setRajadaLog([
+              ligado
+                ? 'Captação acústica externa: ATIVA'
+                : 'Captação acústica externa: DESLIGADA',
+            ])
+            break
+          }
           if (comando.acao === 'som') {
             const ms = engine.testarSom()
             setRajadaLog([
@@ -618,6 +627,17 @@ export function Player({ roteiro, engine }: Props) {
       engine.pararVoz()
     }
   }, [cena, indice, sequencia, engine, avancar, roteiro.turma])
+
+  // O ambiente sonoro segue a mesma profundidade das câmeras.
+  useEffect(() => {
+    engine.iniciarAmbiente(() => motor.profundidade())
+    return () => engine.pararAmbiente()
+  }, [engine])
+
+  // A voz da IA tem prioridade sobre o mar.
+  useEffect(() => {
+    engine.abafarAmbiente(falando || fala !== null)
+  }, [engine, falando, fala])
 
   // O mundo das câmeras roda enquanto o player estiver montado, mesmo que
   // nenhum feed esteja visível: a profundidade do HUD depende dele.

@@ -24,6 +24,7 @@ export type Comando =
         | 'proximo'
         | 'voltar'
         | 'som'
+        | 'ambiente'
       resposta: string
       chaveAudio?: ChaveResposta
     }
@@ -63,6 +64,7 @@ export function vocabulario(): string[] {
     'camera 2',
     'profundidade 4500',
     'som',
+    'ambiente',
   ]
 }
 
@@ -171,6 +173,14 @@ export function interpretar(entrada: string): Comando {
         acao: 'limpar',
         resposta: RESPOSTAS.paineisEncerrados,
         chaveAudio: 'paineisEncerrados',
+      }
+    case 'ambiente':
+    case 'fundo':
+    case 'mar':
+      return {
+        tipo: 'sistema',
+        acao: 'ambiente',
+        resposta: 'Alternando captação acústica externa.',
       }
     case 'som':
     case 'testar som':

@@ -3,12 +3,15 @@ dist
 .DS_Store
 *.local
 
-# tudo que o scripts/gerar_audios.py produz. São artefatos regeneráveis e
-# pesados; quem apresenta gera em casa e copia o dist/ pro Chromebook.
+# cache intermediário do gerador de áudio (um mp3 por linha, por hash)
 scripts/.cache.json
 scripts/.cache/
-public/audio/**/*.mp3
-public/audio/**/tempos.json
+
+# Os mp3 finais e o tempos.json FICAM no repositório de propósito: quem
+# apresenta usa Chromebook e não tem terminal pra rodar o gerar_audios.py.
+# public/audios.js continua fora — é a mesma coisa em base64, pesa o triplo e
+# sai do build.
+public/audios.js
 
 # gerado por scripts/embutir_audios.py (camada A) — pesa dezenas de MB
 public/audios.js

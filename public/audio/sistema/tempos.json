@@ -1,0 +1,74 @@
+{
+  "ajuda": {
+    "duracaoMs": 3408,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3408
+      }
+    ]
+  },
+  "avancando": {
+    "duracaoMs": 1464,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1464
+      }
+    ]
+  },
+  "desconhecido": {
+    "duracaoMs": 4344,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4344
+      }
+    ]
+  },
+  "esfera": {
+    "duracaoMs": 3000,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3000
+      }
+    ]
+  },
+  "paineisEncerrados": {
+    "duracaoMs": 2184,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2184
+      }
+    ]
+  },
+  "paneAlerta": {
+    "duracaoMs": 3768,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3768
+      }
+    ]
+  },
+  "reiniciado": {
+    "duracaoMs": 2112,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2112
+      }
+    ]
+  },
+  "retornando": {
+    "duracaoMs": 1464,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1464
+      }
+    ]
+  }
+}

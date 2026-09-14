@@ -1,3 +1,4 @@
+import { AmbienteOceano } from '../audio/ambiente'
 import { tocarSintetico, tocarTesteDeSom, type NomeSfx } from '../audio/sfx'
 import type { Sfx } from '../roteiros/tipos'
 
@@ -76,6 +77,7 @@ export class AudioEngine {
   private analisador: AnalyserNode | null = null
   /** Saída dos efeitos sintetizados, com compressor pra não estourar. */
   private saidaSfx: AudioNode | null = null
+  private ambiente: AmbienteOceano | null = null
   private amostras: Uint8Array<ArrayBuffer> | null = null
 
   private fonteAtual: AudioBufferSourceNode | null = null
@@ -137,6 +139,7 @@ export class AudioEngine {
     compressor.release.value = 0.15
     compressor.connect(this.contexto.destination)
     this.saidaSfx = compressor
+    this.ambiente = new AmbienteOceano(this.contexto, compressor)
 
     return this.contexto
   }
@@ -375,6 +378,31 @@ export class AudioEngine {
     if (!contexto || !this.saidaSfx) return 0
     void contexto.resume()
     return tocarTesteDeSom(contexto, this.saidaSfx)
+  }
+
+  /** Liga o som de fundo do oceano, que segue a profundidade. */
+  iniciarAmbiente(lerProfundidade: () => number): void {
+    this.obterContexto()
+    this.ambiente?.iniciar(lerProfundidade)
+  }
+
+  pararAmbiente(): void {
+    this.ambiente?.parar()
+  }
+
+  /** Liga/desliga e devolve o estado novo. */
+  alternarAmbiente(lerProfundidade: () => number): boolean {
+    if (this.ambiente?.estaLigado()) {
+      this.ambiente.parar()
+      return false
+    }
+    this.iniciarAmbiente(lerProfundidade)
+    return true
+  }
+
+  /** A voz da IA tem prioridade: o ambiente recua enquanto ela fala. */
+  abafarAmbiente(sim: boolean): void {
+    this.ambiente?.abafar(sim)
   }
 
   /** Estado do AudioContext, pro diagnóstico do operador. */

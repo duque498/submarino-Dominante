@@ -146,6 +146,36 @@ def duracao_ms(caminho: Path) -> int:
         return 0
 
 
+def sintetizar_espeak(texto: str, destino: Path, config: dict):
+    """
+    Motor offline, de emergência. O espeak-ng é síntese por formantes: soa
+    robótico perto de uma voz neural. Existe aqui por um motivo prático — quem
+    apresenta pode não ter máquina com terminal e internet pra rodar o edge-tts,
+    e uma IA de bordo com voz de robô é melhor que uma IA muda.
+
+    Passando pelo filtro de intercomunicador, o resultado fica aceitável como
+    "computador de bordo". Pra a voz de verdade, use o motor edge.
+    """
+    espeak = config.get("espeak", {})
+    wav = destino.with_suffix(".wav")
+    comando = [
+        "espeak-ng",
+        "-v", espeak.get("voz", "pt-br+f3"),
+        "-s", str(espeak.get("velocidade", 148)),
+        "-p", str(espeak.get("tom", 42)),
+        "-a", str(espeak.get("amplitude", 190)),
+        "-g", str(espeak.get("pausa", 8)),
+        "-w", str(wav),
+        texto,
+    ]
+    resultado = subprocess.run(comando, capture_output=True, text=True)
+    if resultado.returncode != 0 or not wav.exists():
+        print(f"\nerro no espeak-ng: {texto[:60]!r}", file=sys.stderr)
+        print(f"       {resultado.stderr.strip()[-400:]}", file=sys.stderr)
+        raise SystemExit(1)
+    wav.replace(destino)
+
+
 def sintetizar(texto: str, voz: str, rate: str, pitch: str, destino: Path):
     """edge-tts numa linha. Erros de rede aparecem aqui."""
     comando = [
@@ -241,6 +271,12 @@ def main() -> int:
     ap.add_argument("--sem-filtro", action="store_true", help="sem o filtro de rádio")
     ap.add_argument("--forcar", action="store_true", help="ignora o cache e regera tudo")
     ap.add_argument("--so-listar", action="store_true", help="lista as falas e sai")
+    ap.add_argument(
+        "--motor",
+        choices=("edge", "espeak"),
+        default="edge",
+        help="edge = voz neural (precisa de internet); espeak = offline, robótico",
+    )
     args = ap.parse_args()
 
     com_filtro = not args.sem_filtro
@@ -277,12 +313,16 @@ def main() -> int:
 
     exigir("ffmpeg", "instale com: sudo apt install ffmpeg  (ou brew install ffmpeg)")
     exigir("ffprobe", "vem junto com o ffmpeg")
-    try:
-        import edge_tts  # noqa: F401
-    except ImportError:
-        print("\nerro: edge-tts não está instalado.", file=sys.stderr)
-        print("       pip install -r scripts/requirements.txt\n", file=sys.stderr)
-        return 1
+    if args.motor == "espeak":
+        exigir("espeak-ng", "instale com: sudo apt install espeak-ng")
+    else:
+        try:
+            import edge_tts  # noqa: F401
+        except ImportError:
+            print("\nerro: edge-tts não está instalado.", file=sys.stderr)
+            print("       pip install -r scripts/requirements.txt", file=sys.stderr)
+            print("       ou use --motor espeak (offline, voz robótica)\n", file=sys.stderr)
+            return 1
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache = json.loads(CACHE_JSON.read_text(encoding="utf-8")) if CACHE_JSON.is_file() else {}
@@ -299,7 +339,7 @@ def main() -> int:
     for (pasta, _grupo), lista in sorted(grupos.items()):
         voz, rate, pitch = voz_da_pasta(config, pasta, args)
         for fala in lista:
-            assinatura = f"{fala.texto}|{voz}|{rate}|{pitch}|{com_filtro}"
+            assinatura = f"{fala.texto}|{args.motor}|{voz}|{rate}|{pitch}|{com_filtro}"
             chave = hashlib.sha1(assinatura.encode("utf-8")).hexdigest()
             destino = CACHE_DIR / f"{chave}.mp3"
 
@@ -309,7 +349,10 @@ def main() -> int:
                 print(f"  gerando: {fala.texto[:62]}")
                 with tempfile.TemporaryDirectory() as tmp:
                     cru = Path(tmp) / "cru.mp3"
-                    sintetizar(fala.texto, voz, rate, pitch, cru)
+                    if args.motor == "espeak":
+                        sintetizar_espeak(fala.texto, cru, config)
+                    else:
+                        sintetizar(fala.texto, voz, rate, pitch, cru)
                     aplicar_filtro(cru, destino, com_filtro)
                 cache[chave] = assinatura
                 gerados += 1
@@ -377,6 +420,8 @@ def main() -> int:
     print(f"  tamanho dos mp3 ........... {bytes_totais / (1024 * 1024):.1f} MB")
     print(f"  tamanho do audios.js ...... {tamanho_js:.1f} MB")
     print(f"  filtro de intercomunicador  {'sim' if com_filtro else 'NÃO (--sem-filtro)'}")
+    print(f"  motor ..................... {args.motor}"
+          f"{'  (voz robótica — use --motor edge pra voz neural)' if args.motor == 'espeak' else ''}")
     print("=" * 58)
     print("\nagora rode: npm run build")
     return 0

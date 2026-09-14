@@ -263,6 +263,7 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 | `pane`, `reiniciar`, `limpar`, `ajuda` | comandos de sistema |
 | `profundidade 4500` | depuração: força a profundidade do cenário |
 | `som` | toca todos os efeitos em sequência, pra conferir os alto-falantes |
+| `ambiente` | liga/desliga o som de fundo do oceano |
 
 Comando não reconhecido **nunca** vira "comando inválido" seco — no palco isso
 parece defeito. A IA responde `Comando não reconhecido pelo sistema de bordo.`,
@@ -394,6 +395,25 @@ E `ffmpeg` no PATH (`sudo apt install ffmpeg`, `brew install ffmpeg`, ou
 [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) no Windows). O `ffprobe` vem
 junto.
 
+### Dois motores de voz
+
+| motor | qualidade | precisa de internet |
+|---|---|---|
+| `--motor edge` (padrão) | voz neural, `pt-BR-FranciscaNeural` | **sim** |
+| `--motor espeak` | robótica (síntese por formantes) | não |
+
+O `espeak` existe porque uma IA de bordo com voz de robô é melhor que uma IA
+muda: dá pra apresentar sem máquina com terminal e internet. Passando pelo
+filtro de intercomunicador, soa como computador de bordo. Ajuste a voz e a
+velocidade em `scripts/config.json` (`pt-br+f1..f4`, `pt-br+m1..m7`).
+
+**Os mp3 no repositório hoje foram gerados com o espeak.** Pra trocar pela voz
+neural, numa máquina com Python e internet:
+
+```bash
+python3 scripts/gerar_audios.py --turma 2a --forcar
+```
+
 ### Toda vez que mudar um texto do roteiro
 
 ```bash
@@ -431,14 +451,28 @@ Cada turma pode ter voz própria em `scripts/config.json`:
    com o offset real de cada uma dentro do mp3;
 6. chama o `embutir_audios.py`, que monta a camada A.
 
-Os mp3 gerados e o `tempos.json` **não vão pro git** — são artefatos
-regeneráveis e pesados. Quem apresenta gera em casa e copia o `dist/`.
+Os mp3 finais e o `tempos.json` **ficam no repositório** de propósito: quem
+apresenta usa Chromebook e não tem terminal pra rodar o script. O
+`public/audios.js` continua fora — é a mesma coisa em base64, pesa o triplo e
+sai do `npm run build`.
 
 ### Por que o tempos.json importa
 
 Com ele, a legenda troca de linha no instante exato em que a voz troca, em vez
 de estimar por número de caracteres. Medido: erro de **até 11 ms** (um quadro).
 Sem o arquivo, o modo proporcional continua valendo.
+
+## Som de fundo do oceano
+
+`src/audio/ambiente.ts` sintetiza o mar continuamente, com a **mesma
+profundidade** que alimenta as câmeras:
+
+- **superfície** — água mexendo, bolhas subindo, estalos de recife;
+- **meio** — o zumbido da pressão ganha corpo, canto distante de cetáceo;
+- **fundo** — pressão grave, casco rangendo, ecos sem origem.
+
+Nada disso é arquivo em loop, então não dá pra ouvir a emenda repetindo. Quando
+a IA fala, o ambiente abaixa sozinho. `/` + `ambiente` liga e desliga.
 
 ## Efeitos sonoros
 
@@ -473,7 +507,7 @@ src/
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
   cenas/             um componente por tipo de cena (inclui Quiz e VF)
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
-  audio/             efeitos sonoros sintetizados (Web Audio)
+  audio/             efeitos sonoros e o ambiente do oceano (Web Audio)
   console/           barra de comando, parser e as respostas fixas da IA
   paineis/           sonar, status, ficha, mapa e o registro
   mundo/             o oceano procedural: perfil por profundidade, motor e Feed

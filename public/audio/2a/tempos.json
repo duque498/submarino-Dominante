@@ -1,0 +1,267 @@
+{
+  "arte-intro": {
+    "duracaoMs": 18192,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2376
+      },
+      {
+        "inicio": 2976,
+        "fim": 11352
+      },
+      {
+        "inicio": 11952,
+        "fim": 14568
+      },
+      {
+        "inicio": 15168,
+        "fim": 18048
+      }
+    ]
+  },
+  "bio-intro": {
+    "duracaoMs": 11784,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3864
+      },
+      {
+        "inicio": 4464,
+        "fim": 6864
+      },
+      {
+        "inicio": 7464,
+        "fim": 11688
+      }
+    ]
+  },
+  "ef-intro": {
+    "duracaoMs": 21096,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3552
+      },
+      {
+        "inicio": 4152,
+        "fim": 6840
+      },
+      {
+        "inicio": 7440,
+        "fim": 17928
+      },
+      {
+        "inicio": 18528,
+        "fim": 20952
+      }
+    ]
+  },
+  "entrada": {
+    "duracaoMs": 43176,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2832
+      },
+      {
+        "inicio": 3432,
+        "fim": 5592
+      },
+      {
+        "inicio": 6192,
+        "fim": 7944
+      },
+      {
+        "inicio": 8544,
+        "fim": 11520
+      },
+      {
+        "inicio": 12120,
+        "fim": 30552
+      },
+      {
+        "inicio": 31152,
+        "fim": 36696
+      },
+      {
+        "inicio": 37296,
+        "fim": 42888
+      }
+    ]
+  },
+  "pane-entrada": {
+    "duracaoMs": 24384,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2664
+      },
+      {
+        "inicio": 3264,
+        "fim": 7728
+      },
+      {
+        "inicio": 8328,
+        "fim": 9672
+      },
+      {
+        "inicio": 10272,
+        "fim": 12168
+      },
+      {
+        "inicio": 12768,
+        "fim": 15696
+      },
+      {
+        "inicio": 16296,
+        "fim": 19728
+      },
+      {
+        "inicio": 20328,
+        "fim": 24096
+      }
+    ]
+  },
+  "pane-retorno": {
+    "duracaoMs": 13704,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2112
+      },
+      {
+        "inicio": 2712,
+        "fim": 4704
+      },
+      {
+        "inicio": 5304,
+        "fim": 8016
+      },
+      {
+        "inicio": 8616,
+        "fim": 10680
+      },
+      {
+        "inicio": 11280,
+        "fim": 13512
+      }
+    ]
+  },
+  "quiz-1-acerto": {
+    "duracaoMs": 6960,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 6960
+      }
+    ]
+  },
+  "quiz-1-erro": {
+    "duracaoMs": 6840,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 6840
+      }
+    ]
+  },
+  "quiz-1-pergunta": {
+    "duracaoMs": 6024,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 6024
+      }
+    ]
+  },
+  "quiz-2-acerto": {
+    "duracaoMs": 8784,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 8784
+      }
+    ]
+  },
+  "quiz-2-erro": {
+    "duracaoMs": 6768,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 6768
+      }
+    ]
+  },
+  "quiz-2-pergunta": {
+    "duracaoMs": 5976,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 5976
+      }
+    ]
+  },
+  "quiz-3-acerto": {
+    "duracaoMs": 6816,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 6816
+      }
+    ]
+  },
+  "quiz-3-erro": {
+    "duracaoMs": 7416,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 7416
+      }
+    ]
+  },
+  "quiz-3-pergunta": {
+    "duracaoMs": 4440,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4440
+      }
+    ]
+  },
+  "quiz-intro": {
+    "duracaoMs": 15528,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 10344
+      },
+      {
+        "inicio": 10944,
+        "fim": 15480
+      }
+    ]
+  },
+  "transicao-2b": {
+    "duracaoMs": 15264,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4896
+      },
+      {
+        "inicio": 5496,
+        "fim": 7224
+      },
+      {
+        "inicio": 7824,
+        "fim": 10680
+      },
+      {
+        "inicio": 11280,
+        "fim": 15120
+      }
+    ]
+  }
+}
