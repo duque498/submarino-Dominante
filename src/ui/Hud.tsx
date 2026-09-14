@@ -18,6 +18,7 @@ export function Hud({ rota, sonar = 'ATIVO', rodapeEsquerda, rodapeDireita, chil
   // O número é escrito direto no DOM: durante a descida ele muda várias vezes
   // por segundo, e virar estado do React seria um render por tique.
   useEffect(() => {
+    if (refMetros.current) refMetros.current.textContent = '—'
     motor.observarProfundidade((metros) => {
       if (refMetros.current) refMetros.current.textContent = `${metros} m`
     })
@@ -34,7 +35,7 @@ export function Hud({ rota, sonar = 'ATIVO', rodapeEsquerda, rodapeDireita, chil
 
         <div className="hud__barra">
           <span className="hud__campo">
-            prof. <strong ref={refMetros}>—</strong>
+            prof. <strong ref={refMetros} />
           </span>
           <span className="hud__campo">
             sonar <strong>{sonar}</strong>

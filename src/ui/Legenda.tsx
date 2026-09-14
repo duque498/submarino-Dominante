@@ -62,6 +62,8 @@ export function Legenda({
     let quadro = 0
     let linhaAtual = -1
     let elLinha: HTMLDivElement | null = null
+    /** Tudo que este efeito pendurou no container, pra tirar só isso na saída. */
+    const criados = new Set<HTMLElement>()
     let palavras: PalavraViva[] = []
     let brilho = 0
     const inicio = performance.now()
@@ -69,7 +71,10 @@ export function Legenda({
     /** Tira a linha antiga de cena: sobe, encolhe e some. */
     const removerLinha = (el: HTMLDivElement) => {
       el.classList.add('legenda__linha--saindo')
-      setTimeout(() => el.remove(), 260)
+      setTimeout(() => {
+        criados.delete(el)
+        el.remove()
+      }, 260)
     }
 
     const montarLinha = (indice: number, comGlitch: boolean) => {
@@ -91,6 +96,7 @@ export function Legenda({
       el.append(cursor)
 
       caixa.append(el)
+      criados.add(el)
       elLinha = el
       linhaAtual = indice
 
@@ -145,18 +151,23 @@ export function Legenda({
     quadro = requestAnimationFrame(tick)
     return () => {
       cancelAnimationFrame(quadro)
-      caixa.replaceChildren()
+      // Remove só os nós deste efeito. `replaceChildren()` levaria junto
+      // qualquer coisa que o React tenha posto ali no meio-tempo.
+      for (const el of criados) el.remove()
+      criados.clear()
       caixa.style.removeProperty('--brilho')
     }
     // `cena` entra nas dependências pra o glitch de entrada rodar de novo a
     // cada cena, mesmo que o plano por acaso seja igual.
   }, [plano, ativa, cena])
 
+  // O <div class="legenda"> é território do efeito abaixo, que monta e remove
+  // as linhas na mão. Ele NÃO pode ter filho vindo do React: os dois brigariam
+  // pelo mesmo nó e o React estouraria com "removeChild is not a child".
+  // A altura vazia fica por conta do min-height no CSS.
   return (
     <div className="legenda__caixa">
-      <div className="legenda" ref={refCaixa}>
-        {!ativa && <div className="legenda__linha" />}
-      </div>
+      <div className="legenda" ref={refCaixa} />
       <span className="legenda__contador" ref={refContador} />
     </div>
   )

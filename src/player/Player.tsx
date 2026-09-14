@@ -628,6 +628,34 @@ export function Player({ roteiro, engine }: Props) {
     }
   }, [cena, indice, sequencia, engine, avancar, roteiro.turma])
 
+  // Diagnóstico de áudio no próprio log da tela: quem opera não vai abrir o
+  // console do navegador no meio da feira.
+  useEffect(() => {
+    // Conta TODOS os mp3 que o roteiro cita (inclui acerto e erro das
+    // dinâmicas), não só o áudio principal de cada cena.
+    const urls = roteiro.cenas.flatMap((cena) => {
+      switch (cena.tipo) {
+        case 'quiz':
+        case 'vf':
+          return Object.values(cena.audio)
+        case 'pane':
+          return [cena.audio.entrada, cena.audio.retorno]
+        default: {
+          const url = audioDaCena(cena)
+          return url ? [url] : []
+        }
+      }
+    })
+    const carregados = urls.filter((url) => engine.camadaDe(url) === 'A').length
+    setRajadaLog([
+      `Voz de bordo: ${carregados}/${urls.length} arquivos carregados`,
+      carregados > 0
+        ? `Sincronismo de legenda: tempos reais (${engine.contarTempos(roteiro.turma)} trechos)`
+        : 'WARN: sem áudio de voz — legenda em tempo estimado',
+      `Saída de áudio: ${engine.estadoDoContexto()}`,
+    ])
+  }, [engine, roteiro])
+
   // O ambiente sonoro segue a mesma profundidade das câmeras.
   useEffect(() => {
     engine.iniciarAmbiente(() => motor.profundidade())

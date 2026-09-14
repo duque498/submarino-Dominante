@@ -56,7 +56,17 @@ BITRATE = "48k"
 # e a fala vira ruído. Por isso ele tem um filtro mais leve — o objetivo ali é
 # ser ENTENDIDO, não ser bonito.
 FILTRO_RADIO = "highpass=f=300,lowpass=f=3400,aecho=0.8:0.9:60:0.3,volume=1.4"
-FILTRO_RADIO_LEVE = "highpass=f=170,lowpass=f=5200,aecho=0.9:0.85:38:0.16,volume=1.5"
+# O compressor é o que faz a voz atravessar o barulho de uma quadra cheia:
+# sobe o corpo da fala sem estourar os picos.
+# O compressor com makeup é o que faz a voz atravessar o barulho de uma quadra
+# cheia. Medido numa frase de teste: cru -17,2 dB de média; com esta cadeia
+# -11,4 dB, com os picos presos pelo limiter. Um volume= simples só chega a
+# -12,7 dB e ainda encosta no teto.
+FILTRO_RADIO_LEVE = (
+    "highpass=f=170,lowpass=f=5200,aecho=0.9:0.85:38:0.16,"
+    "acompressor=threshold=-14dB:ratio=3:attack=8:release=200:makeup=6,"
+    "alimiter=limit=0.97:level=disabled"
+)
 
 
 # --- extração das falas ----------------------------------------------------

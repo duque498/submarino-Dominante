@@ -131,6 +131,7 @@ export function LogSistemas({
 
     const vivas: LinhaViva[] = []
     let contador = 400 + Math.floor(Math.random() * 200)
+    if (refContador.current) refContador.current.textContent = String(contador)
     const amostras = new Float32Array(AMOSTRAS_SPARKLINE)
     let ruido = 0.25
     let quadroSpark = 0
@@ -400,7 +401,9 @@ export function LogSistemas({
     return () => {
       cancelAnimationFrame(quadro)
       observador.disconnect()
-      lista.replaceChildren()
+      // Remove só as linhas que este efeito criou. O <ol> não tem filho vindo
+      // do React hoje, mas replaceChildren() levaria junto se um dia tiver.
+      for (const linha of vivas) linha.el.remove()
     }
   }, [])
 
@@ -413,9 +416,9 @@ export function LogSistemas({
       <div className="log__cabecalho">
         <h2 className="log__titulo">log de sistemas</h2>
         <span className="log__rec">● rec</span>
-        <span className="log__contador" ref={refContador}>
-          0000
-        </span>
+        {/* Sem filho aqui: o texto é escrito pelo tique, e um filho do
+            React no mesmo nó faria os dois brigarem. */}
+        <span className="log__contador" ref={refContador} />
       </div>
       <div className="log__telemetria">
         <span className="log__rotulo-spark">telemetria</span>

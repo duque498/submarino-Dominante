@@ -502,6 +502,14 @@ mensagem, e o operador recarrega com Ctrl+R e segue.
 A mensagem na tela é o que permite consertar depois: peça pra quem operou
 anotar ou fotografar.
 
+**Regra que evita a classe de erro mais comum aqui:** a legenda, o log, os
+feeds e o contador de profundidade montam DOM na mão, por desempenho. Um
+elemento cujo conteúdo o JS escreve **não pode ter filho vindo do React** — os
+dois brigam pelo mesmo nó e o React estoura com
+`removeChild: the node to be removed is not a child of this node`. Por isso
+esses elementos são todos auto-fechados no JSX, e a limpeza dos efeitos remove
+só os nós que o próprio efeito criou, nunca `replaceChildren()`.
+
 ## Efeitos sonoros
 
 Os SFX (`sonar`, `alarme`, `estatica`, `ok`, `pressurizacao`, `bipe-timer`)

@@ -49,6 +49,8 @@ export function Feed({
     let fimDaFalha = 0
     let ultimaHora = ''
     let ultimaProf = -1
+    if (refProfundidade.current) refProfundidade.current.textContent = '—'
+    if (refHora.current) refHora.current.textContent = '—'
     let alvoVisivel = false
 
     const aoDesenhar = ({ alvo, profundidade }: { alvo: Alvo | null; profundidade: number }) => {
@@ -129,8 +131,9 @@ export function Feed({
         <span className="feed__rec">● rec</span>
       </div>
       <div className="feed__barra feed__barra--base">
-        <span ref={refProfundidade}>—</span>
-        <span ref={refHora}>—</span>
+        {/* Sem filho: o texto vem do laço do motor, não do React. */}
+        <span ref={refProfundidade} />
+        <span ref={refHora} />
       </div>
     </div>
   )
