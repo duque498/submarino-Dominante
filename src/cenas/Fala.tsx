@@ -9,9 +9,10 @@ type Props = {
   falando: boolean
   lerNivel: () => number
   tempos?: TemposReais | null
+  linhaGuiada?: number | null
 }
 
-export function Fala({ cena, duracaoMs, ativa, falando, lerNivel, tempos }: Props) {
+export function Fala({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaGuiada }: Props) {
   return (
     <>
       {cena.tela.titulo && <p className="palco__rotulo">{cena.tela.titulo}</p>}
@@ -23,6 +24,7 @@ export function Fala({ cena, duracaoMs, ativa, falando, lerNivel, tempos }: Prop
         lerNivel={lerNivel}
         cena={cena.id}
         tempos={tempos}
+        linhaGuiada={linhaGuiada}
       />
       {cena.tela.status && <p className="palco__status">{cena.tela.status}</p>}
     </>

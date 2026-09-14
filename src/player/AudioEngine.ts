@@ -1,4 +1,12 @@
 import { AmbienteOceano } from '../audio/ambiente'
+import {
+  aguardarVozes,
+  nomeDaVoz,
+  temVozPortugues,
+  VozNavegador,
+  vozDoNavegadorExiste,
+  type LinhaFalada,
+} from '../audio/vozNavegador'
 import { tocarSintetico, tocarTesteDeSom, type NomeSfx } from '../audio/sfx'
 import type { Sfx } from '../roteiros/tipos'
 
@@ -55,6 +63,16 @@ function chaveDoCaminho(url: string): string | null {
   return casou ? casou[1] : null
 }
 
+/** data:audio/mpeg;base64,XXXX -> ArrayBuffer, sem passar por rede. */
+function base64ParaBytes(dataUrl: string): ArrayBuffer | null {
+  const virgula = dataUrl.indexOf(',')
+  if (virgula < 0) return null
+  const binario = atob(dataUrl.slice(virgula + 1))
+  const bytes = new Uint8Array(binario.length)
+  for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i)
+  return bytes.buffer
+}
+
 const misturar = (atual: number, alvo: number, fator: number) =>
   atual + (alvo - atual) * fator
 
@@ -78,6 +96,14 @@ export class AudioEngine {
   /** Saída dos efeitos sintetizados, com compressor pra não estourar. */
   private saidaSfx: AudioNode | null = null
   private ambiente: AmbienteOceano | null = null
+  private voz = new VozNavegador()
+  /**
+   * Qual voz lê as falas. O padrão vira a do navegador quando a máquina tem
+   * voz em português instalada: ela lê exatamente o texto da legenda e soa
+   * melhor que o mp3 de emergência. Sem voz no sistema, cai no mp3.
+   * O operador troca a qualquer momento com o comando `voz`.
+   */
+  private forcarVozNavegador = false
   private amostras: Uint8Array<ArrayBuffer> | null = null
 
   private fonteAtual: AudioBufferSourceNode | null = null
@@ -117,6 +143,9 @@ export class AudioEngine {
     } catch (erro) {
       console.warn('[audio] AudioContext indisponível:', erro)
     }
+    // A lista de vozes do navegador costuma chegar vazia na primeira consulta.
+    await aguardarVozes()
+    this.forcarVozNavegador = temVozPortugues()
     this.desbloqueado = true
   }
 
@@ -167,8 +196,12 @@ export class AudioEngine {
     if (!dataUrl || !contexto) return null
 
     try {
-      const resposta = await fetch(dataUrl)
-      const bytes = await resposta.arrayBuffer()
+      // Decodifica o base64 na mão, sem fetch. A versão anterior fazia
+      // `fetch(dataUrl)`, e uma página publicada pode barrar QUALQUER
+      // requisição — inclusive de data URL. O resultado era a voz sumir sem
+      // erro visível, enquanto os efeitos (que não fazem requisição) tocavam.
+      const bytes = base64ParaBytes(dataUrl)
+      if (!bytes) return null
       const buffer = await contexto.decodeAudioData(bytes)
       // Descarta o mais antigo antes de guardar o novo.
       while (this.buffers.size >= MAX_BUFFERS) {
@@ -380,6 +413,37 @@ export class AudioEngine {
     return tocarTesteDeSom(contexto, this.saidaSfx)
   }
 
+  /**
+   * Lê as linhas com a voz do navegador. É o caminho usado quando não existe
+   * mp3 gerado pra cena — e o que faz a IA falar em qualquer máquina, sem
+   * depender de ninguém rodar o gerador de áudio antes.
+   */
+  async falarComNavegador(
+    linhas: string[],
+    aoComecarLinha?: (linha: LinhaFalada) => void,
+  ): Promise<boolean> {
+    if (!vozDoNavegadorExiste()) return false
+    this.iniciarLoopNivel('sintetico')
+    const falou = await this.voz.falar(linhas, aoComecarLinha)
+    this.pararLoopNivel()
+    return falou
+  }
+
+  /** O operador manda: mp3 quando existir, ou sempre a voz do navegador. */
+  alternarVozNavegador(): boolean {
+    this.forcarVozNavegador = !this.forcarVozNavegador
+    return this.forcarVozNavegador
+  }
+
+  vozNavegadorForcada(): boolean {
+    return this.forcarVozNavegador
+  }
+
+  /** Nome da voz do navegador, pro diagnóstico na tela. */
+  descricaoDaVoz(): string {
+    return nomeDaVoz()
+  }
+
   /** Liga o som de fundo do oceano, que segue a profundidade. */
   iniciarAmbiente(lerProfundidade: () => number): void {
     this.obterContexto()
@@ -422,6 +486,7 @@ export class AudioEngine {
 
   /** Interrompe só a voz (usado pelo Espaço, que pula a fala atual). */
   pararVoz(): void {
+    this.voz.parar()
     if (this.fonteAtual) {
       const fonte = this.fonteAtual
       this.fonteAtual = null

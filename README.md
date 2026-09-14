@@ -264,6 +264,7 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 | `profundidade 4500` | depuração: força a profundidade do cenário |
 | `som` | toca todos os efeitos em sequência, pra conferir os alto-falantes |
 | `ambiente` | liga/desliga o som de fundo do oceano |
+| `voz` | alterna entre a voz do sistema e o mp3 gravado |
 
 Comando não reconhecido **nunca** vira "comando inválido" seco — no palco isso
 parece defeito. A IA responde `Comando não reconhecido pelo sistema de bordo.`,
@@ -377,6 +378,28 @@ abrir o console.
 
 > Enquanto os mp3 não existem, o app avisa no console e a cena `auto` avança
 > sozinha depois de ~2,5s por linha de texto. Nada trava.
+
+## A voz da IA
+
+Duas fontes, nesta ordem:
+
+1. **Voz do sistema (Web Speech API)** — usada por padrão **quando a máquina
+   tem voz em português instalada**. Lê exatamente o texto da legenda, e a
+   legenda troca de linha junto com a fala (uma fala por linha).
+2. **mp3 gerado** pelo `scripts/gerar_audios.py` — usado quando não há voz no
+   sistema, ou quando o operador troca com `/` + `voz`.
+
+> **Isto contraria a decisão original do projeto**, que proibia a Web Speech
+> API. A razão da proibição era boa: ela depende do que a máquina tem
+> instalado. Mas o plano B não fechou — quem apresenta usa Chromebook sem
+> terminal, então não dá pra rodar o gerador de voz, e a síntese offline que
+> sobrou (espeak) é robótica demais pro texto da professora. O Chrome OS tem
+> vozes pt-BR boas embutidas. Fica assim até existir uma máquina onde rodar o
+> `--motor edge`; aí é só trocar com `voz`.
+
+**Teste no dia:** o log da tela mostra, na ativação, qual fonte está ativa —
+`Narração: voz do sistema — <nome da voz>` ou `Narração: gravação de bordo
+(mp3)`.
 
 ## Gerar a voz
 
@@ -543,7 +566,7 @@ src/
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
   cenas/             um componente por tipo de cena (inclui Quiz e VF)
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
-  audio/             efeitos sonoros e o ambiente do oceano (Web Audio)
+  audio/             efeitos, ambiente do oceano e a voz do navegador
   console/           barra de comando, parser e as respostas fixas da IA
   paineis/           sonar, status, ficha, mapa e o registro
   mundo/             o oceano procedural: perfil por profundidade, motor e Feed

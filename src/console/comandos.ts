@@ -25,6 +25,7 @@ export type Comando =
         | 'voltar'
         | 'som'
         | 'ambiente'
+        | 'voz'
       resposta: string
       chaveAudio?: ChaveResposta
     }
@@ -65,6 +66,7 @@ export function vocabulario(): string[] {
     'profundidade 4500',
     'som',
     'ambiente',
+    'voz',
   ]
 }
 
@@ -173,6 +175,14 @@ export function interpretar(entrada: string): Comando {
         acao: 'limpar',
         resposta: RESPOSTAS.paineisEncerrados,
         chaveAudio: 'paineisEncerrados',
+      }
+    case 'voz':
+    case 'trocar voz':
+    case 'narrador':
+      return {
+        tipo: 'sistema',
+        acao: 'voz',
+        resposta: 'Alternando sintetizador de voz.',
       }
     case 'ambiente':
     case 'fundo':

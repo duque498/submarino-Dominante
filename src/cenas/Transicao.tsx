@@ -9,9 +9,10 @@ type Props = {
   falando: boolean
   lerNivel: () => number
   tempos?: TemposReais | null
+  linhaGuiada?: number | null
 }
 
-export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel, tempos }: Props) {
+export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaGuiada }: Props) {
   return (
     <>
       <Legenda
@@ -22,6 +23,7 @@ export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel, tempos }:
         lerNivel={lerNivel}
         cena={cena.id}
         tempos={tempos}
+        linhaGuiada={linhaGuiada}
       />
       <p className="transicao__destino">destino: {cena.destino}</p>
       <div className="transicao__trilho" />

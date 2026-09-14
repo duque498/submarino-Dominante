@@ -15,6 +15,11 @@ type Props = {
   cena?: string
   /** Offsets reais medidos no mp3. Quando existem, mandam no ritmo. */
   tempos?: TemposReais | null
+  /**
+   * Linha que a voz do navegador está dizendo AGORA. Quando vem preenchida,
+   * ela manda em tudo: a legenda troca junto com a fala, não por relógio.
+   */
+  linhaGuiada?: number | null
 }
 
 /** Cada palavra passa por caracteres aleatórios antes de assentar no texto real. */
@@ -43,6 +48,7 @@ export function Legenda({
   lerNivel,
   cena,
   tempos,
+  linhaGuiada,
 }: Props) {
   const plano = useMemo(
     () => planejar(linhas, duracaoTotalMs, tempos),
@@ -52,8 +58,10 @@ export function Legenda({
   const refContador = useRef<HTMLSpanElement>(null)
   const refFalando = useRef(falando)
   const refNivel = useRef(lerNivel)
+  const refGuiada = useRef(linhaGuiada)
   refFalando.current = falando
   refNivel.current = lerNivel
+  refGuiada.current = linhaGuiada
 
   useEffect(() => {
     const caixa = refCaixa.current
@@ -77,6 +85,11 @@ export function Legenda({
       }, 260)
     }
 
+    /** Quando a linha atual entrou, pra revelar as palavras no modo guiado. */
+    let inicioLinha = 0
+    /** Fração do tempo da linha em que cada palavra aparece. */
+    let fracoes: number[] = []
+
     const montarLinha = (indice: number, comGlitch: boolean) => {
       if (elLinha) removerLinha(elLinha)
 
@@ -99,6 +112,18 @@ export function Legenda({
       criados.add(el)
       elLinha = el
       linhaAtual = indice
+      inicioLinha = performance.now()
+
+      // No modo guiado não há linha do tempo: as palavras se distribuem pelo
+      // tamanho delas dentro da estimativa de duração da frase.
+      const pesos = plano[indice].palavras.map((p) => p.length + 1.6)
+      const total = pesos.reduce((a, b) => a + b, 0) || 1
+      let acumulado = 0
+      fracoes = pesos.map((peso) => {
+        const inicio = acumulado / total
+        acumulado += peso
+        return inicio
+      })
 
       if (comGlitch) {
         setTimeout(() => el.classList.remove('legenda__linha--glitch'), MS_GLITCH)
@@ -109,10 +134,15 @@ export function Legenda({
       quadro = requestAnimationFrame(tick)
       const decorrido = tempo - inicio
 
-      // 1) linha da vez
+      // 1) linha da vez — a voz manda, se estiver guiando
+      const guiada = refGuiada.current
       let alvo = 0
-      for (let i = 0; i < plano.length; i++) {
-        if (plano[i].inicio <= decorrido) alvo = i
+      if (guiada !== null && guiada !== undefined) {
+        alvo = Math.max(0, Math.min(guiada, plano.length - 1))
+      } else {
+        for (let i = 0; i < plano.length; i++) {
+          if (plano[i].inicio <= decorrido) alvo = i
+        }
       }
       if (alvo !== linhaAtual) {
         montarLinha(alvo, linhaAtual === -1)
@@ -123,12 +153,20 @@ export function Legenda({
 
       // 2) palavras materializando, com uns milissegundos de "decifrando"
       const tempos = plano[linhaAtual].tempos
+      // No modo guiado a janela é estimada pelo tamanho da frase; no modo por
+      // relógio ela vem do plano.
+      const janelaGuiada = Math.max(700, plano[linhaAtual].palavras.join(' ').length * 82)
+      const naLinha = tempo - inicioLinha
       for (let i = 0; i < palavras.length; i++) {
         const palavra = palavras[i]
         if (palavra.pronta) continue
 
         if (!palavra.revelada) {
-          if (decorrido < tempos[i]) continue
+          const pronto =
+            guiada !== null && guiada !== undefined
+              ? naLinha >= (fracoes[i] ?? 0) * janelaGuiada
+              : decorrido >= tempos[i]
+          if (!pronto) continue
           palavra.revelada = tempo
           palavra.el.classList.add('legenda__palavra--visivel')
         }

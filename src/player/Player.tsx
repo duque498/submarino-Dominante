@@ -123,6 +123,8 @@ export function Player({ roteiro, engine }: Props) {
     tempos: TemposReais | null
   }>({ duracaoMs: null, ativa: false, tempos: null })
   const [falando, setFalando] = useState(false)
+  /** Linha que a voz do navegador está dizendo agora; null = manda o relógio. */
+  const [linhaGuiada, setLinhaGuiada] = useState<number | null>(null)
   const [indiceForma, setIndiceForma] = useState(SEM_FORMA)
   const [formaForcada, setFormaForcada] = useState<string | null>(null)
   const [escala, setEscala] = useState(1)
@@ -190,11 +192,15 @@ export function Player({ roteiro, engine }: Props) {
    */
   const falarAvulso = useCallback(
     async (url: string, linhas: string[], fixa = false) => {
-      const reproducao = await engine.tocar(url)
-      const duracaoMs = reproducao.tocou ? reproducao.duracaoMs : null
+      const reproducao = engine.vozNavegadorForcada() ? null : await engine.tocar(url)
+      const duracaoMs = reproducao?.tocou ? reproducao.duracaoMs : null
       const naTela = duracaoDaLegenda(linhas, duracaoMs)
-      if (!reproducao.tocou) engine.simularVoz(naTela)
       dizer(linhas, duracaoMs, fixa)
+      if (!reproducao?.tocou) {
+        // Sem mp3, quem lê é a voz do navegador. Não espera o fim: a legenda
+        // já está na tela e a fala corre junto.
+        void engine.falarComNavegador(linhas)
+      }
       return naTela
     },
     [engine, dizer],
@@ -420,6 +426,15 @@ export function Player({ roteiro, engine }: Props) {
             void reiniciarDaPane()
             return
           }
+          if (comando.acao === 'voz') {
+            const navegador = engine.alternarVozNavegador()
+            setRajadaLog([
+              navegador
+                ? `Voz de bordo: sintetizador do sistema (${engine.descricaoDaVoz()})`
+                : 'Voz de bordo: gravação de bordo (mp3)',
+            ])
+            break
+          }
           if (comando.acao === 'ambiente') {
             const ligado = engine.alternarAmbiente(() => motor.profundidade())
             setRajadaLog([
@@ -588,7 +603,9 @@ export function Player({ roteiro, engine }: Props) {
     const fallbackMs = duracaoDaLegenda(legenda ?? linhasDeReferencia(cena), null)
 
     const executar = async () => {
-      const reproducao = url ? await engine.tocar(url) : null
+      // Ordem da voz: mp3 gerado > voz do navegador > só tempo estimado.
+      const usarNavegador = engine.vozNavegadorForcada()
+      const reproducao = url && !usarNavegador ? await engine.tocar(url) : null
       if (cancelado) return
 
       // null = sem duração conhecida. A legenda então usa os mínimos puros, que
@@ -600,18 +617,33 @@ export function Player({ roteiro, engine }: Props) {
       const reais = reproducao?.tocou ? engine.temposDaCena(roteiro.turma, cena.id) : null
       setSinc({ duracaoMs, ativa: true, tempos: reais?.linhas ?? null })
       setFalando(true)
-      if (!reproducao?.tocou) engine.simularVoz(fallbackMs)
 
       const proxima = sequencia[indice + 1]
-      if (proxima) void engine.preparar(audioDaCena(proxima))
+      if (proxima && !usarNavegador) void engine.preparar(audioDaCena(proxima))
 
       // A cena só termina quando o áudio E a legenda terminarem: se o mp3 for
       // mais curto que os mínimos de leitura, quem manda é a legenda.
       const naTela = legenda
         ? duracaoDaLegenda(legenda, duracaoMs, reais?.linhas ?? null)
         : fallbackMs
-      if (reproducao?.tocou) await Promise.all([reproducao.fim, esperar(naTela)])
-      else await esperar(naTela)
+      if (reproducao?.tocou) {
+        await Promise.all([reproducao.fim, esperar(naTela)])
+      } else if (legenda && legenda.length > 0) {
+        // Sem mp3: a voz do navegador lê a legenda, e a troca de linha passa a
+        // ser comandada por ela em vez de por relógio.
+        const falou = await engine.falarComNavegador(legenda, ({ indice: i }) =>
+          setLinhaGuiada(i),
+        )
+        if (cancelado) return
+        setLinhaGuiada(null)
+        if (!falou) {
+          engine.simularVoz(naTela)
+          await esperar(naTela)
+        }
+      } else {
+        engine.simularVoz(naTela)
+        await esperar(naTela)
+      }
       if (cancelado) return
 
       setFalando(false)
@@ -624,6 +656,7 @@ export function Player({ roteiro, engine }: Props) {
 
     return () => {
       cancelado = true
+      setLinhaGuiada(null)
       engine.pararVoz()
     }
   }, [cena, indice, sequencia, engine, avancar, roteiro.turma])
@@ -652,6 +685,9 @@ export function Player({ roteiro, engine }: Props) {
       carregados > 0
         ? `Sincronismo de legenda: tempos reais (${engine.contarTempos(roteiro.turma)} trechos)`
         : 'WARN: sem áudio de voz — legenda em tempo estimado',
+      engine.vozNavegadorForcada()
+        ? `Narração: voz do sistema — ${engine.descricaoDaVoz()}`
+        : 'Narração: gravação de bordo (mp3)',
       `Saída de áudio: ${engine.estadoDoContexto()}`,
     ])
   }, [engine, roteiro])
@@ -762,7 +798,7 @@ export function Player({ roteiro, engine }: Props) {
             compacto={modo === 'canto'}
           />
           <div className="palco__texto">
-            {conteudoDaCena(cena, sinc, modo, falando, lerNivel)}
+            {conteudoDaCena(cena, sinc, modo, falando, lerNivel, linhaGuiada)}
           </div>
           {fala && (
             <div className={pane ? 'palco__resposta palco__resposta--alerta' : 'palco__resposta'}>
@@ -913,6 +949,7 @@ function conteudoDaCena(
   layout: Layout,
   falando: boolean,
   lerNivel: () => number,
+  linhaGuiada: number | null,
 ) {
   switch (cena.tipo) {
     case 'fala':
@@ -925,6 +962,7 @@ function conteudoDaCena(
           falando={falando}
           lerNivel={lerNivel}
           tempos={sinc.tempos}
+          linhaGuiada={linhaGuiada}
         />
       )
     case 'apresentacao':
@@ -939,6 +977,7 @@ function conteudoDaCena(
           falando={falando}
           lerNivel={lerNivel}
           tempos={sinc.tempos}
+          linhaGuiada={linhaGuiada}
         />
       )
     default:
