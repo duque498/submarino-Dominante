@@ -701,18 +701,6 @@ export function Player({ roteiro, engine }: Props) {
             pulso={pulso}
             compacto={modo === 'canto'}
           />
-          {/* Fundo do palco: o mesmo mundo das câmeras, bem apagado atrás do
-              orbe. Só nas apresentações em modo palco. */}
-          {modo === 'palco' && (
-            <Feed
-              className="palco__fundo"
-              rotulo=""
-              moldura={false}
-              camera={{ x0: 0.9, abertura: 1.8, opacidade: 0.18, simples: true }}
-              largura={320}
-              altura={180}
-            />
-          )}
           <div className="palco__texto">
             {conteudoDaCena(cena, sinc, modo, falando, lerNivel)}
           </div>

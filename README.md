@@ -234,12 +234,10 @@ repente.
 - **Retículo de rastreamento** que segue a fauna grande quando ela cruza o
   quadro, com rótulo tipo `CETÁCEO · 26 M`.
 - **Painel `camera`** (`camera`, `camera 1`, `camera 2`) abre um feed grande.
-- **Fundo do palco**: nas apresentações em modo `palco`, o mesmo mundo aparece
-  bem apagado atrás do orbe.
 
 Existe **um** mundo, simulado uma vez por quadro em `src/mundo/`. Os canvases
 registrados só desenham o mesmo estado de pontos de vista diferentes — simular
-três vezes custaria o triplo por nenhum ganho.
+várias vezes custaria o múltiplo por nenhum ganho.
 
 > Comando de depuração: `profundidade 4500` (ou `prof 4500`) força a
 > profundidade sem mexer no roteiro. Útil pra conferir o cenário de cada zona.

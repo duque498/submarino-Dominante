@@ -1238,23 +1238,6 @@ body {
   opacity: 1;
 }
 
-/* Fundo do palco: o mesmo mundo, bem apagado atras do orbe. */
-.palco__fundo {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.palco--palco .palco__texto,
-.palco--palco .orbe,
-.palco--palco .palco__forma {
-  position: relative;
-  z-index: 1;
-}
-
 /* Com os feeds no ar, o conteudo em fluxo reserva a faixa deles embaixo, e o
    que e ancorado no rodape recua pelos lados. Sem isso a legenda da cena cai
    por cima da CAM 01. */
