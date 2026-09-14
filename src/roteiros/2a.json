@@ -180,7 +180,17 @@
         "pergunta": "./audio/2a/quiz-1-pergunta.mp3",
         "acerto": "./audio/2a/quiz-1-acerto.mp3",
         "erro": "./audio/2a/quiz-1-erro.mp3"
-      }
+      },
+      "falaAcerto": [
+        "Correto. Setenta e um por cento. Sonar calibrado em um terço."
+      ],
+      "falaErro": [
+        "Incorreto. A resposta era setenta e um por cento. Recalibrando."
+      ],
+      "log": [
+        "Aguardando resposta da tripulação...",
+        "Amostra registrada"
+      ]
     },
     {
       "id": "quiz-2",
@@ -198,7 +208,17 @@
         "pergunta": "./audio/2a/quiz-2-pergunta.mp3",
         "acerto": "./audio/2a/quiz-2-acerto.mp3",
         "erro": "./audio/2a/quiz-2-erro.mp3"
-      }
+      },
+      "falaAcerto": [
+        "Correto. Cerca de duzentas e quarenta mil. Mas estima-se que existam até dois milhões."
+      ],
+      "falaErro": [
+        "Incorreto. São cerca de duzentas e quarenta mil espécies conhecidas."
+      ],
+      "log": [
+        "Aguardando resposta da tripulação...",
+        "Amostra registrada"
+      ]
     },
     {
       "id": "quiz-3",
@@ -216,7 +236,17 @@
         "pergunta": "./audio/2a/quiz-3-pergunta.mp3",
         "acerto": "./audio/2a/quiz-3-acerto.mp3",
         "erro": "./audio/2a/quiz-3-erro.mp3"
-      }
+      },
+      "falaAcerto": [
+        "Correto. Abrolhos, no sul da Bahia. Sonar totalmente calibrado."
+      ],
+      "falaErro": [
+        "Incorreto. A resposta era Abrolhos. Calibração concluída mesmo assim."
+      ],
+      "log": [
+        "Aguardando resposta da tripulação...",
+        "Amostra registrada"
+      ]
     },
     {
       "id": "transicao-2b",

@@ -15,8 +15,10 @@ type Props = {
   forma?: string
   /** Ajuste fino do tamanho no projetor (teclas [ e ]). */
   escala?: number
-  /** Sacode o orbe por alguns quadros — resposta a um comando não reconhecido. */
+  /** Sacode o orbe por alguns quadros — erro ou comando não reconhecido. */
   tremor?: boolean
+  /** Pulso curto de aprovação — acerto numa dinâmica. */
+  pulso?: boolean
   /** Só pro modo "canto" da cena de apresentação. */
   compacto?: boolean
 }
@@ -144,6 +146,7 @@ export function Orbe({
   forma = FORMA_PADRAO,
   escala = 1,
   tremor = false,
+  pulso = false,
   compacto = false,
 }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
@@ -529,6 +532,10 @@ export function Orbe({
   useEffect(() => {
     refCanvas.current?.classList.toggle('orbe--tremor', tremor)
   }, [tremor])
+
+  useEffect(() => {
+    refCanvas.current?.classList.toggle('orbe--pulso', pulso)
+  }, [pulso])
 
   return <canvas className="orbe" ref={refCanvas} aria-hidden="true" />
 }

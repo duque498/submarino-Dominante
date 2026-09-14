@@ -82,6 +82,9 @@ export type CenaQuiz = CenaBase & {
   /** segundos do timer visual */
   tempo: number
   audio: { pergunta: string; acerto: string; erro: string }
+  /** EXTENSAO: texto do feedback, exibido na legenda junto com o audio */
+  falaAcerto?: string[]
+  falaErro?: string[]
 }
 
 /** Verdadeiro ou falso. */
@@ -93,6 +96,9 @@ export type CenaVF = CenaBase & {
   audio: { afirmacao: string; acerto: string; erro: string }
   /** nome do subsistema que volta ao acertar (usado na pane do 3A) */
   restaura?: string
+  /** EXTENSAO: texto do feedback, exibido na legenda junto com o audio */
+  falaAcerto?: string[]
+  falaErro?: string[]
 }
 
 export type CenaPane = CenaBase & {

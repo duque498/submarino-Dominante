@@ -1,11 +1,19 @@
 import { PainelFicha } from './PainelFicha'
 import { PainelMapa } from './PainelMapa'
 import { PainelSonar } from './PainelSonar'
-import { PainelStatus } from './PainelStatus'
+import { PainelStatus, type Queda } from './PainelStatus'
 
 export { fichaExiste, NOMES_FICHAS, NOMES_PAINEIS, PAINEIS, resolverPainel } from './nomes'
 
-export type PainelAberto = { nome: string; argumento?: string }
+export type PainelAberto = {
+  nome: string
+  argumento?: string
+  /** Só pro painel de status durante a pane. */
+  quedas?: Queda[]
+  congelado?: boolean
+  /** Substitui o "esc pra fechar" do cabeçalho. */
+  dica?: string
+}
 
 const TITULOS: Record<string, string> = {
   sonar: 'varredura de sonar',
@@ -26,7 +34,7 @@ export function Painel({ painel }: Props) {
       <div className="painel__moldura">
         <header className="painel__cabecalho">
           <span className="painel__nome">{TITULOS[painel.nome] ?? painel.nome}</span>
-          <span className="painel__fechar">esc pra fechar</span>
+          <span className="painel__fechar">{painel.dica ?? 'esc pra fechar'}</span>
         </header>
         <div className="painel__corpo">{corpoDoPainel(painel)}</div>
       </div>
@@ -34,12 +42,12 @@ export function Painel({ painel }: Props) {
   )
 }
 
-function corpoDoPainel({ nome, argumento }: PainelAberto) {
+function corpoDoPainel({ nome, argumento, quedas, congelado }: PainelAberto) {
   switch (nome) {
     case 'sonar':
       return <PainelSonar />
     case 'status':
-      return <PainelStatus />
+      return <PainelStatus quedas={quedas} congelado={congelado} />
     case 'ficha':
       return <PainelFicha argumento={argumento} />
     case 'mapa':

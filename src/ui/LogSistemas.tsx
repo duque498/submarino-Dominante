@@ -17,6 +17,8 @@ type Props = {
    * array dispara a rajada — é assim que o console mostra o sistema "pensando".
    */
   rajada?: string[] | null
+  /** Para tudo: na pane o log congela junto com o resto da tela. */
+  congelado?: boolean
 }
 
 const MAX_LINHAS = 18
@@ -91,6 +93,7 @@ export function LogSistemas({
   lerNivel,
   falando = false,
   rajada,
+  congelado = false,
 }: Props) {
   const refLista = useRef<HTMLOListElement>(null)
   const refContador = useRef<HTMLSpanElement>(null)
@@ -99,11 +102,13 @@ export function LogSistemas({
   const refModo = useRef(modo)
   const refNivel = useRef(lerNivel)
   const refFalando = useRef(falando)
+  const refCongelado = useRef(congelado)
   const refPrioritarias = useRef<string[]>([])
   const refUltimaRajada = useRef<string[] | null | undefined>(null)
   refModo.current = modo
   refNivel.current = lerNivel
   refFalando.current = falando
+  refCongelado.current = congelado
 
   // Cada cena traz sua própria fila de linhas específicas.
   useEffect(() => {
@@ -260,8 +265,21 @@ export function LogSistemas({
     }
 
     let quadro = 0
+    let anteriorCongelado = 0
     const tick = (tempo: number) => {
       quadro = requestAnimationFrame(tick)
+      if (refCongelado.current) {
+        // Congelado: nem emite, nem digita, nem redesenha. A tela inteira para.
+        anteriorCongelado = tempo
+        return
+      }
+      // Ao descongelar, o tempo parado não pode virar uma enxurrada de linhas.
+      if (anteriorCongelado) {
+        const parado = tempo - anteriorCongelado
+        proximaEm += parado
+        for (const linha of vivas) linha.inicio += parado
+        anteriorCongelado = 0
+      }
       agora = tempo
 
       if (tempo >= proximaEm) {

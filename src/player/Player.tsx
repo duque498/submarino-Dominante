@@ -3,21 +3,23 @@ import { ConsoleComandos } from '../console/Console'
 import { interpretar, vocabulario } from '../console/comandos'
 import { carregarFormas, FORMA_PADRAO, prepararGlifo } from '../formas'
 import { Painel, type PainelAberto } from '../paineis'
-import type { Cena, Roteiro } from '../roteiros/tipos'
+import type { Queda } from '../paineis/PainelStatus'
+import type { Cena, CenaPane, Roteiro } from '../roteiros/tipos'
 import { Apresentacao } from '../cenas/Apresentacao'
 import { Fala } from '../cenas/Fala'
+import { Quiz, type FaseDinamica } from '../cenas/Quiz'
 import { Transicao } from '../cenas/Transicao'
+import { VF } from '../cenas/VF'
 import { Ajuda } from '../ui/Ajuda'
 import { Hud } from '../ui/Hud'
 import { Legenda } from '../ui/Legenda'
 import { LogSistemas, type ModoLog } from '../ui/LogSistemas'
 import { POOL_COMANDO } from '../ui/logPool'
+import { duracaoDaLegenda } from '../ui/ritmoLegenda'
 import { Orbe, QTD_PONTOS, type EstadoOrbe } from '../ui/Orbe'
 import type { AudioEngine } from './AudioEngine'
 import { useTeclado } from './useTeclado'
 
-/** Tempo estimado de leitura por linha, usado quando o mp3 não existe. */
-const MS_POR_LINHA_SEM_AUDIO = 2500
 /** Limites do ajuste de tamanho do orbe pelo operador ([ e ]). */
 const ESCALA_MIN = 0.5
 const ESCALA_MAX = 2
@@ -26,9 +28,10 @@ const ESCALA_PASSO = 0.1
 const SEM_FORMA = -1
 /** Quanto tempo a IA "pensa" antes de responder a um comando. */
 const MS_PROCESSANDO = [600, 1200] as const
-/** Quanto tempo a resposta da IA fica na tela. */
-const MS_RESPOSTA = 4200
-const MS_TREMOR = 420
+/** Reação do orbe a acerto, erro ou comando desconhecido. */
+const MS_REACAO = 600
+/** Intervalo entre um subsistema cair (ou voltar) e o próximo. */
+const MS_ENTRE_SUBSISTEMAS = 400
 
 const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const sorteio = (min: number, max: number) => min + Math.random() * (max - min)
@@ -50,8 +53,13 @@ export function audioDaCena(cena: Cena): string | null {
   }
 }
 
-/** Linhas de texto da cena — só pra estimar a duração sem áudio. */
-function linhasDaCena(cena: Cena): string[] {
+/** Linhas que a legenda vai mostrar, se a cena tiver legenda. */
+function linhasDaLegenda(cena: Cena): string[] | null {
+  return cena.tipo === 'fala' || cena.tipo === 'transicao' ? cena.tela.linhas : null
+}
+
+/** Linhas só pra estimar duração em cenas que não têm legenda. */
+function linhasDeReferencia(cena: Cena): string[] {
   switch (cena.tipo) {
     case 'fala':
     case 'transicao':
@@ -86,13 +94,21 @@ function layoutDaCena(cena: Cena): Layout {
   return cena.orbe === 'palco' ? 'palco' : 'canto'
 }
 
+type FasePane = 'caindo' | 'congelado' | 'voltando'
+type EstadoPane = { fase: FasePane; quedas: Queda[] }
+type Fala = { linhas: string[]; duracaoMs: number | null; chave: number; fixa: boolean }
+
 type Props = { roteiro: Roteiro; engine: AudioEngine }
 
 export function Player({ roteiro, engine }: Props) {
-  // A pane fica no mesmo JSON, mas fora da ordem: ela é disparada pela tecla P
-  // (Fase 2), então some da sequência linear que as setas percorrem.
+  // A pane fica no mesmo JSON, mas fora da ordem: é disparada pela tecla P a
+  // qualquer momento, então some da sequência linear que as setas percorrem.
   const sequencia = useMemo(
     () => roteiro.cenas.filter((cena) => cena.tipo !== 'pane'),
+    [roteiro],
+  )
+  const cenaPane = useMemo(
+    () => roteiro.cenas.find((cena): cena is CenaPane => cena.tipo === 'pane'),
     [roteiro],
   )
 
@@ -103,9 +119,7 @@ export function Player({ roteiro, engine }: Props) {
     ativa: false,
   })
   const [falando, setFalando] = useState(false)
-  /** Índice na lista `formas` da cena; SEM_FORMA quando o operador forçou esfera. */
   const [indiceForma, setIndiceForma] = useState(SEM_FORMA)
-  /** Forma pedida pelo console — tem prioridade sobre a lista da cena. */
   const [formaForcada, setFormaForcada] = useState<string | null>(null)
   const [escala, setEscala] = useState(1)
   const [ajudaVisivel, setAjudaVisivel] = useState(false)
@@ -114,10 +128,25 @@ export function Player({ roteiro, engine }: Props) {
   const [consoleTravado, setConsoleTravado] = useState(false)
   const [autoComando, setAutoComando] = useState<string | null>(null)
   const [painel, setPainel] = useState<PainelAberto | null>(null)
-  const [resposta, setResposta] = useState<{ texto: string; chave: number } | null>(null)
+  /** Fala avulsa da IA: resposta de comando, feedback de quiz ou alerta da pane. */
+  const [fala, setFala] = useState<Fala | null>(null)
   const [rajadaLog, setRajadaLog] = useState<string[] | null>(null)
   const [orbeForcado, setOrbeForcado] = useState<EstadoOrbe | null>(null)
   const [tremor, setTremor] = useState(false)
+  const [pulso, setPulso] = useState(false)
+
+  // --- dinâmicas (quiz e vf) ---
+  const [faseDinamica, setFaseDinamica] = useState<FaseDinamica>('pergunta')
+  const [escolhidaQuiz, setEscolhidaQuiz] = useState<number | null>(null)
+  const [escolhidaVF, setEscolhidaVF] = useState<boolean | null>(null)
+  /** Subsistemas que o vf com `restaura` já religou (pronto pro 3A). */
+  const [restaurados, setRestaurados] = useState<string[]>([])
+
+  // --- pane ---
+  const [pane, setPane] = useState<EstadoPane | null>(null)
+  /** Lido dentro do efeito da cena, que não pode avançar por baixo da pane. */
+  const refPaneAtiva = useRef(false)
+  const refFimDaFalaPane = useRef(0)
   const proximaChave = useRef(0)
 
   const cena = sequencia[indice]
@@ -129,30 +158,210 @@ export function Player({ roteiro, engine }: Props) {
   const formaAtual = formaForcada ?? formaDaLista
 
   const avancar = useCallback(() => {
+    if (refPaneAtiva.current) return
     setIndice((atual) => Math.min(atual + 1, sequencia.length - 1))
   }, [sequencia.length])
 
   const voltar = useCallback(() => {
+    if (refPaneAtiva.current) return
     setIndice((atual) => Math.max(atual - 1, 0))
   }, [])
 
-  // Definido antes de qualquer return: hook não pode ficar dentro do JSX que
-  // só é alcançado em alguns caminhos.
   const lerNivel = useCallback(() => engine.nivel(), [engine])
 
-  /** Amostra a forma pedida (se ainda não estiver em cache) e devolve a chave. */
+  /** Põe uma fala avulsa na legenda. `fixa` = não sai sozinha (usada na pane). */
+  const dizer = useCallback(
+    (linhas: string[], duracaoMs: number | null = null, fixa = false) => {
+      proximaChave.current += 1
+      setFala({ linhas, duracaoMs, chave: proximaChave.current, fixa })
+    },
+    [],
+  )
+
+  /**
+   * Toca uma fala avulsa e devolve quanto tempo ela ocupa a tela. Sem mp3, o
+   * envelope sintético roda mesmo assim pra o orbe não ficar morto.
+   */
+  const falarAvulso = useCallback(
+    async (url: string, linhas: string[], fixa = false) => {
+      const reproducao = await engine.tocar(url)
+      const duracaoMs = reproducao.tocou ? reproducao.duracaoMs : null
+      const naTela = duracaoDaLegenda(linhas, duracaoMs)
+      if (!reproducao.tocou) engine.simularVoz(naTela)
+      dizer(linhas, duracaoMs, fixa)
+      return naTela
+    },
+    [engine, dizer],
+  )
+
+  const reagir = useCallback((acertou: boolean) => {
+    if (acertou) setPulso(true)
+    else setTremor(true)
+    setTimeout(() => {
+      setPulso(false)
+      setTremor(false)
+    }, MS_REACAO)
+  }, [])
+
+  // --- dinâmicas -----------------------------------------------------------
+
+  const concluirDinamica = useCallback(
+    async (acertou: boolean) => {
+      if (!cena) return
+      setFaseDinamica('feedback')
+      reagir(acertou)
+      setOrbeForcado('falando')
+
+      const audio =
+        cena.tipo === 'quiz' || cena.tipo === 'vf'
+          ? acertou
+            ? cena.audio.acerto
+            : cena.audio.erro
+          : null
+      const linhas =
+        (cena.tipo === 'quiz' || cena.tipo === 'vf'
+          ? acertou
+            ? cena.falaAcerto
+            : cena.falaErro
+          : null) ?? [acertou ? 'Correto.' : 'Incorreto.']
+
+      if (!audio) return
+      const naTela = await falarAvulso(audio, linhas)
+      setTimeout(() => setOrbeForcado(null), naTela)
+    },
+    [cena, falarAvulso, reagir],
+  )
+
+  const responderQuiz = useCallback(
+    (escolha: number) => {
+      if (cena?.tipo !== 'quiz' || faseDinamica !== 'respondendo') return
+      if (escolha >= cena.alternativas.length) return
+      setEscolhidaQuiz(escolha)
+      void concluirDinamica(escolha === cena.correta)
+    },
+    [cena, faseDinamica, concluirDinamica],
+  )
+
+  const responderVF = useCallback(
+    (escolha: boolean | null) => {
+      if (cena?.tipo !== 'vf' || faseDinamica !== 'respondendo') return
+      setEscolhidaVF(escolha)
+      const acertou = escolha === cena.resposta
+      // Cada acerto religa um subsistema: é o que sustenta a pane narrativa do 3A.
+      if (acertou && cena.restaura) {
+        setRestaurados((atuais) =>
+          atuais.includes(cena.restaura!) ? atuais : [...atuais, cena.restaura!],
+        )
+      }
+      void concluirDinamica(acertou)
+    },
+    [cena, faseDinamica, concluirDinamica],
+  )
+
+  /** Timer zerado sem resposta conta como erro. */
+  const aoZerarTimer = useCallback(() => {
+    if (faseDinamica !== 'respondendo') return
+    if (cena?.tipo === 'quiz') {
+      setEscolhidaQuiz(-1)
+      void concluirDinamica(false)
+    } else if (cena?.tipo === 'vf') {
+      setEscolhidaVF(null)
+      void concluirDinamica(false)
+    }
+  }, [cena, faseDinamica, concluirDinamica])
+
+  const aoPing = useCallback(() => engine.tocarSfx('sonar'), [engine])
+
+  // --- pane ----------------------------------------------------------------
+
+  const dispararPane = useCallback(async () => {
+    if (!cenaPane || refPaneAtiva.current) return
+    refPaneAtiva.current = true
+    // Fecha console e painel antes de tomar a tela.
+    setConsoleAberto(false)
+    setAutoComando(null)
+    setPainel({ nome: 'status' })
+    engine.pararVoz()
+    engine.tocarSfx(cenaPane.sfx ?? 'alarme')
+    setPane({ fase: 'caindo', quedas: [] })
+
+    const linhas = cenaPane.falaEntrada ?? ['ALERTA. FALHA NO SISTEMA DE BORDO.']
+    const naTela = await falarAvulso(cenaPane.audio.entrada, linhas, true)
+    refFimDaFalaPane.current = performance.now() + naTela
+  }, [cenaPane, engine, falarAvulso])
+
+  const reiniciarDaPane = useCallback(async () => {
+    // Aceita R em qualquer momento da pane, não só depois de congelar: ao vivo,
+    // o operador não pode ficar refém dos ~20 s da fala de alerta.
+    if (!cenaPane || !pane || pane.fase === 'voltando') return
+    engine.pararVoz()
+    engine.tocarSfx('ok')
+    setPane({ ...pane, fase: 'voltando' })
+    const linhas = cenaPane.falaRetorno ?? ['...sistema reiniciado.']
+    await falarAvulso(cenaPane.audio.retorno, linhas, true)
+  }, [cenaPane, pane, engine, falarAvulso])
+
+  // Subsistemas caem um a um; quando o último cai e a fala acaba, tudo congela.
+  useEffect(() => {
+    if (!pane || !cenaPane || pane.fase !== 'caindo') return
+
+    if (pane.quedas.length >= cenaPane.subsistemas.length) {
+      const restante = Math.max(0, refFimDaFalaPane.current - performance.now())
+      const timer = setTimeout(
+        () => setPane((atual) => (atual ? { ...atual, fase: 'congelado' } : null)),
+        restante,
+      )
+      return () => clearTimeout(timer)
+    }
+
+    const timer = setTimeout(() => {
+      setPane((atual) => {
+        if (!atual) return null
+        const i = atual.quedas.length
+        return {
+          ...atual,
+          quedas: [
+            ...atual.quedas,
+            {
+              nome: cenaPane.subsistemas[i],
+              estado: cenaPane.estados?.[i] ?? 'OFFLINE',
+            },
+          ],
+        }
+      })
+    }, MS_ENTRE_SUBSISTEMAS)
+    return () => clearTimeout(timer)
+  }, [pane, cenaPane])
+
+  // Voltando: subsistemas religam um a um, e aí a pane encerra.
+  useEffect(() => {
+    if (!pane || pane.fase !== 'voltando') return
+
+    if (pane.quedas.length === 0) {
+      const timer = setTimeout(() => {
+        refPaneAtiva.current = false
+        setPane(null)
+        setPainel(null)
+        setFala(null)
+        setOrbeForcado(null)
+      }, 1200)
+      return () => clearTimeout(timer)
+    }
+
+    const timer = setTimeout(() => {
+      setPane((atual) => (atual ? { ...atual, quedas: atual.quedas.slice(1) } : null))
+    }, MS_ENTRE_SUBSISTEMAS)
+    return () => clearTimeout(timer)
+  }, [pane])
+
+  // --- console -------------------------------------------------------------
+
   const prepararForma = useCallback(async (nome: string, argumento?: string) => {
     if (nome === 'glifo') return prepararGlifo(argumento ?? '?', QTD_PONTOS)
     await carregarFormas([nome], QTD_PONTOS)
     return nome
   }, [])
 
-  const responder = useCallback((texto: string) => {
-    proximaChave.current += 1
-    setResposta({ texto, chave: proximaChave.current })
-  }, [])
-
-  /** Ciclo completo de um comando: processa, responde e executa. */
   const executarComando = useCallback(
     async (texto: string, manterAberto: boolean) => {
       setConsoleTravado(true)
@@ -193,6 +402,18 @@ export function Player({ roteiro, engine }: Props) {
           if (comando.acao === 'status') setPainel({ nome: 'status' })
           if (comando.acao === 'proximo') avancar()
           if (comando.acao === 'voltar') voltar()
+          if (comando.acao === 'pane') {
+            setConsoleAberto(false)
+            setConsoleTravado(false)
+            void dispararPane()
+            return
+          }
+          if (comando.acao === 'reiniciar') {
+            setConsoleAberto(false)
+            setConsoleTravado(false)
+            void reiniciarDaPane()
+            return
+          }
           if (comando.acao === 'ajuda') {
             // Ajuda vai pro log de bordo, não pra legenda: é referência, não fala.
             setRajadaLog(['Comandos disponíveis:', ...vocabulario().slice(0, 14)])
@@ -202,18 +423,29 @@ export function Player({ roteiro, engine }: Props) {
         case 'desconhecido':
           engine.tocarSfx('estatica')
           setRajadaLog([`WARN: entrada não mapeada: "${comando.entrada}"`])
-          setTremor(true)
-          setTimeout(() => setTremor(false), MS_TREMOR)
+          reagir(false)
           break
       }
 
-      if (comando.resposta) responder(comando.resposta)
+      if (comando.resposta) dizer([comando.resposta])
       setOrbeForcado(null)
       setConsoleTravado(false)
       if (!manterAberto) setConsoleAberto(false)
     },
-    [avancar, voltar, engine, prepararForma, responder, sequencia],
+    [
+      avancar,
+      voltar,
+      engine,
+      prepararForma,
+      dizer,
+      sequencia,
+      dispararPane,
+      reiniciarDaPane,
+      reagir,
+    ],
   )
+
+  // --- teclado -------------------------------------------------------------
 
   useTeclado(
     useCallback(
@@ -229,8 +461,19 @@ export function Player({ roteiro, engine }: Props) {
             engine.pararVoz()
             avancar()
             break
+          case 'alternativa':
+            responderQuiz(acao.indice)
+            break
+          case 'vf':
+            responderVF(acao.resposta)
+            break
+          case 'pane':
+            void dispararPane()
+            break
+          case 'reiniciar':
+            void reiniciarDaPane()
+            break
           case 'proximaForma':
-            // Vindo de SEM_FORMA (-1), o +1 cai naturalmente na primeira da lista.
             if (formasDaCena.length > 0) {
               setFormaForcada(null)
               setIndiceForma((atual) => (atual + 1) % formasDaCena.length)
@@ -261,64 +504,76 @@ export function Player({ roteiro, engine }: Props) {
             setConsoleAberto(true)
             break
           case 'fechar':
-            setPainel(null)
-            break
-          // quiz, vf e pane entram na Fase 2.
-          default:
+            if (!refPaneAtiva.current) setPainel(null)
             break
         }
       },
-      [avancar, voltar, engine, formasDaCena],
+      [
+        avancar,
+        voltar,
+        engine,
+        formasDaCena,
+        responderQuiz,
+        responderVF,
+        dispararPane,
+        reiniciarDaPane,
+      ],
     ),
     // Com o console aberto o input captura tudo: nenhuma tecla de navegação
     // pode disparar enquanto o operador digita.
     !consoleAberto,
   )
 
-  // Toca a cena atual: sfx, áudio, legenda e avanço automático.
+  // --- ciclo da cena -------------------------------------------------------
+
   useEffect(() => {
     if (!cena) return
 
     let cancelado = false
     setSinc({ duracaoMs: null, ativa: false })
     setFalando(false)
-    // A primeira forma da cena entra sozinha ao abrir.
     setIndiceForma(cena.formas && cena.formas.length > 0 ? 0 : SEM_FORMA)
     setFormaForcada(null)
-    setPainel(null)
-    setResposta(null)
+    setFala(null)
+    setFaseDinamica('pergunta')
+    setEscolhidaQuiz(null)
+    setEscolhidaVF(null)
+    if (!refPaneAtiva.current) setPainel(null)
 
     if (cena.sfx) engine.tocarSfx(cena.sfx)
 
     const url = audioDaCena(cena)
-    const fallbackMs = Math.max(
-      MS_POR_LINHA_SEM_AUDIO,
-      linhasDaCena(cena).length * MS_POR_LINHA_SEM_AUDIO,
-    )
+    const legenda = linhasDaLegenda(cena)
+    // Sem mp3, quem dita o tempo da cena é a legenda: soma das durações
+    // mínimas de leitura, não um valor fixo por linha.
+    const fallbackMs = duracaoDaLegenda(legenda ?? linhasDeReferencia(cena), null)
 
     const executar = async () => {
       const reproducao = url ? await engine.tocar(url) : null
       if (cancelado) return
 
-      // A legenda só existe depois que sabemos a duração real: é ela que define
-      // o ritmo das linhas. Sem mp3, cai no tempo estimado.
-      const duracaoMs = reproducao?.tocou ? (reproducao.duracaoMs ?? fallbackMs) : fallbackMs
+      // null = sem duração conhecida. A legenda então usa os mínimos puros, que
+      // é o que o modo degradado pede; passar o fallback aqui faria ela entrar
+      // no ramo proporcional e inflar as linhas curtas.
+      const duracaoMs = reproducao?.tocou ? reproducao.duracaoMs : null
       setSinc({ duracaoMs, ativa: true })
       setFalando(true)
-      // Sem mp3, o nível vem do envelope sintético: a cena toda ficaria parada
-      // se o orbe e a legenda dependessem de um áudio que não existe.
       if (!reproducao?.tocou) engine.simularVoz(fallbackMs)
 
-      // Pré-decodifica só a próxima cena, pra não encher a memória de buffers.
       const proxima = sequencia[indice + 1]
       if (proxima) void engine.preparar(audioDaCena(proxima))
 
-      if (reproducao?.tocou) await reproducao.fim
-      else await esperar(fallbackMs)
+      // A cena só termina quando o áudio E a legenda terminarem: se o mp3 for
+      // mais curto que os mínimos de leitura, quem manda é a legenda.
+      const naTela = legenda ? duracaoDaLegenda(legenda, duracaoMs) : fallbackMs
+      if (reproducao?.tocou) await Promise.all([reproducao.fim, esperar(naTela)])
+      else await esperar(naTela)
       if (cancelado) return
 
       setFalando(false)
-      if (cena.avanco === 'auto') avancar()
+      // Quiz e vf não avançam: entram no tempo de resposta da plateia.
+      if (cena.tipo === 'quiz' || cena.tipo === 'vf') setFaseDinamica('respondendo')
+      else if (cena.avanco === 'auto') avancar()
     }
 
     void executar()
@@ -334,6 +589,7 @@ export function Player({ roteiro, engine }: Props) {
     if (!cena?.comandos?.length) return
     const timers = cena.comandos.map((comando) =>
       setTimeout(() => {
+        if (refPaneAtiva.current) return
         setConsoleAberto(true)
         setAutoComando(comando.texto)
       }, comando.atraso),
@@ -341,12 +597,13 @@ export function Player({ roteiro, engine }: Props) {
     return () => timers.forEach(clearTimeout)
   }, [cena])
 
-  // A resposta da IA sai de cena sozinha.
+  // Fala avulsa sai de cena sozinha, exceto na pane.
   useEffect(() => {
-    if (!resposta) return
-    const timer = setTimeout(() => setResposta(null), MS_RESPOSTA)
+    if (!fala || fala.fixa) return
+    const naTela = duracaoDaLegenda(fala.linhas, fala.duracaoMs)
+    const timer = setTimeout(() => setFala(null), naTela + 400)
     return () => clearTimeout(timer)
-  }, [resposta])
+  }, [fala])
 
   const aoTerminarAuto = useCallback(() => setAutoComando(null), [])
   const aoFecharConsole = useCallback(() => setConsoleAberto(false), [])
@@ -359,19 +616,27 @@ export function Player({ roteiro, engine }: Props) {
     )
   }
 
-  const estadoOrbe = orbeForcado ?? estadoDoOrbe(cena, falando)
-  // Só a apresentação escolhe: em "palco" o orbe é o cenário do que os alunos
-  // estão falando; em "discreto" ele recua pro canto e a tela é deles.
+  const estadoOrbe = pane
+    ? pane.fase === 'voltando'
+      ? 'falando'
+      : 'pane'
+    : (orbeForcado ?? estadoDoOrbe(cena, falando, faseDinamica))
   const modo = layoutDaCena(cena)
+  const quedasVisiveis = pane
+    ? pane.quedas.filter((queda) => !restaurados.includes(queda.nome))
+    : undefined
 
   return (
     <Hud
-      rota={rotaDaCena(cena)}
-      // Profundidade é decorativa: desce ao longo do roteiro.
+      rota={pane ? 'FALHA DE SISTEMA' : rotaDaCena(cena)}
       profundidade={120 + indice * 240}
-      sonar={cena.tipo === 'transicao' ? 'VARRENDO' : 'ATIVO'}
+      sonar={pane ? 'OFFLINE' : cena.tipo === 'transicao' ? 'VARRENDO' : 'ATIVO'}
       rodapeEsquerda={`turma ${roteiro.turma}`}
-      rodapeDireita={`cena ${indice + 1}/${sequencia.length} · ${cena.id}`}
+      rodapeDireita={
+        pane
+          ? 'pane · R pra reiniciar'
+          : `cena ${indice + 1}/${sequencia.length} · ${cena.id}`
+      }
     >
       <div className={`palco palco--${modo}`}>
         <div className="palco__cena">
@@ -383,25 +648,26 @@ export function Player({ roteiro, engine }: Props) {
             forma={formaAtual}
             escala={escala}
             tremor={tremor}
+            pulso={pulso}
             compacto={modo === 'canto'}
           />
           <div className="palco__texto">
             {conteudoDaCena(cena, sinc, modo, falando, lerNivel)}
           </div>
-          {resposta && (
-            <div className="palco__resposta">
+          {fala && (
+            <div className={pane ? 'palco__resposta palco__resposta--alerta' : 'palco__resposta'}>
               <Legenda
-                key={resposta.chave}
-                linhas={[resposta.texto]}
-                duracaoTotalMs={MS_RESPOSTA * 0.6}
+                key={fala.chave}
+                linhas={fala.linhas}
+                duracaoTotalMs={fala.duracaoMs}
                 ativa
                 falando={false}
                 lerNivel={lerNivel}
-                cena={`resposta-${resposta.chave}`}
+                cena={`fala-${fala.chave}`}
               />
             </div>
           )}
-          {formasDaCena.length > 0 && (
+          {formasDaCena.length > 0 && !pane && (
             <p className="palco__forma">
               {formaAtual}
               {' · '}
@@ -412,7 +678,27 @@ export function Player({ roteiro, engine }: Props) {
                   : '—'}
             </p>
           )}
-          {painel && <Painel painel={painel} />}
+          {dinamicaDaCena(
+            cena,
+            faseDinamica,
+            escolhidaQuiz,
+            escolhidaVF,
+            responderQuiz,
+            responderVF,
+            aoZerarTimer,
+            aoPing,
+          )}
+          {painel && (
+            <Painel
+              painel={{
+                ...painel,
+                quedas: quedasVisiveis,
+                congelado: pane?.fase === 'congelado',
+                // Durante a pane o Esc não fecha nada: quem sai da pane é o R.
+                dica: pane ? 'r pra reiniciar o sistema' : undefined,
+              }}
+            />
+          )}
           <ConsoleComandos
             aberto={consoleAberto}
             travado={consoleTravado}
@@ -424,11 +710,12 @@ export function Player({ roteiro, engine }: Props) {
         </div>
         <LogSistemas
           especificas={cena.log}
-          modo={modoDoLog(estadoOrbe)}
-          apagado={modo !== 'central'}
+          modo={pane ? 'erro' : modoDoLog(estadoOrbe)}
+          apagado={modo !== 'central' && !pane}
           lerNivel={lerNivel}
           falando={falando}
           rajada={rajadaLog}
+          congelado={pane?.fase === 'congelado'}
         />
       </div>
       {ajudaVisivel && <Ajuda cena={cena.id} forma={formaAtual} escala={escala} />}
@@ -436,13 +723,14 @@ export function Player({ roteiro, engine }: Props) {
   )
 }
 
-function estadoDoOrbe(cena: Cena, falando: boolean): EstadoOrbe {
+function estadoDoOrbe(cena: Cena, falando: boolean, fase: FaseDinamica): EstadoOrbe {
   switch (cena.tipo) {
     case 'pane':
       return 'pane'
     case 'quiz':
     case 'vf':
-      return 'processando'
+      // Enquanto a plateia pensa, o sistema "processa".
+      return fase === 'respondendo' ? 'processando' : falando ? 'falando' : 'ocioso'
     case 'apresentacao':
       return 'ocioso'
     default:
@@ -456,6 +744,45 @@ function modoDoLog(estado: EstadoOrbe): ModoLog {
   return 'normal'
 }
 
+function dinamicaDaCena(
+  cena: Cena,
+  fase: FaseDinamica,
+  escolhidaQuiz: number | null,
+  escolhidaVF: boolean | null,
+  responderQuiz: (indice: number) => void,
+  responderVF: (resposta: boolean) => void,
+  aoZerar: () => void,
+  aoPing: () => void,
+) {
+  if (cena.tipo === 'quiz') {
+    return (
+      <Quiz
+        key={cena.id}
+        cena={cena}
+        fase={fase}
+        escolhida={escolhidaQuiz}
+        aoResponder={responderQuiz}
+        aoZerar={aoZerar}
+        aoPing={aoPing}
+      />
+    )
+  }
+  if (cena.tipo === 'vf') {
+    return (
+      <VF
+        key={cena.id}
+        cena={cena}
+        fase={fase}
+        escolhida={escolhidaVF}
+        aoResponder={responderVF}
+        aoZerar={aoZerar}
+        aoPing={aoPing}
+      />
+    )
+  }
+  return null
+}
+
 function conteudoDaCena(
   cena: Cena,
   sinc: { duracaoMs: number | null; ativa: boolean },
@@ -463,9 +790,6 @@ function conteudoDaCena(
   falando: boolean,
   lerNivel: () => number,
 ) {
-  // O `key` por id garante que cada cena começa com estado limpo: sem ele, duas
-  // falas seguidas reaproveitam o mesmo componente e a legenda herda a posicao
-  // da cena anterior.
   switch (cena.tipo) {
     case 'fala':
       return (
@@ -492,7 +816,6 @@ function conteudoDaCena(
         />
       )
     default:
-      // quiz, vf e pane chegam na Fase 2.
-      return <p className="pendente">cena "{cena.tipo}" — a implementar (Fase 2)</p>
+      return null
   }
 }

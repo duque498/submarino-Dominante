@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { planejar } from './ritmoLegenda'
 
 type Props = {
   linhas: string[]
@@ -14,56 +15,13 @@ type Props = {
   cena?: string
 }
 
-/**
- * Peso fixo somado a cada linha, em "caracteres equivalentes". Representa a
- * pausa que o TTS faz entre frases — sem isso as linhas curtas passam voando.
- */
-const PESO_PAUSA_LINHA = 26
-const PESO_PAUSA_PALAVRA = 1.6
-/** Usado quando não há mp3: casa com o fallback do Player (2,5 s por linha). */
-const MS_POR_LINHA_SEM_AUDIO = 2500
 /** Cada palavra passa por caracteres aleatórios antes de assentar no texto real. */
 const MS_DECODIFICANDO = 80
 const MS_GLITCH = 200
 const SUJEIRA = '▓▒░#%&@/\\|=+*<>ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
-type LinhaPlanejada = { inicio: number; palavras: string[]; tempos: number[] }
-
-const somar = (numeros: number[]) => numeros.reduce((a, b) => a + b, 0)
-
 const sujeira = (tamanho: number) =>
   Array.from({ length: tamanho }, () => SUJEIRA[(Math.random() * SUJEIRA.length) | 0]).join('')
-
-/**
- * Reparte a duração do áudio entre as linhas e, dentro de cada linha, entre as
- * palavras — tudo proporcional ao número de caracteres. O TTS tem ritmo estável,
- * então isso fica perto o bastante sem precisar de marcação por palavra.
- */
-function planejar(linhas: string[], duracaoTotalMs: number | null): LinhaPlanejada[] {
-  const total = duracaoTotalMs ?? linhas.length * MS_POR_LINHA_SEM_AUDIO
-  const pesos = linhas.map((linha) => linha.length + PESO_PAUSA_LINHA)
-  const pesoTotal = somar(pesos) || 1
-
-  let acumulado = 0
-  return linhas.map((linha, indice) => {
-    const duracao = (total * pesos[indice]) / pesoTotal
-    const inicio = acumulado
-    acumulado += duracao
-
-    const palavras = linha.split(/\s+/).filter(Boolean)
-    const pesosPalavra = palavras.map((palavra) => palavra.length + PESO_PAUSA_PALAVRA)
-    const pesoPalavras = somar(pesosPalavra) || 1
-
-    let dentro = 0
-    const tempos = pesosPalavra.map((peso) => {
-      const quando = inicio + dentro
-      dentro += (duracao * peso) / pesoPalavras
-      return quando
-    })
-
-    return { inicio, palavras, tempos }
-  })
-}
 
 type PalavraViva = { el: HTMLSpanElement; texto: string; revelada: number; pronta: boolean }
 

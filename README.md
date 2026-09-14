@@ -9,10 +9,11 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 1.9 concluída.** Funcionam: seleção de turma, tela de ativação, cenas de
-`fala`, `apresentacao` e `transicao`, HUD, orbe animado da IA (que morfa em
-silhuetas), legenda sincronizada, painel de log de sistemas, console de
-comandos, painéis e o overlay de atalhos.
+**Fase 2 concluída.** Todos os tipos de cena funcionam: `fala`, `apresentacao`,
+`transicao`, `quiz`, `vf` e `pane`. Mais HUD, orbe que morfa em silhuetas,
+legenda sincronizada, log de sistemas, console de comandos, painéis e o
+overlay de atalhos. Falta só o pipeline de áudio (Fase 3) e os roteiros do
+2B e do 3A (Fase 4).
 As cenas `quiz`, `vf` e `pane` estão no roteiro mas ainda aparecem como
 "a implementar (Fase 2)". Os mp3 ainda não existem (Fase 3).
 
@@ -69,10 +70,10 @@ Sem `?turma=`, o app mostra uma tela pedindo pra escolher a turma (teclas 1, 2, 
 | `→` / `Enter` | avança pra próxima cena |
 | `←` | volta uma cena |
 | `Espaço` | interrompe o áudio atual e avança |
-| `1` `2` `3` `4` | marca a resposta no quiz *(Fase 2)* |
-| `V` / `F` | marca resposta no verdadeiro/falso *(Fase 2)* |
-| `P` | dispara a cena de pane a qualquer momento *(Fase 2)* |
-| `R` | durante a pane: reinicia e volta pra cena onde estava *(Fase 2)* |
+| `1` `2` `3` `4` | marca a resposta no quiz |
+| `V` / `F` | marca resposta no verdadeiro/falso |
+| `P` | dispara a pane a qualquer momento |
+| `R` | durante a pane: reinicia e volta pra cena onde estava |
 | `H` | mostra/esconde o overlay de atalhos |
 | `/` | abre o console de comandos |
 | `Esc` | fecha o console ou o painel aberto |
@@ -161,6 +162,35 @@ data URI e entra no bundle. Uma imagem carregada por caminho de arquivo via
 > — `circulo`, `quadrado`, `triangulo`, `estrela`, `coracao`, `onda`, `gota`,
 > `anel`, `espiral`, `seta`, `letra-d` — usadas provisoriamente no `2a.json` e
 > disponíveis no console a qualquer momento.
+
+## Dinâmicas: quiz e verdadeiro/falso
+
+Abrem como os painéis, numa janela sobre a área central: pergunta grande,
+alternativas em cards com o número da tecla bem visível e um timer circular
+que faz ping de sonar acelerando nos últimos 5 segundos.
+
+O ciclo é: a IA lê a pergunta → o timer começa → o operador marca com `1` `2`
+`3` (ou `V`/`F`) → o card certo pisca verde, o marcado errado pisca vermelho,
+o orbe pulsa (acerto) ou treme (erro), e a IA fala o feedback. **Timer zerado
+sem resposta conta como erro.** Depois do feedback o avanço é manual: `→`.
+
+No `vf`, o campo `restaura` religa um subsistema no painel `status` a cada
+acerto — é o que vai sustentar a pane narrativa do 3A.
+
+## Pane
+
+`P` dispara a pane de qualquer cena, fechando o console e qualquer painel
+aberto. Os subsistemas do JSON caem um a um a cada 400 ms no painel `status`,
+o log entra em modo erro, o orbe vai pra `pane` e a legenda mostra as falas de
+alerta em vermelho. Quando a fala termina, **tudo congela, inclusive o log**.
+
+`R` reinicia: os subsistemas religam um a um, a IA fala o retorno e a
+apresentação volta pra cena onde estava. Durante a pane as setas ficam
+bloqueadas, pra a cena não avançar por baixo.
+
+> `P` funciona com um painel aberto, mas **não** com o console aberto — lá as
+> teclas são texto, e um `p` digitado dispararia a pane no meio de uma palavra.
+> Com o console aberto, use o comando `pane`, ou `Esc` e depois `P`.
 
 ## Console de comandos
 
@@ -259,6 +289,16 @@ de análise e só engordariam o `audios.js`.
 
 ## Editando o roteiro
 
+### Ritmo da legenda
+
+Cada linha fica na tela pelo tempo de leitura em voz alta (~14 caracteres por
+segundo), com mínimo de 1,8 s, mais 0,6 s de pausa antes da próxima entrar.
+
+- **Sem mp3**, a duração da cena é a soma dessas durações.
+- **Com mp3**, a duração real é repartida proporcional a caracteres, mas nunca
+  abaixo do mínimo. Se o áudio for mais curto que a soma dos mínimos, quem dita
+  o ritmo é a legenda e a cena espera por ela.
+
 Todo o conteúdo (textos, áudios, perguntas) vive em `src/roteiros/2a.json`,
 `2b.json` e `3a.json`. O player só conhece **tipos de cena** — pra mudar o que a
 IA fala, mexa só no JSON.
@@ -295,8 +335,8 @@ public/audio/        mp3 fora do bundle: sfx/ e uma pasta por turma
 src/
   App.tsx            seleção de turma, tela de ativação, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
-  cenas/             um componente por tipo de cena
-  ui/                Hud, Orbe, Legenda, LogSistemas, logPool, Ajuda
+  cenas/             um componente por tipo de cena (inclui Quiz e VF)
+  ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
   console/           barra de comando e o parser
   paineis/           sonar, status, ficha, mapa e o registro
   formas/            registro das silhuetas, amostragem e primitivas

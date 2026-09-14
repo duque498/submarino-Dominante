@@ -443,9 +443,22 @@ body {
   letter-spacing: 0.15em;
 }
 
-/* Resposta da IA a um comando do console. */
+/* Fala avulsa da IA: resposta de comando, feedback de dinamica, alerta da pane.
+   Fica ancorada no rodape da area e por cima do painel — senao o feedback do
+   quiz sumiria atras da propria janela da pergunta. */
 .palco__resposta {
-  width: 100%;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9;
+  padding-top: clamp(20px, 4vh, 48px);
+  background: linear-gradient(transparent, rgba(2, 12, 15, 0.94) 45%);
+  pointer-events: none;
+}
+
+.palco__resposta .legenda {
+  min-height: clamp(50px, 9vh, 96px);
 }
 
 .palco__resposta .legenda__linha {
@@ -754,7 +767,8 @@ body {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 8;
+  /* Acima de painel e fala: com o console aberto, quem manda e o operador. */
+  z-index: 12;
   display: flex;
   align-items: baseline;
   gap: 0.6em;
@@ -985,7 +999,8 @@ body {
 
 .painel__status-item {
   display: grid;
-  grid-template-columns: 9em 1fr 4em 5em;
+  /* A ultima coluna precisa caber "INTERROMPIDA" sem cortar. */
+  grid-template-columns: 9em 1fr 4em 8.5em;
   align-items: center;
   gap: 0.8em;
 }
@@ -1067,6 +1082,182 @@ body {
   width: clamp(90px, 14vh, 150px);
   height: clamp(90px, 14vh, 150px);
   opacity: 0.85;
+}
+
+/* --- dinamicas: quiz e verdadeiro/falso ----------------------------------
+   Mesma janela dos paineis, pra a plateia reconhecer o padrao.
+   -------------------------------------------------------------------------- */
+
+.dinamica .painel__moldura {
+  width: min(100%, 940px);
+  border-color: var(--verde);
+  /* Os cards precisam de clique, ao contrario dos paineis decorativos. */
+  pointer-events: auto;
+}
+
+.dinamica__corpo {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 2vh, 24px);
+}
+
+.dinamica__topo {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 28px);
+}
+
+.dinamica__pergunta {
+  flex: 1;
+  margin: 0;
+  color: var(--texto);
+  font-size: clamp(1rem, 3vh, 2.1rem);
+  font-weight: 400;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.dinamica__timer {
+  flex: 0 0 auto;
+}
+
+.timer {
+  display: block;
+  width: clamp(64px, 11vh, 112px);
+  height: clamp(64px, 11vh, 112px);
+}
+
+.dinamica__cards {
+  display: grid;
+  gap: clamp(8px, 1.4vh, 16px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dinamica__cards--vf {
+  grid-template-columns: 1fr 1fr;
+}
+
+.dinamica__card {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 22px);
+  width: 100%;
+  padding: clamp(8px, 1.6vh, 18px) clamp(10px, 1.6vw, 22px);
+  border: 1px solid var(--ciano-fraco);
+  border-radius: 5px;
+  background: rgba(56, 232, 255, 0.05);
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  transition:
+    border-color 200ms,
+    background 200ms,
+    opacity 200ms;
+}
+
+.dinamica__numero {
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.9em;
+  height: 1.9em;
+  border: 1px solid var(--ciano);
+  border-radius: 4px;
+  color: var(--ciano);
+  font-size: clamp(0.85rem, 2.1vh, 1.4rem);
+  font-weight: 700;
+  place-items: center;
+}
+
+.dinamica__texto {
+  font-size: clamp(0.95rem, 2.6vh, 1.8rem);
+}
+
+/* Feedback: o certo pisca verde, o marcado errado pisca vermelho. */
+.dinamica__card--certo {
+  border-color: var(--verde);
+  background: rgba(77, 255, 166, 0.12);
+  color: var(--verde);
+  animation: card-certo 500ms ease-out 2;
+}
+
+.dinamica__card--certo .dinamica__numero {
+  border-color: var(--verde);
+  color: var(--verde);
+}
+
+.dinamica__card--errado {
+  border-color: var(--vermelho);
+  background: rgba(255, 77, 94, 0.12);
+  color: var(--vermelho);
+  animation: card-errado 500ms ease-out 2;
+}
+
+.dinamica__card--errado .dinamica__numero {
+  border-color: var(--vermelho);
+  color: var(--vermelho);
+}
+
+.dinamica__card--apagado {
+  opacity: 0.35;
+}
+
+@keyframes card-certo {
+  50% {
+    background: rgba(77, 255, 166, 0.34);
+    box-shadow: 0 0 26px rgba(77, 255, 166, 0.45);
+  }
+}
+
+@keyframes card-errado {
+  50% {
+    background: rgba(255, 77, 94, 0.3);
+    box-shadow: 0 0 26px rgba(255, 77, 94, 0.4);
+  }
+}
+
+.dinamica__restaura {
+  margin: 0;
+  color: var(--verde);
+  font-size: clamp(0.7rem, 1.6vh, 1rem);
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* --- pane ----------------------------------------------------------------- */
+
+.palco__resposta--alerta .legenda__linha {
+  color: var(--vermelho);
+  text-shadow: 0 0 22px rgba(255, 77, 94, 0.45);
+}
+
+.painel__status-item--caido .painel__status-nome,
+.painel__status-item--caido .painel__status-valor {
+  color: var(--vermelho);
+}
+
+.painel__status-item--caido .painel__status-estado {
+  color: var(--vermelho);
+  animation: piscar-rec 1s ease-in-out infinite;
+}
+
+.painel__status-item--caido .painel__status-barra {
+  background: var(--vermelho);
+  box-shadow: none;
+}
+
+/* Pulso de aprovacao do orbe (acerto numa dinamica). */
+.orbe--pulso {
+  animation: orbe-pulso 600ms ease-out;
+}
+
+@keyframes orbe-pulso {
+  40% {
+    transform: scale(1.07);
+    filter: brightness(1.5);
+  }
 }
 
 /* --- overlay de ajuda (tecla H) ------------------------------------------ */
