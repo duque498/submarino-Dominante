@@ -14,6 +14,8 @@ export type Acao =
   | { tipo: 'formaAnterior' }
   | { tipo: 'esfera' }
   | { tipo: 'escala'; passo: number }
+  | { tipo: 'console' }
+  | { tipo: 'fechar' }
 
 function traduzir(evento: KeyboardEvent): Acao | null {
   switch (evento.key) {
@@ -34,6 +36,10 @@ function traduzir(evento: KeyboardEvent): Acao | null {
       return { tipo: 'escala', passo: -1 }
     case ']':
       return { tipo: 'escala', passo: 1 }
+    case '/':
+      return { tipo: 'console' }
+    case 'Escape':
+      return { tipo: 'fechar' }
   }
 
   switch (evento.key.toLowerCase()) {

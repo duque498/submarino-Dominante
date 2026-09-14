@@ -1,3 +1,4 @@
+import { comandoResolve } from '../console/comandos'
 import { formaRegistrada, NOMES_FORMAS } from '../formas'
 import type { Cena, Roteiro, Turma } from './tipos'
 import { TURMAS } from './tipos'
@@ -76,6 +77,29 @@ export function validarRoteiro(dado: unknown): string[] {
 
     if (cena.log !== undefined && !ehListaDeTextos(cena.log)) {
       erros.push(`${onde}: campo "log" deve ser uma lista de textos nao vazia.`)
+    }
+
+    if (cena.comandos !== undefined) {
+      if (!Array.isArray(cena.comandos) || cena.comandos.length === 0) {
+        erros.push(`${onde}: campo "comandos" deve ser uma lista nao vazia.`)
+      } else {
+        cena.comandos.forEach((comando, posicao) => {
+          const rotulo = `${onde}, comando ${posicao + 1}`
+          if (!ehTextoPreenchido(comando?.texto)) {
+            erros.push(`${rotulo}: campo "texto" faltando.`)
+            return
+          }
+          if (typeof comando.atraso !== 'number' || comando.atraso < 0) {
+            erros.push(`${rotulo}: "atraso" deve ser o numero de ms apos o inicio da cena.`)
+          }
+          if (!comandoResolve(comando.texto)) {
+            erros.push(
+              `${rotulo}: o comando "${comando.texto}" nao resolve em nenhuma forma, ` +
+                `painel ou acao. Confira o nome.`,
+            )
+          }
+        })
+      }
     }
 
     if (cena.formas !== undefined) {

@@ -1,5 +1,5 @@
 import { amostrarCanvas, amostrarImagem, type PontoForma } from './amostrar'
-import { FORMAS_GERADAS } from './teste'
+import { gerarGlifo, PRIMITIVAS } from './primitivas'
 
 /**
  * Registro central das silhuetas que o orbe sabe assumir.
@@ -14,7 +14,7 @@ import { FORMAS_GERADAS } from './teste'
  * data URI e entra no bundle. Imagem carregada por caminho de arquivo via
  * file:// contamina o canvas e o getImageData lança SecurityError.
  *
- * TODO (Fase 4): trocar as formas de teste pelas silhuetas reais —
+ * TODO (Fase 4): trocar as primitivas provisórias pelas silhuetas reais —
  *   bio:  baleia, tartaruga, agua-viva, coral, peixe
  *   ef:   mergulhador, prancha, barco
  *   arte: onda, concha
@@ -32,7 +32,7 @@ export const FORMA_PADRAO = 'esfera'
 export const NOMES_FORMAS: string[] = [
   FORMA_PADRAO,
   ...Object.keys(IMAGENS_FORMAS),
-  ...Object.keys(FORMAS_GERADAS),
+  ...Object.keys(PRIMITIVAS),
 ]
 
 export function formaRegistrada(nome: string): boolean {
@@ -60,7 +60,7 @@ export async function carregarFormas(nomes: string[], quantidade: number): Promi
   await Promise.all(
     pendentes.map(async (nome) => {
       try {
-        const gerada = FORMAS_GERADAS[nome]
+        const gerada = PRIMITIVAS[nome]
         if (gerada) {
           cache.set(nome, amostrarCanvas(gerada(), quantidade))
           return
@@ -76,4 +76,21 @@ export async function carregarFormas(nomes: string[], quantidade: number): Promi
       }
     }),
   )
+}
+
+/**
+ * Gera e amostra um glifo na hora ("letra x", "numero 7"). O console usa isso
+ * pra formas que não existem em lugar nenhum até alguém pedir.
+ */
+export function prepararGlifo(texto: string, quantidade: number): string {
+  const chave = `glifo:${texto.toLowerCase()}`
+  if (!cache.has(chave)) {
+    cache.set(chave, amostrarCanvas(gerarGlifo(texto), quantidade))
+  }
+  return chave
+}
+
+/** Nome legível de uma forma, pro indicador e pra resposta da IA. */
+export function rotuloDaForma(nome: string): string {
+  return nome.startsWith('glifo:') ? nome.slice(6) : nome
 }

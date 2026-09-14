@@ -15,6 +15,8 @@ type Props = {
   forma?: string
   /** Ajuste fino do tamanho no projetor (teclas [ e ]). */
   escala?: number
+  /** Sacode o orbe por alguns quadros — resposta a um comando não reconhecido. */
+  tremor?: boolean
   /** Só pro modo "canto" da cena de apresentação. */
   compacto?: boolean
 }
@@ -141,6 +143,7 @@ export function Orbe({
   lerNivel,
   forma = FORMA_PADRAO,
   escala = 1,
+  tremor = false,
   compacto = false,
 }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
@@ -520,6 +523,12 @@ export function Orbe({
       observador.disconnect()
     }
   }, [])
+
+  // Efeito à parte: a classe do tremor não pode entrar nas dependências do
+  // loop de animação, que precisa montar uma vez só.
+  useEffect(() => {
+    refCanvas.current?.classList.toggle('orbe--tremor', tremor)
+  }, [tremor])
 
   return <canvas className="orbe" ref={refCanvas} aria-hidden="true" />
 }

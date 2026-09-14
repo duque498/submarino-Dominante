@@ -46,6 +46,12 @@
         "Consultando catálogo de espécies...",
         "Profundidade alvo: 600 m",
         "Lanternas externas: ligadas"
+      ],
+      "comandos": [
+        {
+          "texto": "abrir sonar",
+          "atraso": 1500
+        }
       ]
     },
     {
@@ -116,6 +122,12 @@
         "Carregando setor: EDUCAÇÃO FÍSICA",
         "Medindo resistência da corrente...",
         "Monitorando sinais vitais da tripulação"
+      ],
+      "comandos": [
+        {
+          "texto": "mapa",
+          "atraso": 2000
+        }
       ]
     },
     {

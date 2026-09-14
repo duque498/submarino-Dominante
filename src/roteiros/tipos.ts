@@ -26,6 +26,20 @@ export type CenaBase = {
    * Sem o campo, o orbe fica em esfera.
    */
   formas?: string[]
+  /**
+   * Comandos que a propria IA digita no console, sem o operador. `atraso` conta
+   * em ms a partir do inicio da cena. Serve pros momentos em que o roteiro quer
+   * que "o sistema" acesse algo sozinho.
+   */
+  comandos?: ComandoRoteirizado[]
+}
+
+export type ComandoRoteirizado = {
+  texto: string
+  /** ms depois do inicio da cena */
+  atraso: number
+  /** mp3 opcional da resposta; sem ele, so legenda + sfx */
+  audio?: string
 }
 
 export type CenaFala = CenaBase & {

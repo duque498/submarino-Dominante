@@ -277,23 +277,161 @@ body {
   text-transform: uppercase;
 }
 
-/* --- legenda ------------------------------------------------------------- */
+/* --- legenda -------------------------------------------------------------
+   O DOM das palavras e montado pelo componente; aqui so mora a aparencia e as
+   transicoes, que sao de graca comparadas a animar por JS.
+   -------------------------------------------------------------------------- */
+
+.legenda__caixa {
+  position: relative;
+  width: 100%;
+}
 
 .legenda {
+  --brilho: 0;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
   width: 100%;
   /* Altura fixa: a legenda nao pode empurrar o orbe quando a frase e longa. */
   min-height: clamp(70px, 13vh, 140px);
-  margin: 0;
   padding: 0 clamp(8px, 3vw, 48px);
+  place-items: center;
+}
+
+/* Entrando e saindo ocupam a mesma celula: uma passa por cima da outra. */
+.legenda__linha {
+  grid-area: 1 / 1;
   color: var(--texto);
   font-size: clamp(1.1rem, 3.2vh, 2.4rem);
   line-height: 1.25;
-  text-shadow: 0 0 18px rgba(77, 255, 166, 0.25);
+  text-align: center;
   text-wrap: balance;
+  /* O brilho acompanha o nivel de audio, escrito pelo rAF da legenda. */
+  text-shadow: 0 0 calc(10px + var(--brilho) * 26px)
+    rgba(77, 255, 166, calc(0.18 + var(--brilho) * 0.5));
+}
+
+.legenda__linha--saindo {
+  animation: legenda-sair 250ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes legenda-sair {
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.85);
+  }
+}
+
+/* Cada palavra se materializa: fade + subida + desfoque saindo. */
+.legenda__palavra {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(4px);
+  transform: translateY(6px);
+}
+
+.legenda__palavra--visivel {
+  animation: palavra-entrar 120ms ease-out forwards;
+}
+
+@keyframes palavra-entrar {
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+/* Cursor so enquanto a IA fala. */
+.legenda__cursor {
+  display: none;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 0.1em;
+  background: var(--verde);
+  vertical-align: text-bottom;
+}
+
+.legenda--falando .legenda__cursor {
+  display: inline-block;
+  animation: piscar 1s steps(2, start) infinite;
+}
+
+@keyframes piscar {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Glitch curto de entrada de cena: RGB split + fatias. Nunca no meio da fala. */
+.legenda__linha--glitch {
+  animation: legenda-glitch 200ms steps(1) 1;
+}
+
+.legenda__linha--glitch::before,
+.legenda__linha--glitch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.legenda__linha--glitch::before {
+  background: rgba(56, 232, 255, 0.16);
+  animation: fatia-a 200ms steps(1) 1;
+}
+
+.legenda__linha--glitch::after {
+  background: rgba(255, 77, 94, 0.14);
+  animation: fatia-b 200ms steps(1) 1;
+}
+
+@keyframes legenda-glitch {
+  0% {
+    transform: translateX(-7px);
+    clip-path: inset(12% 0 46% 0);
+  }
+  33% {
+    transform: translateX(9px);
+    clip-path: inset(58% 0 8% 0);
+  }
+  66% {
+    transform: translateX(-4px);
+    clip-path: inset(30% 0 30% 0);
+  }
+  100% {
+    transform: none;
+    clip-path: none;
+  }
+}
+
+@keyframes fatia-a {
+  0% {
+    clip-path: inset(20% 0 62% 0);
+    transform: translateX(-10px);
+  }
+  50% {
+    clip-path: inset(70% 0 14% 0);
+    transform: translateX(6px);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fatia-b {
+  0% {
+    clip-path: inset(52% 0 28% 0);
+    transform: translateX(8px);
+  }
+  50% {
+    clip-path: inset(6% 0 78% 0);
+    transform: translateX(-7px);
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .legenda__contador {
@@ -303,6 +441,20 @@ body {
   color: var(--ciano-fraco);
   font-size: clamp(0.6rem, 1.3vh, 0.85rem);
   letter-spacing: 0.15em;
+}
+
+/* Resposta da IA a um comando do console. */
+.palco__resposta {
+  width: 100%;
+}
+
+.palco__resposta .legenda__linha {
+  color: var(--verde);
+}
+
+/* Resposta e sempre uma linha so: o contador "1/1" seria ruido. */
+.palco__resposta .legenda__contador {
+  display: none;
 }
 
 /* --- log de sistemas ----------------------------------------------------- */
@@ -328,13 +480,113 @@ body {
   color: var(--vermelho);
 }
 
+.log__cabecalho {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  margin-bottom: 0.5em;
+}
+
 .log__titulo {
-  margin: 0 0 0.6em;
+  flex: 1;
+  margin: 0;
   color: var(--ciano-fraco);
   font-size: inherit;
   font-weight: 400;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+.log__rec {
+  color: var(--vermelho);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  animation: piscar-rec 1.4s ease-in-out infinite;
+}
+
+@keyframes piscar-rec {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.log__contador {
+  color: var(--ciano);
+  letter-spacing: 0.08em;
+}
+
+.log__telemetria {
+  margin-bottom: 0.6em;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.5);
+}
+
+.log__rotulo-spark {
+  display: block;
+  color: var(--ciano-fraco);
+  font-size: 0.85em;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.log__spark {
+  display: block;
+  width: 100%;
+  height: 24px;
+}
+
+.log__sufixo {
+  color: var(--verde);
+}
+
+/* Cursor da linha que esta sendo digitada. */
+.log__cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.95em;
+  background: currentColor;
+  vertical-align: text-bottom;
+  animation: piscar 0.8s steps(2, start) infinite;
+}
+
+/* Destaques momentaneos ao terminar de digitar. */
+.log__linha--ok {
+  animation: destaque-ok 700ms ease-out 1;
+}
+.log__linha--warn {
+  animation: destaque-warn 500ms ease-out 2;
+}
+.log__linha--err {
+  color: var(--vermelho);
+  animation: destaque-err 300ms linear 1;
+}
+
+@keyframes destaque-ok {
+  0%,
+  40% {
+    color: var(--verde);
+    text-shadow: 0 0 10px rgba(77, 255, 166, 0.7);
+  }
+}
+
+@keyframes destaque-warn {
+  0%,
+  50% {
+    color: var(--ambar);
+  }
+}
+
+@keyframes destaque-err {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1px);
+  }
+  75% {
+    transform: translateX(1px);
+  }
 }
 
 .log__lista {
@@ -351,8 +603,12 @@ body {
 }
 
 .log__linha {
-  animation: entrar-log 300ms ease-out;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  /* A altura e animada pelo componente (0 -> natural) pra as linhas antigas
+     deslizarem pra cima em vez de pular. */
+  transition: height 240ms ease-out;
+  animation: entrar-log 300ms ease-out;
 }
 
 /* As mais antigas somem por cima. */
@@ -384,7 +640,7 @@ body {
 @keyframes entrar-log {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
 }
 
@@ -486,6 +742,331 @@ body {
   to {
     left: 100%;
   }
+}
+
+/* --- console de comandos -------------------------------------------------
+   O que o operador digita aparece pra plateia: e parte do show, entao a fonte
+   e grande e o campo brilha.
+   -------------------------------------------------------------------------- */
+
+.console {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 8;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  padding: clamp(8px, 1.6vh, 16px) clamp(10px, 1.6vw, 22px);
+  border: 1px solid var(--verde);
+  border-radius: 5px;
+  background: rgba(2, 18, 22, 0.93);
+  box-shadow:
+    0 0 26px rgba(77, 255, 166, 0.2),
+    inset 0 0 30px rgba(77, 255, 166, 0.06);
+  font-size: clamp(1rem, 2.8vh, 2rem);
+  animation: console-abrir 180ms ease-out;
+}
+
+@keyframes console-abrir {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.console--travado {
+  border-color: var(--ciano);
+  box-shadow: 0 0 26px rgba(56, 232, 255, 0.25);
+}
+
+.console__prompt {
+  color: var(--ciano);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* O fantasma fica atras do input, alinhado caractere a caractere: a parte ja
+   digitada e transparente e so o resto da sugestao aparece. */
+.console__campo {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.console__fantasma {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--ciano-fraco);
+  pointer-events: none;
+  white-space: pre;
+}
+
+.console__fantasma-digitado {
+  visibility: hidden;
+}
+
+.console__input {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--verde);
+  font: inherit;
+  letter-spacing: 0.04em;
+  outline: none;
+  caret-color: var(--verde);
+}
+
+.console--travado .console__input {
+  color: var(--ciano);
+}
+
+.console__cursor {
+  width: 0.5em;
+  height: 1em;
+  background: var(--verde);
+  animation: piscar 1s steps(2, start) infinite;
+}
+
+/* Tremor do orbe quando o comando nao e reconhecido. */
+.orbe--tremor {
+  animation: orbe-tremor 420ms ease-in-out;
+}
+
+@keyframes orbe-tremor {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* --- paineis -------------------------------------------------------------- */
+
+.painel {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(4px, 1vh, 12px);
+  /* Escurece o que fica atras: com o painel aberto, a legenda vazando pelas
+     bordas parecia defeito. */
+  background: rgba(2, 10, 12, 0.72);
+  pointer-events: none;
+  animation: painel-fundo 220ms ease-out;
+}
+
+@keyframes painel-fundo {
+  from {
+    background: rgba(2, 10, 12, 0);
+  }
+}
+
+.painel__moldura {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 780px);
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--ciano);
+  border-radius: 6px;
+  background: rgba(2, 18, 22, 0.95);
+  box-shadow: 0 0 44px rgba(0, 0, 0, 0.65);
+  animation: painel-abrir 300ms ease-out;
+}
+
+@keyframes painel-abrir {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+    clip-path: inset(46% 0 46% 0);
+  }
+  40% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  55% {
+    transform: scale(0.985) translateX(5px);
+  }
+  70% {
+    transform: scale(1) translateX(-3px);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.painel__cabecalho {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.7em 1em;
+  border-bottom: 1px solid var(--ciano-fraco);
+  color: var(--ciano);
+  font-size: clamp(0.65rem, 1.5vh, 0.95rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.painel__fechar {
+  color: var(--ciano-fraco);
+}
+
+.painel__corpo {
+  flex: 1;
+  min-height: 0;
+  padding: clamp(10px, 2vh, 22px);
+  overflow: hidden;
+}
+
+.painel__legenda {
+  margin: 0.6em 0 0;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.65rem, 1.4vh, 0.9rem);
+  letter-spacing: 0.22em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.painel__vazio {
+  margin: 0;
+  color: var(--ambar);
+  font-size: clamp(0.8rem, 1.8vh, 1.1rem);
+  text-align: center;
+}
+
+/* Sonar e mapa sao canvas: sem altura minima eles encolhem ate sumir, porque a
+   altura do painel vem do conteudo. */
+.painel__sonar,
+.painel__mapa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-height: clamp(200px, 38vh, 420px);
+}
+
+.painel__sonar-canvas {
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: 1;
+}
+
+.painel__mapa-canvas {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+/* status */
+.painel__status {
+  display: grid;
+  gap: 0.7em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(0.7rem, 1.7vh, 1.05rem);
+}
+
+.painel__status-item {
+  display: grid;
+  grid-template-columns: 9em 1fr 4em 5em;
+  align-items: center;
+  gap: 0.8em;
+}
+
+.painel__status-nome {
+  color: var(--ciano);
+  letter-spacing: 0.12em;
+}
+
+.painel__status-trilho {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(56, 232, 255, 0.14);
+}
+
+.painel__status-barra {
+  display: block;
+  height: 100%;
+  background: var(--verde);
+  box-shadow: 0 0 10px rgba(77, 255, 166, 0.5);
+  transition: width 220ms linear;
+}
+
+.painel__status-valor {
+  color: var(--texto);
+  text-align: right;
+}
+
+.painel__status-estado {
+  color: var(--verde);
+  letter-spacing: 0.14em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+/* ficha */
+.painel__ficha {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: clamp(10px, 2vw, 28px);
+  align-items: start;
+}
+
+.painel__ficha--sem-silhueta {
+  grid-template-columns: 1fr;
+}
+
+.painel__ficha-titulo {
+  margin: 0 0 0.7em;
+  color: var(--verde);
+  font-size: clamp(1rem, 2.6vh, 1.7rem);
+  letter-spacing: 0.06em;
+}
+
+.painel__ficha-lista {
+  display: grid;
+  gap: 0.5em;
+  margin: 0;
+  font-size: clamp(0.72rem, 1.7vh, 1.05rem);
+}
+
+.painel__ficha-item {
+  display: grid;
+  grid-template-columns: 13em 1fr;
+  gap: 0.8em;
+}
+
+.painel__ficha-item dt {
+  color: var(--ciano-fraco);
+}
+
+.painel__ficha-item dd {
+  margin: 0;
+  color: var(--texto);
+}
+
+.painel__ficha-silhueta {
+  width: clamp(90px, 14vh, 150px);
+  height: clamp(90px, 14vh, 150px);
+  opacity: 0.85;
 }
 
 /* --- overlay de ajuda (tecla H) ------------------------------------------ */

@@ -9,10 +9,10 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 1.75 concluída.** Funcionam: seleção de turma, tela de ativação, cenas de
+**Fase 1.9 concluída.** Funcionam: seleção de turma, tela de ativação, cenas de
 `fala`, `apresentacao` e `transicao`, HUD, orbe animado da IA (que morfa em
-silhuetas), legenda sincronizada com o áudio, painel de log de sistemas e o
-overlay de atalhos.
+silhuetas), legenda sincronizada, painel de log de sistemas, console de
+comandos, painéis e o overlay de atalhos.
 As cenas `quiz`, `vf` e `pane` estão no roteiro mas ainda aparecem como
 "a implementar (Fase 2)". Os mp3 ainda não existem (Fase 3).
 
@@ -74,6 +74,10 @@ Sem `?turma=`, o app mostra uma tela pedindo pra escolher a turma (teclas 1, 2, 
 | `P` | dispara a cena de pane a qualquer momento *(Fase 2)* |
 | `R` | durante a pane: reinicia e volta pra cena onde estava *(Fase 2)* |
 | `H` | mostra/esconde o overlay de atalhos |
+| `/` | abre o console de comandos |
+| `Esc` | fecha o console ou o painel aberto |
+| `Tab` | completa o comando (sugestão em cinza no campo) |
+| `↑` / `↓` | histórico de comandos |
 | `M` / `N` | próxima / anterior forma do orbe na cena atual |
 | `O` | volta o orbe pra esfera, de qualquer cena |
 | `[` / `]` | diminui / aumenta o orbe em 10% (ajuste ao vivo; não persiste) |
@@ -94,7 +98,14 @@ Três elementos, todos cenográficos menos a legenda:
   palavra junto com a voz. As linhas anteriores não ficam na tela.
 - **Log de sistemas** — coluna da direita. **Nada ali é real**: é um painel
   decorativo que sorteia linhas técnicas de um pool (`src/ui/logPool.ts`) e as
-  intercala com as linhas do campo `log` da cena atual.
+  intercala com as linhas do campo `log` da cena atual. As linhas são digitadas
+  caractere a caractere, algumas têm barra de progresso que sobe, outras têm
+  leitura que oscila antes de congelar, e no topo há uma sparkline alimentada
+  pelo nível de áudio.
+
+Tanto a legenda quanto o log manipulam o próprio DOM em vez de virar estado do
+React. Com digitação, brilho reativo e barra de progresso, um render por quadro
+custaria a árvore inteira; assim cada um tem um único `requestAnimationFrame`.
 
 ## Os dois modos da cena `apresentacao`
 
@@ -146,8 +157,63 @@ O `import` tem que passar pelo Vite: com `assetsInlineLimit` alto o PNG vira
 data URI e entra no bundle. Uma imagem carregada por caminho de arquivo via
 `file://` contamina o canvas e o `getImageData` lança `SecurityError`.
 
-> Enquanto os PNGs não chegam, `src/formas/teste.ts` gera três formas em código
-> — `circulo`, `triangulo` e `letra-d` — usadas provisoriamente no `2a.json`.
+> Enquanto os PNGs não chegam, `src/formas/primitivas.ts` gera formas em código
+> — `circulo`, `quadrado`, `triangulo`, `estrela`, `coracao`, `onda`, `gota`,
+> `anel`, `espiral`, `seta`, `letra-d` — usadas provisoriamente no `2a.json` e
+> disponíveis no console a qualquer momento.
+
+## Console de comandos
+
+`/` abre uma barra de comando na parte de baixo da área central. **O que o
+operador digita aparece pra plateia** — é parte do show, então a fonte é grande
+e o campo tem brilho.
+
+Ao dar `Enter`: o campo trava, o orbe vai pra `processando`, o log entra em
+rajada por cerca de 1 s, e aí a IA responde com uma linha de legenda e executa.
+`Shift+Enter` executa sem fechar a barra.
+
+A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscula:
+
+| Exemplo | O que faz |
+|---|---|
+| `baleia`, `virar tartaruga`, `forma esfera` | morfa o orbe numa forma registrada |
+| `estrela`, `coracao`, `espiral`, `letra x`, `numero 7` | desenha a primitiva na hora e morfa |
+| `sonar`, `abrir status`, `mapa`, `ficha baleia` | abre um painel |
+| `cena 5`, `ir bio`, `proximo`, `voltar` | navega no roteiro |
+| `pane`, `reiniciar`, `limpar`, `ajuda` | comandos de sistema |
+
+Comando não reconhecido **nunca** vira "comando inválido" seco — no palco isso
+parece defeito. A IA responde `Comando não reconhecido pelo sistema de bordo.`,
+solta uma estática, o orbe treme e o log registra um `WARN`.
+
+### Comandos roteirizados
+
+Qualquer cena pode ter comandos que **a própria IA digita**, sem o operador:
+
+```json
+{ "id": "bio-intro", "tipo": "fala",
+  "comandos": [{ "texto": "abrir sonar", "atraso": 1500 }] }
+```
+
+`atraso` conta em ms a partir do início da cena. A digitação tem velocidade
+humana (~60 ms por caractere) e uma hesitação no meio. Se o comando não
+resolver em nada, o roteiro dá erro legível no carregamento.
+
+## Painéis
+
+Overlays que se materializam sobre a área central. Um por vez; abrir outro
+substitui, e trocar de cena fecha.
+
+- `sonar` — varredura circular com contatos e anéis de distância.
+- `status` — os seis subsistemas com barra e valor. Na Fase 2 é este painel que
+  mostra a pane.
+- `ficha <nome>` — ficha de espécie. **Os dados são reais**, vêm de
+  `src/roteiros/fichas.json`: é conteúdo de Biologia, não cenografia. Tem
+  entradas pra baleia, tartaruga, agua-viva, coral, peixe e mergulhador.
+- `mapa` — costa brasileira com marcadores em Abrolhos e no litoral amazônico.
+
+Painel novo = um arquivo em `src/paineis/` + uma linha em `nomes.ts` e no
+`index.tsx`.
 
 ## As duas camadas de áudio
 
@@ -231,8 +297,10 @@ src/
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
   cenas/             um componente por tipo de cena
   ui/                Hud, Orbe, Legenda, LogSistemas, logPool, Ajuda
-  formas/            registro das silhuetas, amostragem e formas de teste
-  roteiros/          tipos.ts, validar.ts e os JSONs de cada turma
+  console/           barra de comando e o parser
+  paineis/           sonar, status, ficha, mapa e o registro
+  formas/            registro das silhuetas, amostragem e primitivas
+  roteiros/          tipos.ts, validar.ts, fichas.json e os JSONs de cada turma
 scripts/
   embutir_audios.py  gera public/audios.js (camada A)
 ```

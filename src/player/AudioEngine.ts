@@ -304,6 +304,15 @@ export class AudioEngine {
     })
   }
 
+  /**
+   * Roda só o envelope sintético, sem áudio nenhum, por um tempo dado. É o que
+   * mantém orbe, legenda e sparkline vivos enquanto os mp3 não existem.
+   */
+  simularVoz(duracaoMs: number): void {
+    this.iniciarLoopNivel('sintetico')
+    setTimeout(() => this.pararLoopNivel(), duracaoMs)
+  }
+
   /** Dispara um efeito sonoro no canal paralelo, sem esperar o fim. */
   tocarSfx(sfx: Sfx): void {
     const url = CAMINHOS_SFX[sfx]
