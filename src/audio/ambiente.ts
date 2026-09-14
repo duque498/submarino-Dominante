@@ -23,6 +23,18 @@ const CORTE_GERAL = 1500
 
 const sorteio = (min: number, max: number) => min + Math.random() * (max - min)
 
+/**
+ * Solta os nós assim que o som acaba. Sem isso eles ficam pendurados no grafo:
+ * num Chromebook, minutos de apresentação viram milhares de nós vivos e o
+ * processo de áudio morre — levando a aba junto.
+ */
+function limparAoTerminar(fonte: AudioScheduledSourceNode, ...nos: AudioNode[]) {
+  fonte.onended = () => {
+    fonte.disconnect()
+    for (const no of nos) no.disconnect()
+  }
+}
+
 function suave(inicio: number, fim: number, valor: number): number {
   const t = Math.max(0, Math.min(1, (valor - inicio) / (fim - inicio || 1)))
   return t * t * (3 - 2 * t)
@@ -226,6 +238,7 @@ export class AmbienteOceano {
     ganho.gain.exponentialRampToValueAtTime(sorteio(0.1, 0.24), t + dur * 0.45)
     ganho.gain.exponentialRampToValueAtTime(0.0001, t + dur)
     osc.connect(ressonancia).connect(ganho).connect(this.entrada)
+    limparAoTerminar(osc, ressonancia, ganho)
     osc.start(t)
     osc.stop(t + dur + 0.1)
   }
@@ -245,6 +258,7 @@ export class AmbienteOceano {
     ganho.gain.exponentialRampToValueAtTime(sorteio(0.08, 0.2), t + 0.003)
     ganho.gain.exponentialRampToValueAtTime(0.0001, t + sorteio(0.05, 0.13))
     osc.connect(filtro).connect(ganho).connect(this.entrada)
+    limparAoTerminar(osc, filtro, ganho)
     osc.start(t)
     osc.stop(t + 0.2)
   }
@@ -262,6 +276,7 @@ export class AmbienteOceano {
     ganho.gain.exponentialRampToValueAtTime(0.12, t + 0.004)
     ganho.gain.exponentialRampToValueAtTime(0.0001, t + 0.1)
     osc.connect(ganho).connect(this.entrada)
+    limparAoTerminar(osc, ganho)
     osc.start(t)
     osc.stop(t + 0.2)
   }
@@ -285,6 +300,7 @@ export class AmbienteOceano {
       ganho.gain.exponentialRampToValueAtTime(sorteio(0.05, 0.13), t + 0.005)
       ganho.gain.exponentialRampToValueAtTime(0.0001, t + sorteio(0.05, 0.09))
       osc.connect(ganho).connect(this.entrada)
+      limparAoTerminar(osc, ganho)
       osc.start(t)
       osc.stop(t + 0.2)
     }
@@ -298,25 +314,29 @@ export class AmbienteOceano {
     const filtro = this.ctx.createBiquadFilter()
     filtro.type = 'lowpass'
     filtro.frequency.value = 220
-    const saida = this.ctx.createGain()
-    saida.gain.setValueAtTime(0.0001, t)
-    saida.gain.exponentialRampToValueAtTime(0.1, t + dur * 0.3)
-    saida.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    filtro.connect(saida).connect(this.entrada)
 
+    // Um oscilador só, com a batida feita por automação de ganho. A versão
+    // anterior criava um oscilador por batida — umas 40 de uma vez.
+    const osc = this.ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.value = sorteio(58, 74)
+    const batida = this.ctx.createGain()
+    batida.gain.setValueAtTime(0.0001, t)
     for (let i = 0; i < batidas; i++) {
       const tb = t + i * 0.17
-      const osc = this.ctx.createOscillator()
-      const g = this.ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = sorteio(58, 74)
-      g.gain.setValueAtTime(0.0001, tb)
-      g.gain.exponentialRampToValueAtTime(0.5, tb + 0.02)
-      g.gain.exponentialRampToValueAtTime(0.0001, tb + 0.14)
-      osc.connect(g).connect(filtro)
-      osc.start(tb)
-      osc.stop(tb + 0.2)
+      batida.gain.exponentialRampToValueAtTime(0.5, tb + 0.02)
+      batida.gain.exponentialRampToValueAtTime(0.02, tb + 0.14)
     }
+
+    const envelope = this.ctx.createGain()
+    envelope.gain.setValueAtTime(0.0001, t)
+    envelope.gain.exponentialRampToValueAtTime(0.1, t + dur * 0.3)
+    envelope.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+
+    osc.connect(batida).connect(filtro).connect(envelope).connect(this.entrada)
+    limparAoTerminar(osc, batida, filtro, envelope)
+    osc.start(t)
+    osc.stop(t + dur + 0.1)
   }
 
   /** Canto de cetáceo, ouvido de longe: grave, lento e muito abafado. */
@@ -337,6 +357,7 @@ export class AmbienteOceano {
     ganho.gain.exponentialRampToValueAtTime(sorteio(0.1, 0.2), t + dur * 0.3)
     ganho.gain.exponentialRampToValueAtTime(0.0001, t + dur)
     osc.connect(filtro).connect(ganho).connect(this.entrada)
+    limparAoTerminar(osc, filtro, ganho)
     osc.start(t)
     osc.stop(t + dur + 0.2)
   }
@@ -355,6 +376,7 @@ export class AmbienteOceano {
     ganho.gain.exponentialRampToValueAtTime(0.09, t + 0.04)
     ganho.gain.exponentialRampToValueAtTime(0.0001, t + 1.2)
     osc.connect(filtro).connect(ganho).connect(this.entrada)
+    limparAoTerminar(osc, filtro, ganho)
     osc.start(t)
     osc.stop(t + 1.4)
   }

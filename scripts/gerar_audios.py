@@ -50,7 +50,13 @@ MS_SILENCIO = 600
 TAXA = 24000
 CANAIS = 1
 BITRATE = "48k"
+# Filtro de intercomunicador. O do edge corta pesado (corta a fundamental e
+# ecoa), o que dá o caráter de rádio sem prejudicar uma voz neural. O espeak é
+# síntese por formantes: já nasce fino, e esse mesmo filtro borra os formantes
+# e a fala vira ruído. Por isso ele tem um filtro mais leve — o objetivo ali é
+# ser ENTENDIDO, não ser bonito.
 FILTRO_RADIO = "highpass=f=300,lowpass=f=3400,aecho=0.8:0.9:60:0.3,volume=1.4"
+FILTRO_RADIO_LEVE = "highpass=f=170,lowpass=f=5200,aecho=0.9:0.85:38:0.16,volume=1.5"
 
 
 # --- extração das falas ----------------------------------------------------
@@ -202,11 +208,11 @@ def sintetizar(texto: str, voz: str, rate: str, pitch: str, destino: Path):
         raise SystemExit(1)
 
 
-def aplicar_filtro(origem: Path, destino: Path, com_filtro: bool):
+def aplicar_filtro(origem: Path, destino: Path, com_filtro: bool, motor: str = "edge"):
     """Normaliza taxa/canais/bitrate — sem isso o concat com -c copy falha."""
     comando = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(origem)]
     if com_filtro:
-        comando += ["-af", FILTRO_RADIO]
+        comando += ["-af", FILTRO_RADIO_LEVE if motor == "espeak" else FILTRO_RADIO]
     comando += ["-ar", str(TAXA), "-ac", str(CANAIS), "-b:a", BITRATE, str(destino)]
     rodar(comando, "filtro de intercomunicador")
 
@@ -353,7 +359,7 @@ def main() -> int:
                         sintetizar_espeak(fala.texto, cru, config)
                     else:
                         sintetizar(fala.texto, voz, rate, pitch, cru)
-                    aplicar_filtro(cru, destino, com_filtro)
+                    aplicar_filtro(cru, destino, com_filtro, args.motor)
                 cache[chave] = assinatura
                 gerados += 1
             caminhos[id(fala)] = destino

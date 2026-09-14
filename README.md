@@ -403,9 +403,14 @@ junto.
 | `--motor espeak` | robótica (síntese por formantes) | não |
 
 O `espeak` existe porque uma IA de bordo com voz de robô é melhor que uma IA
-muda: dá pra apresentar sem máquina com terminal e internet. Passando pelo
-filtro de intercomunicador, soa como computador de bordo. Ajuste a voz e a
+muda: dá pra apresentar sem máquina com terminal e internet. Ajuste a voz e a
 velocidade em `scripts/config.json` (`pt-br+f1..f4`, `pt-br+m1..m7`).
+
+**Cada motor tem um filtro de rádio diferente**, e por um motivo: o do `edge`
+corta pesado (tira a fundamental e ecoa), o que dá caráter de intercomunicador
+sem prejudicar uma voz neural. O `espeak` é síntese por formantes — já nasce
+fino, e esse mesmo filtro borra os formantes até a fala virar ruído. O filtro
+dele é mais leve porque ali o objetivo é ser **entendido**, não ser bonito.
 
 **Os mp3 no repositório hoje foram gerados com o espeak.** Pra trocar pela voz
 neural, numa máquina com Python e internet:
@@ -486,6 +491,16 @@ Aí entra a profundidade, a mesma que alimenta as câmeras:
 
 Nada é arquivo em loop, então não existe emenda audível se repetindo. Quando a
 IA fala, o ambiente abaixa sozinho. `/` + `ambiente` liga e desliga.
+
+## Quando algo estoura na apresentação
+
+`src/ui/Escotilha.tsx` é um error boundary em volta do app inteiro. Sem ele,
+um erro de render desmonta a árvore e a tela fica **preta** — na frente da
+plateia, o pior cenário possível. Com ele, o erro vira uma tela legível com a
+mensagem, e o operador recarrega com Ctrl+R e segue.
+
+A mensagem na tela é o que permite consertar depois: peça pra quem operou
+anotar ou fotografar.
 
 ## Efeitos sonoros
 

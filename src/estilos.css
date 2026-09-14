@@ -1506,6 +1506,13 @@ body {
   line-height: 1.6;
 }
 
+.erro__pilha {
+  margin-top: 1em;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.65rem, 1.5vh, 0.9rem);
+  white-space: pre-wrap;
+}
+
 .erro__ajuda {
   color: var(--ambar);
   font-size: clamp(0.85rem, 2vh, 1.2rem);

@@ -47,7 +47,7 @@ const CAMINHOS_SFX: Record<Sfx, string> = {
 }
 
 /** Quantos AudioBuffer decodificados ficam na memória (cena atual + vizinhas). */
-const MAX_BUFFERS = 3
+const MAX_BUFFERS = 2
 
 /** "./audio/2a/entrada.mp3" -> "2a/entrada", que é a chave usada em __AUDIOS. */
 function chaveDoCaminho(url: string): string | null {

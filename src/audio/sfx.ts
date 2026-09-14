@@ -15,6 +15,14 @@ export type NomeSfx =
   | 'pressurizacao'
   | 'bipe-timer'
 
+/** Solta os nós quando o som acaba, pra não acumular no grafo. */
+function limpar(fonte: AudioScheduledSourceNode, ...nos: AudioNode[]) {
+  fonte.onended = () => {
+    fonte.disconnect()
+    for (const no of nos) no.disconnect()
+  }
+}
+
 /** Envelope com ataque curto e queda exponencial. */
 function envelope(
   ganho: GainNode,
@@ -43,6 +51,7 @@ function tom(
   osc.frequency.setValueAtTime(frequencia, inicio)
   envelope(ganho, inicio, pico, 0.008, duracao)
   osc.connect(ganho).connect(destino)
+  limpar(osc, ganho)
   osc.start(inicio)
   osc.stop(inicio + duracao + 0.05)
 }
@@ -89,6 +98,7 @@ function sonar(ctx: AudioContext, destino: AudioNode, t: number) {
   osc.connect(ganho)
   ganho.connect(destino)
   ganho.connect(eco)
+  limpar(osc, ganho, eco, ganhoEco, eco2, ganhoEco2)
   osc.start(t)
   osc.stop(t + 0.8)
 }
@@ -111,6 +121,7 @@ function estatica(ctx: AudioContext, destino: AudioNode, t: number) {
   const ganho = ctx.createGain()
   envelope(ganho, t, 1.0, 0.01, 0.34)
   fonte.connect(passa).connect(ganho).connect(destino)
+  limpar(fonte, passa, ganho)
   fonte.start(t)
   fonte.stop(t + 0.4)
 }
@@ -135,6 +146,7 @@ function pressurizacao(ctx: AudioContext, destino: AudioNode, t: number) {
   ganho.gain.linearRampToValueAtTime(1.8, t + 0.5)
   ganho.gain.linearRampToValueAtTime(0.0001, t + 1.5)
   fonte.connect(passa).connect(ganho).connect(destino)
+  limpar(fonte, passa, ganho)
   fonte.start(t)
   fonte.stop(t + 1.6)
 }

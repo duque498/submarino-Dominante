@@ -11,11 +11,11 @@
   },
   "_comentario": "Cada turma pode sobrescrever voz, rate e pitch. Ex.: \"2b\": { \"voz\": \"pt-BR-AntonioNeural\" }. Vozes pt-BR disponíveis: pt-BR-FranciscaNeural, pt-BR-AntonioNeural, pt-BR-ThalitaNeural. Liste todas com: edge-tts --list-voices | grep pt-BR",
   "espeak": {
-    "voz": "pt-br+f3",
-    "velocidade": 148,
-    "tom": 42,
-    "amplitude": 190,
-    "pausa": 8
+    "voz": "pt-br+f2",
+    "velocidade": 138,
+    "tom": 48,
+    "amplitude": 200,
+    "pausa": 10
   },
   "_comentario_espeak": "Motor offline (--motor espeak). 'voz' aceita variantes do espeak-ng: pt-br+f1..f4 (femininas), pt-br+m1..m7 (masculinas). Liste com: espeak-ng --voices=pt"
 }

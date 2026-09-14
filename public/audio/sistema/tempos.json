@@ -1,23 +1,50 @@
 {
   "ajuda": {
-    "duracaoMs": 3408,
+    "duracaoMs": 3912,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3408
+        "fim": 3912
       }
     ]
   },
   "avancando": {
-    "duracaoMs": 1464,
+    "duracaoMs": 1632,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1464
+        "fim": 1632
       }
     ]
   },
   "desconhecido": {
+    "duracaoMs": 4896,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4896
+      }
+    ]
+  },
+  "esfera": {
+    "duracaoMs": 3432,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3432
+      }
+    ]
+  },
+  "paineisEncerrados": {
+    "duracaoMs": 2424,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2424
+      }
+    ]
+  },
+  "paneAlerta": {
     "duracaoMs": 4344,
     "linhas": [
       {
@@ -26,48 +53,21 @@
       }
     ]
   },
-  "esfera": {
-    "duracaoMs": 3000,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3000
-      }
-    ]
-  },
-  "paineisEncerrados": {
-    "duracaoMs": 2184,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 2184
-      }
-    ]
-  },
-  "paneAlerta": {
-    "duracaoMs": 3768,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3768
-      }
-    ]
-  },
   "reiniciado": {
-    "duracaoMs": 2112,
+    "duracaoMs": 2352,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2112
+        "fim": 2352
       }
     ]
   },
   "retornando": {
-    "duracaoMs": 1464,
+    "duracaoMs": 1656,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1464
+        "fim": 1656
       }
     ]
   }
