@@ -1,4 +1,11 @@
-# Geração da voz da IA. Precisa de internet — o edge-tts usa o serviço de
-# síntese da Microsoft. A REPRODUÇÃO na apresentação é 100% offline; só a
-# geração, feita em casa antes da feira, é que precisa de rede.
+# Geracao da voz da IA de bordo.
+#
+# Motor padrao (--motor kokoro): rede neural rodando localmente. So precisa de
+# internet na primeira execucao, pra baixar o modelo (~350 MB, vai pra
+# scripts/.modelos/ e fica fora do repositorio).
+kokoro-onnx>=0.4.0
+soundfile>=0.12.0
+
+# Motor alternativo (--motor edge): usa o servico de sintese da Microsoft e
+# precisa de internet toda vez.
 edge-tts>=6.1.0

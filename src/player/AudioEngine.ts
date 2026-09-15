@@ -4,7 +4,6 @@ import {
   escolherVoz,
   listarVozes,
   nomeDaVoz,
-  temVozPortugues,
   VozNavegador,
   vozDoNavegadorExiste,
   type LinhaFalada,
@@ -55,6 +54,9 @@ const CAMINHOS_SFX: Record<Sfx, string> = {
   ok: './audio/sfx/ok.mp3',
   pressurizacao: './audio/sfx/pressurizacao.mp3',
 }
+
+/** Efeitos moram em audio/sfx/ e seguem regra própria — ver preload(). */
+const ehSfx = (url: string): boolean => url.includes('/sfx/')
 
 /** Quantos AudioBuffer decodificados ficam na memória (cena atual + vizinhas). */
 const MAX_BUFFERS = 2
@@ -146,8 +148,13 @@ export class AudioEngine {
       console.warn('[audio] AudioContext indisponível:', erro)
     }
     // A lista de vozes do navegador costuma chegar vazia na primeira consulta.
+    // Consultamos assim mesmo pra que o comando "vozes" já tenha o que listar.
     await aguardarVozes()
-    this.forcarVozNavegador = temVozPortugues()
+    // Nasce no mp3, sempre. A voz do sistema existe como rede de segurança
+    // (Chromebook sem os arquivos, mp3 corrompido) e como escolha do operador
+    // pelo console — não como padrão. Os mp3 são a voz que a professora ouviu
+    // e aprovou; a do sistema varia de máquina pra máquina e ninguém testou.
+    this.forcarVozNavegador = false
     this.desbloqueado = true
   }
 
@@ -222,7 +229,10 @@ export class AudioEngine {
   private obterElemento(url: string): HTMLAudioElement {
     let elemento = this.elementos.get(url)
     if (!elemento) {
-      elemento = new Audio(url)
+      // Quando o áudio está embutido, o elemento aponta pro data URL. Por
+      // file:// um caminho relativo só funciona se o mp3 tiver viajado junto
+      // com o index.html; o data URL não depende de nada.
+      elemento = new Audio(this.embutido(url) ?? url)
       elemento.preload = 'auto'
       this.elementos.set(url, elemento)
     }
@@ -237,12 +247,23 @@ export class AudioEngine {
     const unicos = [...new Set(urls.filter(Boolean))]
     // Camada A: o data URL já está em memória, só a primeira cena é decodificada
     // aqui; as demais entram sob demanda via preparar().
-    const semEmbutido = unicos.filter((url) => !this.embutido(url))
+    const naoEmbutidos = unicos.filter((url) => !this.embutido(url))
     const primeiroEmbutido = unicos.find((url) => this.embutido(url))
     if (primeiroEmbutido) await this.preparar(primeiroEmbutido)
 
+    // Efeito não embutido não existe. Os SFX nascem sintetizados (camada B) e
+    // só viram arquivo se alguém puser um mp3 em public/audio/sfx/ E rodar o
+    // gerar_audios.py de novo, que é o passo que embute. Sem este filtro o
+    // navegador pede os 5 arquivos, não acha, e escreve ERR_FILE_NOT_FOUND no
+    // console — erro que o JS não consegue silenciar, só evitar não pedindo.
+    const paraBaixar: string[] = []
+    for (const url of naoEmbutidos) {
+      if (ehSfx(url)) this.ausentes.add(url)
+      else paraBaixar.push(url)
+    }
+
     await Promise.all(
-      semEmbutido.map(
+      paraBaixar.map(
         (url) =>
           new Promise<void>((resolve) => {
             const elemento = this.obterElemento(url)
@@ -257,10 +278,9 @@ export class AudioEngine {
             const aoCarregar = () => encerrar()
             const aoFalhar = () => {
               this.ausentes.add(url)
-              // SFX ausente não é problema: cai no sintetizado.
-              if (!url.includes('/sfx/')) {
-                console.warn(`[audio] arquivo não encontrado: ${url}`)
-              }
+              // SFX já foi filtrado antes do Promise.all, então o que falha
+              // aqui é sempre fala — e fala faltando merece aviso.
+              console.warn(`[audio] arquivo não encontrado: ${url}`)
               encerrar()
             }
             // Não deixa um arquivo lento travar a tela de ativação.
@@ -387,7 +407,9 @@ export class AudioEngine {
    */
   tocarSfx(sfx: Sfx): void {
     const url = CAMINHOS_SFX[sfx]
-    if (this.ausentes.has(url)) return this.tocarSfxSintetico(sfx)
+    if (this.ausentes.has(url) || !this.embutido(url)) {
+      return this.tocarSfxSintetico(sfx)
+    }
 
     const elemento = this.obterElemento(url)
     this.sfxAtual = elemento

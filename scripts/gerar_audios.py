@@ -5,7 +5,7 @@ Gera a voz da IA de bordo a partir dos roteiros.
 Fluxo:
   1. lê src/roteiros/*.json e src/console/respostas.ts e extrai TODA linha
      que a IA fala;
-  2. sintetiza UMA linha por vez com edge-tts (cacheado por hash);
+  2. sintetiza UMA linha por vez com o motor escolhido (cacheado por hash);
   3. aplica o filtro de intercomunicador com ffmpeg;
   4. concatena as linhas de cada cena com 600 ms de silêncio entre elas,
      virando public/audio/<turma>/<id>.mp3;
@@ -13,8 +13,10 @@ Fluxo:
      dentro do mp3 — é o que deixa a legenda trocar de linha na hora exata;
   6. chama embutir_audios.py, que monta a camada A (public/audios.js).
 
-Precisa de internet (o edge-tts fala com o serviço da Microsoft) e de ffmpeg
-no PATH. A apresentação em si roda offline: só a geração precisa de rede.
+Precisa de ffmpeg no PATH. O motor padrão (kokoro) roda a rede neural na
+própria máquina: só baixa o modelo na primeira vez, depois funciona sem
+internet. O motor edge fala com o serviço da Microsoft e precisa de rede
+sempre. A apresentação em si roda offline em qualquer caso.
 
 Uso:
     python3 scripts/gerar_audios.py                 # todas as turmas
@@ -43,6 +45,13 @@ CONFIG = Path(__file__).resolve().parent / "config.json"
 CACHE_JSON = Path(__file__).resolve().parent / ".cache.json"
 CACHE_DIR = Path(__file__).resolve().parent / ".cache"
 
+MODELOS = Path(__file__).resolve().parent / ".modelos"
+KOKORO_MODELO = MODELOS / "kokoro-v1.0.onnx"
+KOKORO_VOZES = MODELOS / "voices-v1.0.bin"
+KOKORO_RELEASE = (
+    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
+)
+
 TURMAS = ("2a", "2b", "3a")
 PASTA_SISTEMA = "sistema"
 MS_SILENCIO = 600
@@ -50,22 +59,26 @@ MS_SILENCIO = 600
 TAXA = 24000
 CANAIS = 1
 BITRATE = "48k"
-# Filtro de intercomunicador. O do edge corta pesado (corta a fundamental e
-# ecoa), o que dá o caráter de rádio sem prejudicar uma voz neural. O espeak é
-# síntese por formantes: já nasce fino, e esse mesmo filtro borra os formantes
-# e a fala vira ruído. Por isso ele tem um filtro mais leve — o objetivo ali é
-# ser ENTENDIDO, não ser bonito.
+# Dois filtros de intercomunicador. O pesado corta a fundamental e ecoa: dá
+# muito caráter de rádio, mas só sobra voz inteligível se a fonte for gorda
+# como a do edge. O leve corta menos e compensa com compressor — é o que os
+# outros dois motores usam, por motivos opostos: o espeak é síntese por
+# formantes e já nasce fino (o filtro pesado borra os formantes e vira ruído),
+# e o kokoro é neural e natural demais pra desperdiçar num corte agressivo.
 FILTRO_RADIO = "highpass=f=300,lowpass=f=3400,aecho=0.8:0.9:60:0.3,volume=1.4"
-# O compressor é o que faz a voz atravessar o barulho de uma quadra cheia:
-# sobe o corpo da fala sem estourar os picos.
 # O compressor com makeup é o que faz a voz atravessar o barulho de uma quadra
-# cheia. Medido numa frase de teste: cru -17,2 dB de média; com esta cadeia
-# -11,4 dB, com os picos presos pelo limiter. Um volume= simples só chega a
-# -12,7 dB e ainda encosta no teto.
+# cheia: sobe o corpo da fala sem soltar os picos. Um volume= simples não serve
+# — levanta tudo junto e encosta no teto.
+#
+# O teto do limiter é 0.89 (~-1 dB) e não 0.97 por um motivo medido: a 0.97 os
+# 25 arquivos do 2A decodificavam com pico entre +0,12 e +0,34 dBFS. O mp3 não
+# sai cortado (flat factor 0), mas o decodificador estoura na saída, e isso
+# vira distorção em DAC de Chromebook no volume máximo. A 0.89 o pior pico é
+# -0,14 dBFS e a média ficou em -14,4 dB — folga de graça, sem perder volume.
 FILTRO_RADIO_LEVE = (
     "highpass=f=170,lowpass=f=5200,aecho=0.9:0.85:38:0.16,"
     "acompressor=threshold=-14dB:ratio=3:attack=8:release=200:makeup=6,"
-    "alimiter=limit=0.97:level=disabled"
+    "alimiter=limit=0.89:level=disabled"
 )
 
 
@@ -162,6 +175,71 @@ def duracao_ms(caminho: Path) -> int:
         return 0
 
 
+# O modelo sobe uma vez só: carregar o ONNX leva alguns segundos, e são 25
+# falas. Sem isto o script gastaria mais tempo carregando que sintetizando.
+_kokoro = None
+
+
+def baixar_modelos_kokoro():
+    """
+    Busca o modelo no release do GitHub, uma vez. São ~350 MB, então ficam
+    fora do repositório (.gitignore) — quem clonar baixa na primeira execução.
+    """
+    import urllib.request
+
+    MODELOS.mkdir(parents=True, exist_ok=True)
+    for caminho, aprox in ((KOKORO_MODELO, "310 MB"), (KOKORO_VOZES, "27 MB")):
+        if caminho.is_file() and caminho.stat().st_size > 1_000_000:
+            continue
+        print(f"  baixando {caminho.name} (~{aprox}, só na primeira vez)...")
+        parcial = caminho.with_suffix(caminho.suffix + ".parcial")
+        try:
+            urllib.request.urlretrieve(KOKORO_RELEASE + caminho.name, parcial)
+        except Exception as erro:  # rede caiu, proxy barrou, disco cheio
+            parcial.unlink(missing_ok=True)
+            print(f"\nerro ao baixar {caminho.name}: {erro}", file=sys.stderr)
+            print("       sem o modelo o motor kokoro não roda.", file=sys.stderr)
+            print("       use --motor espeak (offline) ou --motor edge.", file=sys.stderr)
+            raise SystemExit(1)
+        # Só vira o arquivo definitivo depois de completo: um download cortado
+        # no meio não pode passar pelo teste de existência da próxima execução.
+        parcial.replace(caminho)
+
+
+def carregar_kokoro():
+    global _kokoro
+    if _kokoro is None:
+        baixar_modelos_kokoro()
+        from kokoro_onnx import Kokoro
+
+        print("  carregando o modelo de voz...")
+        _kokoro = Kokoro(str(KOKORO_MODELO), str(KOKORO_VOZES))
+    return _kokoro
+
+
+def sintetizar_kokoro(texto: str, destino: Path, config: dict):
+    """
+    Motor padrão: rede neural rodando localmente. Voz natural sem depender de
+    serviço nenhum — o que importa aqui, porque quem apresenta não tem terminal
+    e o edge-tts exige internet.
+
+    Escreve WAV com extensão .mp3 de propósito: quem lê isso é o ffmpeg do
+    aplicar_filtro, que vai pelo conteúdo e não pelo nome. Mesmo caminho do
+    espeak, logo abaixo.
+    """
+    import soundfile as sf
+
+    kokoro = carregar_kokoro()
+    cfg = config.get("kokoro", {})
+    amostras, taxa = kokoro.create(
+        texto,
+        voice=cfg.get("voz", "pf_dora"),
+        speed=float(cfg.get("velocidade", 0.95)),
+        lang=cfg.get("idioma", "pt-br"),
+    )
+    sf.write(str(destino), amostras, taxa, format="WAV")
+
+
 def sintetizar_espeak(texto: str, destino: Path, config: dict):
     """
     Motor offline, de emergência. O espeak-ng é síntese por formantes: soa
@@ -218,11 +296,11 @@ def sintetizar(texto: str, voz: str, rate: str, pitch: str, destino: Path):
         raise SystemExit(1)
 
 
-def aplicar_filtro(origem: Path, destino: Path, com_filtro: bool, motor: str = "edge"):
+def aplicar_filtro(origem: Path, destino: Path, com_filtro: bool, motor: str = "kokoro"):
     """Normaliza taxa/canais/bitrate — sem isso o concat com -c copy falha."""
     comando = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(origem)]
     if com_filtro:
-        comando += ["-af", FILTRO_RADIO_LEVE if motor == "espeak" else FILTRO_RADIO]
+        comando += ["-af", FILTRO_RADIO if motor == "edge" else FILTRO_RADIO_LEVE]
     comando += ["-ar", str(TAXA), "-ac", str(CANAIS), "-b:a", BITRATE, str(destino)]
     rodar(comando, "filtro de intercomunicador")
 
@@ -278,6 +356,23 @@ def voz_da_pasta(config: dict, pasta: str, args) -> tuple[str, str, str]:
     return voz, rate, pitch
 
 
+def perfil_do_motor(motor: str, config: dict, voz: str, rate: str, pitch: str) -> str:
+    """
+    Identidade do motor pro cache. Tem que carregar TODO parâmetro que muda o
+    áudio: se ficar de fora, mexer nele reaproveita o mp3 antigo sem avisar —
+    e você fica achando que a mudança não pegou.
+    """
+    if motor == "kokoro":
+        cfg = config.get("kokoro", {})
+        return (f"kokoro|{cfg.get('voz', 'pf_dora')}"
+                f"|{cfg.get('velocidade', 0.95)}|{cfg.get('idioma', 'pt-br')}")
+    if motor == "espeak":
+        cfg = config.get("espeak", {})
+        campos = ("voz", "velocidade", "tom", "amplitude", "pausa")
+        return "espeak|" + "|".join(str(cfg.get(c)) for c in campos)
+    return f"edge|{voz}|{rate}|{pitch}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Gera a voz da IA do Submarino DOMI.")
     ap.add_argument("--turma", action="append", choices=TURMAS, help="só esta turma (repetível)")
@@ -289,9 +384,10 @@ def main() -> int:
     ap.add_argument("--so-listar", action="store_true", help="lista as falas e sai")
     ap.add_argument(
         "--motor",
-        choices=("edge", "espeak"),
-        default="edge",
-        help="edge = voz neural (precisa de internet); espeak = offline, robótico",
+        choices=("kokoro", "edge", "espeak"),
+        default="kokoro",
+        help="kokoro = voz neural local (padrão); edge = neural via internet; "
+             "espeak = offline, robótico",
     )
     args = ap.parse_args()
 
@@ -331,13 +427,22 @@ def main() -> int:
     exigir("ffprobe", "vem junto com o ffmpeg")
     if args.motor == "espeak":
         exigir("espeak-ng", "instale com: sudo apt install espeak-ng")
+    elif args.motor == "kokoro":
+        try:
+            import kokoro_onnx  # noqa: F401
+            import soundfile  # noqa: F401
+        except ImportError:
+            print("\nerro: o motor kokoro não está instalado.", file=sys.stderr)
+            print("       pip install -r scripts/requirements.txt", file=sys.stderr)
+            print("       ou use --motor espeak (offline, voz robótica)\n", file=sys.stderr)
+            return 1
     else:
         try:
             import edge_tts  # noqa: F401
         except ImportError:
             print("\nerro: edge-tts não está instalado.", file=sys.stderr)
             print("       pip install -r scripts/requirements.txt", file=sys.stderr)
-            print("       ou use --motor espeak (offline, voz robótica)\n", file=sys.stderr)
+            print("       ou use --motor kokoro (neural, roda local)\n", file=sys.stderr)
             return 1
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -355,7 +460,7 @@ def main() -> int:
     for (pasta, _grupo), lista in sorted(grupos.items()):
         voz, rate, pitch = voz_da_pasta(config, pasta, args)
         for fala in lista:
-            assinatura = f"{fala.texto}|{args.motor}|{voz}|{rate}|{pitch}|{com_filtro}"
+            assinatura = f"{fala.texto}|{perfil_do_motor(args.motor, config, voz, rate, pitch)}|{com_filtro}"
             chave = hashlib.sha1(assinatura.encode("utf-8")).hexdigest()
             destino = CACHE_DIR / f"{chave}.mp3"
 
@@ -367,6 +472,8 @@ def main() -> int:
                     cru = Path(tmp) / "cru.mp3"
                     if args.motor == "espeak":
                         sintetizar_espeak(fala.texto, cru, config)
+                    elif args.motor == "kokoro":
+                        sintetizar_kokoro(fala.texto, cru, config)
                     else:
                         sintetizar(fala.texto, voz, rate, pitch, cru)
                     aplicar_filtro(cru, destino, com_filtro, args.motor)
@@ -436,8 +543,13 @@ def main() -> int:
     print(f"  tamanho dos mp3 ........... {bytes_totais / (1024 * 1024):.1f} MB")
     print(f"  tamanho do audios.js ...... {tamanho_js:.1f} MB")
     print(f"  filtro de intercomunicador  {'sim' if com_filtro else 'NÃO (--sem-filtro)'}")
-    print(f"  motor ..................... {args.motor}"
-          f"{'  (voz robótica — use --motor edge pra voz neural)' if args.motor == 'espeak' else ''}")
+    if args.motor == "espeak":
+        recado = "  (voz robótica — use --motor kokoro pra voz neural)"
+    elif args.motor == "kokoro":
+        recado = f"  ({config.get('kokoro', {}).get('voz', 'pf_dora')}, neural, local)"
+    else:
+        recado = ""
+    print(f"  motor ..................... {args.motor}{recado}")
     print("=" * 58)
     print("\nagora rode: npm run build")
     return 0

@@ -1,131 +1,44 @@
 {
   "arte-intro": {
-    "duracaoMs": 20280,
+    "duracaoMs": 13200,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2640
+        "fim": 1560
       },
       {
-        "inicio": 3240,
-        "fim": 12720
+        "inicio": 2160,
+        "fim": 8136
       },
       {
-        "inicio": 13320,
-        "fim": 16296
+        "inicio": 8736,
+        "fim": 10464
       },
       {
-        "inicio": 16896,
-        "fim": 20136
+        "inicio": 11064,
+        "fim": 13056
       }
     ]
   },
   "bio-intro": {
-    "duracaoMs": 13080,
+    "duracaoMs": 8592,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 4344
+        "fim": 2592
       },
       {
-        "inicio": 4944,
-        "fim": 7608
+        "inicio": 3192,
+        "fim": 5184
       },
       {
-        "inicio": 8208,
-        "fim": 12984
+        "inicio": 5784,
+        "fim": 8496
       }
     ]
   },
   "ef-intro": {
-    "duracaoMs": 23760,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 4032
-      },
-      {
-        "inicio": 4632,
-        "fim": 7656
-      },
-      {
-        "inicio": 8256,
-        "fim": 20328
-      },
-      {
-        "inicio": 20928,
-        "fim": 23616
-      }
-    ]
-  },
-  "entrada": {
-    "duracaoMs": 48576,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3216
-      },
-      {
-        "inicio": 3816,
-        "fim": 6240
-      },
-      {
-        "inicio": 6840,
-        "fim": 8808
-      },
-      {
-        "inicio": 9408,
-        "fim": 12792
-      },
-      {
-        "inicio": 13392,
-        "fim": 34464
-      },
-      {
-        "inicio": 35064,
-        "fim": 41304
-      },
-      {
-        "inicio": 41904,
-        "fim": 48288
-      }
-    ]
-  },
-  "pane-entrada": {
-    "duracaoMs": 27000,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 2904
-      },
-      {
-        "inicio": 3504,
-        "fim": 8592
-      },
-      {
-        "inicio": 9192,
-        "fim": 10704
-      },
-      {
-        "inicio": 11304,
-        "fim": 13440
-      },
-      {
-        "inicio": 14040,
-        "fim": 17304
-      },
-      {
-        "inicio": 17904,
-        "fim": 21768
-      },
-      {
-        "inicio": 22368,
-        "fim": 26712
-      }
-    ]
-  },
-  "pane-retorno": {
-    "duracaoMs": 14952,
+    "duracaoMs": 14400,
     "linhas": [
       {
         "inicio": 0,
@@ -133,134 +46,221 @@
       },
       {
         "inicio": 2952,
-        "fim": 5184
+        "fim": 4872
       },
       {
-        "inicio": 5784,
-        "fim": 8784
+        "inicio": 5472,
+        "fim": 12096
       },
       {
-        "inicio": 9384,
-        "fim": 11664
+        "inicio": 12696,
+        "fim": 14256
+      }
+    ]
+  },
+  "entrada": {
+    "duracaoMs": 30216,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2208
       },
       {
-        "inicio": 12264,
-        "fim": 14760
+        "inicio": 2808,
+        "fim": 4224
+      },
+      {
+        "inicio": 4824,
+        "fim": 6144
+      },
+      {
+        "inicio": 6744,
+        "fim": 8880
+      },
+      {
+        "inicio": 9480,
+        "fim": 21480
+      },
+      {
+        "inicio": 22080,
+        "fim": 25632
+      },
+      {
+        "inicio": 26232,
+        "fim": 29928
+      }
+    ]
+  },
+  "pane-entrada": {
+    "duracaoMs": 17952,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1824
+      },
+      {
+        "inicio": 2424,
+        "fim": 5520
+      },
+      {
+        "inicio": 6120,
+        "fim": 7176
+      },
+      {
+        "inicio": 7776,
+        "fim": 9144
+      },
+      {
+        "inicio": 9744,
+        "fim": 11688
+      },
+      {
+        "inicio": 12288,
+        "fim": 14808
+      },
+      {
+        "inicio": 15408,
+        "fim": 17664
+      }
+    ]
+  },
+  "pane-retorno": {
+    "duracaoMs": 10896,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1632
+      },
+      {
+        "inicio": 2232,
+        "fim": 3744
+      },
+      {
+        "inicio": 4344,
+        "fim": 6240
+      },
+      {
+        "inicio": 6840,
+        "fim": 8400
+      },
+      {
+        "inicio": 9000,
+        "fim": 10704
       }
     ]
   },
   "quiz-1-acerto": {
-    "duracaoMs": 8016,
+    "duracaoMs": 3816,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 8016
+        "fim": 3816
       }
     ]
   },
   "quiz-1-erro": {
-    "duracaoMs": 7800,
+    "duracaoMs": 3720,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 7800
+        "fim": 3720
       }
     ]
   },
   "quiz-1-pergunta": {
-    "duracaoMs": 6840,
+    "duracaoMs": 4200,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 6840
+        "fim": 4200
       }
     ]
   },
   "quiz-2-acerto": {
-    "duracaoMs": 10056,
+    "duracaoMs": 5160,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 10056
+        "fim": 5160
       }
     ]
   },
   "quiz-2-erro": {
-    "duracaoMs": 7656,
+    "duracaoMs": 4272,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 7656
+        "fim": 4272
       }
     ]
   },
   "quiz-2-pergunta": {
-    "duracaoMs": 6720,
+    "duracaoMs": 4056,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 6720
+        "fim": 4056
       }
     ]
   },
   "quiz-3-acerto": {
-    "duracaoMs": 7776,
+    "duracaoMs": 4248,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 7776
+        "fim": 4248
       }
     ]
   },
   "quiz-3-erro": {
-    "duracaoMs": 8376,
+    "duracaoMs": 4272,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 8376
+        "fim": 4272
       }
     ]
   },
   "quiz-3-pergunta": {
-    "duracaoMs": 5088,
+    "duracaoMs": 2880,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 5088
+        "fim": 2880
       }
     ]
   },
   "quiz-intro": {
-    "duracaoMs": 17640,
+    "duracaoMs": 9960,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 11832
+        "fim": 6744
       },
       {
-        "inicio": 12432,
-        "fim": 17592
+        "inicio": 7344,
+        "fim": 9912
       }
     ]
   },
   "transicao-2b": {
-    "duracaoMs": 16992,
+    "duracaoMs": 10728,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 5544
+        "fim": 3072
       },
       {
-        "inicio": 6144,
-        "fim": 8088
+        "inicio": 3672,
+        "fim": 5040
       },
       {
-        "inicio": 8688,
-        "fim": 11976
+        "inicio": 5640,
+        "fim": 7416
       },
       {
-        "inicio": 12576,
-        "fim": 16848
+        "inicio": 8016,
+        "fim": 10584
       }
     ]
   }

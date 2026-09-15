@@ -383,19 +383,20 @@ abrir o console.
 
 Duas fontes, nesta ordem:
 
-1. **Voz do sistema (Web Speech API)** — usada por padrão **quando a máquina
-   tem voz em português instalada**. Lê exatamente o texto da legenda, e a
-   legenda troca de linha junto com a fala (uma fala por linha).
-2. **mp3 gerado** pelo `scripts/gerar_audios.py` — usado quando não há voz no
-   sistema, ou quando o operador troca com `/` + `voz`.
+1. **mp3 gerado** pelo `scripts/gerar_audios.py` — é o padrão, sempre. Os
+   arquivos no repositório hoje são a voz **Dora** (`pf_dora`), uma rede neural
+   pt-BR rodando localmente, passada pelo filtro de intercomunicador. A legenda
+   anda pelos offsets reais de `tempos.json`.
+2. **Voz do sistema (Web Speech API)** — rede de segurança e escolha do
+   operador, nunca o padrão. Serve se os mp3 não viajarem junto com o
+   `index.html`, ou se alguém preferir outra voz na hora. Troca com `/` + `voz`.
 
-> **Isto contraria a decisão original do projeto**, que proibia a Web Speech
-> API. A razão da proibição era boa: ela depende do que a máquina tem
-> instalado. Mas o plano B não fechou — quem apresenta usa Chromebook sem
-> terminal, então não dá pra rodar o gerador de voz, e a síntese offline que
-> sobrou (espeak) é robótica demais pro texto da professora. O Chrome OS tem
-> vozes pt-BR boas embutidas. Fica assim até existir uma máquina onde rodar o
-> `--motor edge`; aí é só trocar com `voz`.
+> **A voz do sistema contraria a decisão original do projeto**, que proibia a
+> Web Speech API — e a razão da proibição era boa: ela depende do que a máquina
+> tem instalado, e ninguém testou a voz do Chromebook da escola. Por isso ela
+> deixou de ser o padrão assim que os mp3 ficaram bons: o que toca na feira é a
+> voz que foi ouvida e aprovada antes, não uma que varia de máquina pra
+> máquina. Ela fica como saída de emergência, que é o papel certo dela.
 
 **Teste no dia:** o log da tela mostra, na ativação, qual fonte está ativa —
 `Narração: voz do sistema — <nome da voz>` ou `Narração: gravação de bordo
@@ -424,8 +425,10 @@ melhor instalada que não ganhou a nota.
 
 ## Gerar a voz
 
-A voz da IA é sintetizada **em casa, antes da feira** — essa etapa precisa de
-internet. A apresentação em si roda 100% offline.
+A voz da IA é sintetizada **antes da feira**, não na hora. Com o motor padrão
+(`kokoro`) a rede neural roda na própria máquina: só precisa de internet na
+primeira execução, pra baixar o modelo. A apresentação roda 100% offline em
+qualquer caso.
 
 ### Uma vez, pra preparar a máquina
 
@@ -443,25 +446,35 @@ junto.
 
 | motor | qualidade | precisa de internet |
 |---|---|---|
-| `--motor edge` (padrão) | voz neural, `pt-BR-FranciscaNeural` | **sim** |
+| `--motor kokoro` (padrão) | neural, roda local, voz `pf_dora` | só pra baixar o modelo, uma vez |
+| `--motor edge` | neural, `pt-BR-FranciscaNeural` | **sim, toda vez** |
 | `--motor espeak` | robótica (síntese por formantes) | não |
 
-O `espeak` existe porque uma IA de bordo com voz de robô é melhor que uma IA
-muda: dá pra apresentar sem máquina com terminal e internet. Ajuste a voz e a
-velocidade em `scripts/config.json` (`pt-br+f1..f4`, `pt-br+m1..m7`).
+**Os mp3 no repositório hoje foram gerados com o `kokoro`.** Ele é o padrão
+porque resolve o problema real deste projeto: voz neural sem depender de
+serviço nenhum. O modelo (~350 MB) é baixado do release do GitHub na primeira
+execução, fica em `scripts/.modelos/` e não entra no repositório. As vozes
+pt-BR disponíveis são `pf_dora` (feminina), `pm_alex` e `pm_santa`
+(masculinas) — troque em `scripts/config.json`.
 
-**Cada motor tem um filtro de rádio diferente**, e por um motivo: o do `edge`
-corta pesado (tira a fundamental e ecoa), o que dá caráter de intercomunicador
-sem prejudicar uma voz neural. O `espeak` é síntese por formantes — já nasce
-fino, e esse mesmo filtro borra os formantes até a fala virar ruído. O filtro
-dele é mais leve porque ali o objetivo é ser **entendido**, não ser bonito.
+O `edge` continua aqui porque a voz dele é excelente, se houver internet. O
+`espeak` existe porque uma IA de bordo com voz de robô é melhor que uma IA
+muda; ajuste a voz e a velocidade em `scripts/config.json` (`pt-br+f1..f4`,
+`pt-br+m1..m7`).
 
-**Os mp3 no repositório hoje foram gerados com o espeak.** Pra trocar pela voz
-neural, numa máquina com Python e internet:
+**Há dois filtros de rádio**, e a escolha é por tipo de voz, não por motor. O
+pesado (usado só pelo `edge`) tira a fundamental e ecoa: dá muito caráter de
+intercomunicador, mas só sobra fala inteligível se a fonte for gorda. O leve
+corta menos e compensa com compressor, e é o que `kokoro` e `espeak` usam por
+motivos opostos — o `espeak` já nasce fino e o filtro pesado borraria os
+formantes até virar ruído; o `kokoro` é natural demais pra desperdiçar num
+corte agressivo.
 
-```bash
-python3 scripts/gerar_audios.py --turma 2a --forcar
-```
+O teto do limiter é `0.89` (~-1 dB) e não `0.97` por um motivo medido: a
+`0.97` os 25 arquivos do 2A decodificavam com pico entre **+0,12 e +0,34
+dBFS**. O mp3 não sai cortado, mas o decodificador estoura na saída, e isso
+vira distorção em DAC de Chromebook no volume máximo. A `0.89` o pior pico é
+**-0,14 dBFS** e a média ficou em **-14,4 dB** — folga sem perder volume.
 
 ### Toda vez que mudar um texto do roteiro
 
@@ -473,13 +486,14 @@ npm run build
 
 Quanto demora: a síntese leva uns **2–4 s por linha**. O 2A inteiro tem 53
 linhas, ou seja **uns 2 a 4 minutos** na primeira vez. Depois disso o cache
-(`scripts/.cache.json`, hash de texto + voz + rate + pitch + filtro) faz só o
-que mudou ser regerado — corrigir uma frase leva segundos. `--forcar` ignora o
+(`scripts/.cache.json`, hash de texto + parâmetros reais do motor + filtro) faz
+só o que mudou ser regerado — corrigir uma frase leva segundos. `--forcar` ignora o
 cache.
 
-Outras flags: `--voz pt-BR-AntonioNeural`, `--rate -12%`, `--pitch -4Hz`,
-`--sem-filtro` (pra comparar sem o filtro de rádio), `--so-listar` (mostra
-todas as falas sem gerar nada).
+Outras flags: `--sem-filtro` (pra comparar sem o filtro de rádio) e
+`--so-listar` (mostra todas as falas sem gerar nada). As flags `--voz`,
+`--rate` e `--pitch` valem só pro `--motor edge`; o `kokoro` e o `espeak` leem
+os parâmetros de `scripts/config.json`.
 
 Cada turma pode ter voz própria em `scripts/config.json`:
 
@@ -491,7 +505,7 @@ Cada turma pode ter voz própria em `scripts/config.json`:
 
 1. lê os JSONs dos roteiros **e** `src/console/respostas.ts` (as respostas
    fixas do console também ganham voz);
-2. sintetiza **uma linha por vez** com `edge-tts`;
+2. sintetiza **uma linha por vez** com o motor escolhido (padrão: `kokoro`);
 3. aplica o filtro de intercomunicador
    (`highpass=300, lowpass=3400, aecho, volume=1.4`);
 4. concatena as linhas de cada cena com **600 ms de silêncio** entre elas →
@@ -594,7 +608,7 @@ src/
   formas/            registro das silhuetas, amostragem e primitivas
   roteiros/          tipos.ts, validar.ts, fichas.json e os JSONs de cada turma
 scripts/
-  gerar_audios.py    voz da IA: edge-tts + ffmpeg + tempos.json
+  gerar_audios.py    voz da IA: kokoro/edge/espeak + ffmpeg + tempos.json
   embutir_audios.py  gera public/audios.js (camada A)
   config.json        voz, rate e pitch, com override por turma
 ```

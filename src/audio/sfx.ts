@@ -2,9 +2,13 @@
  * Efeitos sonoros sintetizados na hora, via Web Audio.
  *
  * O projeto roda completo sem nenhum mp3 de efeito: não dá pra depender de o
- * professor baixar arquivos do freesound na véspera da feira. Se um
- * public/audio/sfx/<nome>.mp3 existir, ele tem prioridade — quem quiser
- * efeitos "de verdade" só joga o arquivo lá.
+ * professor baixar arquivos do freesound na véspera da feira.
+ *
+ * Dá pra trocar por arquivo de verdade: jogue o mp3 em public/audio/sfx/ com o
+ * nome do efeito e rode `python3 scripts/gerar_audios.py` de novo. O segundo
+ * passo não é opcional — é ele que embute o arquivo no audios.js, e o player
+ * só considera efeito que esteja embutido (por file:// um caminho solto não é
+ * confiável, e pedir arquivo inexistente suja o console).
  */
 
 export type NomeSfx =
