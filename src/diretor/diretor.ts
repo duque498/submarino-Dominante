@@ -304,6 +304,14 @@ export class Diretor {
   }
 
   private painelPodeAbrir(nome: string, agora: number): boolean {
+    // Painel aberto por ação escrita no roteiro é intocável enquanto está no
+    // ar, MESMO que o gatilho peça o mesmo painel. Sem isto, o gatilho caía no
+    // ramo de "mesmo painel, prazo novo" do pedirPainel e trocava o prazo do
+    // JSON (`fimCena`) pelo prazo curto do gatilho (`{ linha: i + 1 }`) — o
+    // espectro da Arte, declarado até o fim da cena, fechava uma linha depois
+    // de a IA dizer "a luz vermelha se apaga". Ação explícita vence gatilho,
+    // e vencer inclui não ter o prazo encurtado por baixo.
+    if (this.painel?.origem === 'acao') return false
     // A câmera por gatilho só faz sentido quando os mini-feeds estão fora:
     // com eles na tela, abrir a câmera grande é repetir o que já se vê.
     if (nome === 'camera' && this.cena?.cameras !== false) return false
