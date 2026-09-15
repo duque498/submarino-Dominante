@@ -1,3 +1,4 @@
+import { especiesEm, type Especie } from './bestiario'
 import { perfilDe, rgba, suave, type Perfil } from './perfil'
 
 /**
@@ -19,9 +20,13 @@ const QTD_PARTICULAS = 130
 const QTD_BIOLUM = 46
 const QTD_AGUAS_VIVAS = 7
 const QTD_CORAIS = 14
-const MAX_FAUNA = 2
-/** Intervalo entre aparições de fauna grande. */
-const INTERVALO_FAUNA = [15000, 40000] as const
+const MAX_FAUNA = 3
+/**
+ * Intervalo entre aparições de fauna grande. Era [15s, 40s]: numa apresentação
+ * de cinco minutos dava pra a câmera passar a cena inteira sem nenhum bicho, e
+ * os bichos são metade da graça da câmera externa.
+ */
+const INTERVALO_FAUNA = [7000, 20000] as const
 /** Perda de sinal: a cada tanto, por tanto tempo. */
 const INTERVALO_FALHA = [30000, 90000] as const
 const DURACAO_FALHA = 400
@@ -51,10 +56,12 @@ type Fauna = {
   y: number
   vx: number
   escala: number
-  tipo: number
-  rotulo: string
+  /** Quem é o bicho: faixa de profundidade, porte e como se desenha. */
+  especie: Especie
   distancia: number
   fase: number
+  /** 1 = presente; cai até 0 quando a expedição sai da faixa da espécie. */
+  vida: number
 }
 type Particula = { x: number; y: number; v: number; raio: number; fase: number }
 type Biolum = { x: number; y: number; fase: number; periodo: number; raio: number }
@@ -67,8 +74,6 @@ type Registro = {
   camera: OpcoesCamera
   aoDesenhar?: (info: { alvo: Alvo | null; profundidade: number }) => void
 }
-
-const NOMES_FAUNA = ['CETÁCEO', 'QUELÔNIO', 'CARDUME DENSO', 'CEFALÓPODE', 'ELASMOBRÂNQUIO']
 
 export class MotorMundo {
   /** Profundidade exibida agora, em metros. Anima até o alvo. */
@@ -298,15 +303,25 @@ export class MotorMundo {
     if (agora > this.proximaFauna && this.fauna.length < MAX_FAUNA) {
       this.proximaFauna = agora + sorteio(INTERVALO_FAUNA[0], INTERVALO_FAUNA[1])
       const paraDireita = Math.random() < 0.5
+      // Quem aparece depende só dos metros. Descer troca o elenco: a tartaruga
+      // some, o cachalote entra, e mais fundo ainda quem passa é a lula-gigante.
+      const possiveis = especiesEm(this.profundidadeAtual)
+      const especie = possiveis[(Math.random() * possiveis.length) | 0]
       this.fauna.push({
         x: paraDireita ? -0.5 : LARGURA_MUNDO + 0.5,
-        y: sorteio(0.25, 0.7),
-        vx: sorteio(0.05, 0.13) * (paraDireita ? 1 : -1),
-        escala: sorteio(0.5, 1.3),
-        tipo: (Math.random() * 3) | 0,
-        rotulo: NOMES_FAUNA[(Math.random() * NOMES_FAUNA.length) | 0],
+        // Faixa estreita de propósito: uma raia ocupa quase toda a altura do
+        // quadro, e nascendo em 0,7 metade dela ficava fora da tela.
+        y: sorteio(0.32, 0.62),
+        // Bicho grande nada mais devagar — senão o cachalote cruza o quadro
+        // como um peixinho e o tamanho não convence. Mas o freio era forte
+        // demais: a 0,06 unidade/s ele levava quase um minuto pra atravessar o
+        // mundo, e a câmera passava a maior parte do tempo vazia.
+        vx: (sorteio(0.1, 0.22) / (0.8 + especie.porte[1] * 0.35)) * (paraDireita ? 1 : -1),
+        escala: sorteio(especie.porte[0], especie.porte[1]),
+        especie,
         distancia: sorteio(6, 40),
         fase: Math.random() * Math.PI * 2,
+        vida: 1,
       })
     }
     for (let i = this.fauna.length - 1; i >= 0; i--) {
@@ -315,7 +330,18 @@ export class MotorMundo {
       f.y += Math.sin(this.t * 0.6 + f.fase) * 0.004 * dt * 60
       f.distancia += sorteio(-0.4, 0.4)
       f.distancia = Math.max(4, Math.min(60, f.distancia))
-      if (f.x < -1 || f.x > LARGURA_MUNDO + 1) this.fauna.splice(i, 1)
+
+      // A expedição desce enquanto o bicho ainda atravessa o quadro. Se a nova
+      // profundidade não é mais a dele, ele se apaga no escuro em vez de
+      // continuar ali — um tubarão a 4500 m entrega a farsa na hora.
+      const [de, ate] = f.especie.faixa
+      // Folga proporcional, mas com teto: 25% de uma faixa larga dava 750 m de
+      // tolerância, e um peixe-víbora continuava aparecendo a 4500 m.
+      const folga = Math.min(350, (ate - de) * 0.15)
+      const cabe = this.profundidadeAtual >= de - folga && this.profundidadeAtual <= ate + folga
+      f.vida = Math.max(0, Math.min(1, f.vida + (cabe ? dt : -dt / 2.2)))
+
+      if (f.vida <= 0 || f.x < -1 || f.x > LARGURA_MUNDO + 1) this.fauna.splice(i, 1)
     }
 
     // partículas: bolhas sobem perto da superfície, neve marinha desce no fundo
@@ -565,6 +591,7 @@ export class MotorMundo {
     camera: OpcoesCamera,
   ): Alvo | null {
     let alvo: Alvo | null = null
+    let menorDesvio = Infinity
     if (perfil.fauna < 0.05) return null
 
     for (const f of this.fauna) {
@@ -572,51 +599,41 @@ export class MotorMundo {
       if (!visivel(sx, 120)) continue
       const sy = f.y * A
       const comp = f.escala * A * 0.42
-      const alt = comp * 0.26
+      const alt = comp * f.especie.proporcao
       const dir = Math.sign(f.vx)
-      const alpha = (0.16 + perfil.luz * 0.5) * perfil.fauna
+      // A opacidade NÃO é multiplicada por perfil.fauna: aquilo é densidade de
+      // população, não visibilidade. Lá embaixo aparece menos bicho, mas o que
+      // aparece está no facho do farol e tem que ser visto.
+      // Piso alto de propósito. A 4500 m a cena inteira é escura, e com alpha
+      // baixo o bicho — que é o motivo de a câmera existir — virava um vulto
+      // que nem de perto se lia. Debaixo do farol ele é o objeto mais claro do
+      // quadro, que é o que acontece de verdade.
+      const alpha = Math.min(1, 0.45 + perfil.luz * 0.35 + perfil.farol * 0.35) * f.vida
 
       ctx.save()
       ctx.translate(sx, sy)
       ctx.scale(dir * (camera.espelhado ? -1 : 1), 1)
-      ctx.beginPath()
-      if (f.tipo === 0) {
-        // corpo alongado com cauda
-        ctx.ellipse(0, 0, comp * 0.5, alt * 0.5, 0, 0, Math.PI * 2)
-        ctx.moveTo(-comp * 0.45, 0)
-        ctx.lineTo(-comp * 0.72, -alt * 0.6)
-        ctx.lineTo(-comp * 0.72, alt * 0.6)
-      } else if (f.tipo === 1) {
-        // casco arredondado com nadadeiras
-        ctx.ellipse(0, 0, comp * 0.34, alt * 0.9, 0, 0, Math.PI * 2)
-        ctx.moveTo(0, -alt * 0.7)
-        ctx.lineTo(comp * 0.42, -alt * 1.5)
-        ctx.lineTo(comp * 0.1, -alt * 0.2)
-        ctx.moveTo(0, alt * 0.7)
-        ctx.lineTo(comp * 0.42, alt * 1.5)
-        ctx.lineTo(comp * 0.1, alt * 0.2)
-      } else {
-        // silhueta com tentáculos
-        ctx.ellipse(0, 0, comp * 0.26, alt * 0.8, 0, 0, Math.PI * 2)
-        for (let t = 0; t < 5; t++) {
-          ctx.moveTo(-comp * 0.2, -alt * 0.5 + (t / 4) * alt)
-          ctx.lineTo(
-            -comp * 0.7 + Math.sin(this.t * 2 + t) * comp * 0.06,
-            -alt * 0.5 + (t / 4) * alt,
-          )
-        }
-      }
-      ctx.closePath()
-      ctx.fillStyle = `rgba(12, 34, 40, ${alpha + 0.35})`
-      ctx.fill()
-      ctx.strokeStyle = `rgba(120, 210, 220, ${alpha})`
-      ctx.lineWidth = 1.2
-      ctx.stroke()
+      f.especie.desenhar({
+        ctx,
+        comp,
+        alt,
+        t: this.t,
+        fase: f.fase,
+        luz: perfil.luz,
+        farol: perfil.farol,
+        alpha,
+      })
       ctx.restore()
 
-      // O retículo segue a primeira fauna dentro do quadro.
-      if (!alvo && sx > L * 0.08 && sx < L * 0.92) {
-        alvo = { x: sx / L, y: sy / A, distancia: f.distancia, rotulo: f.rotulo }
+      // O retículo segue o bicho MAIS PERTO DO CENTRO do quadro, não o
+      // primeiro da lista: com três na água, "o primeiro" podia estar na borda
+      // e a mira ficava apontando pro vazio com o nome dele.
+      if (sx > L * 0.08 && sx < L * 0.92 && f.vida > 0.5) {
+        const desvio = Math.abs(sx / L - 0.5)
+        if (desvio < menorDesvio) {
+          menorDesvio = desvio
+          alvo = { x: sx / L, y: sy / A, distancia: f.distancia, rotulo: f.especie.rotulo }
+        }
       }
     }
     return alvo
@@ -667,13 +684,23 @@ export class MotorMundo {
       const ciclo = (Math.sin((agora / 1000 / b.periodo) * Math.PI * 2 + b.fase) + 1) / 2
       const brilho = ciclo * ciclo * perfil.biolum
       if (brilho < 0.02) continue
-      const r = b.raio * (A / 144) * (1 + brilho)
-      const g = ctx.createRadialGradient(sx, b.y * A, 0, sx, b.y * A, r * 4)
-      g.addColorStop(0, `rgba(130, 255, 220, ${0.85 * brilho})`)
+      // O halo era 4x o raio com a escala do mini-feed (A/144). Em tela cheia
+      // isso virava bolha de 130 px: a bioluminescência tapava o bicho que a
+      // câmera estava justamente apontando. Ponto de luz é faísca, não névoa —
+      // daí o halo menor e o núcleo duro.
+      const r = b.raio * (A / 200) * (1 + brilho)
+      const halo = r * 2.6
+      const g = ctx.createRadialGradient(sx, b.y * A, 0, sx, b.y * A, halo)
+      g.addColorStop(0, `rgba(130, 255, 220, ${0.6 * brilho})`)
+      g.addColorStop(0.36, `rgba(130, 255, 220, ${0.2 * brilho})`)
       g.addColorStop(1, 'rgba(130, 255, 220, 0)')
       ctx.fillStyle = g
       ctx.beginPath()
-      ctx.arc(sx, b.y * A, r * 4, 0, Math.PI * 2)
+      ctx.arc(sx, b.y * A, halo, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = `rgba(214, 255, 240, ${0.85 * brilho})`
+      ctx.beginPath()
+      ctx.arc(sx, b.y * A, Math.max(0.6, r * 0.34), 0, Math.PI * 2)
       ctx.fill()
     }
     ctx.globalCompositeOperation = 'source-over'
@@ -686,18 +713,34 @@ export class MotorMundo {
     perfil: Perfil,
   ) {
     if (perfil.farol < 0.02) return
-    // Escurece tudo fora do cone e acende o miolo.
-    const escuro = perfil.farol * 0.82
-    ctx.fillStyle = `rgba(0, 3, 6, ${escuro})`
-    ctx.fillRect(-4, -4, L + 8, A + 8)
 
     const cx = L * 0.5
     const cy = A * 0.52
-    const raio = Math.min(L, A) * 0.78
+    // Escurece o que está FORA do cone.
+    //
+    // Isto era um retângulo preto a 82% sobre o quadro inteiro — e roda DEPOIS
+    // da fauna. O resultado é que a 4500 m o bicho no meio do facho era apagado
+    // junto com o fundo: sobrava uma tela preta com manchas. Agora a máscara é
+    // radial, transparente no miolo, então o que está sob o farol continua
+    // aceso e só as bordas afundam no escuro.
+    const escuro = perfil.farol * 0.86
+    const alcance = Math.max(L, A) * 0.78
+    const mascara = ctx.createRadialGradient(cx, cy, alcance * 0.1, cx, cy, alcance)
+    mascara.addColorStop(0, 'rgba(0, 3, 6, 0)')
+    mascara.addColorStop(0.42, `rgba(0, 3, 6, ${escuro * 0.3})`)
+    mascara.addColorStop(1, `rgba(0, 3, 6, ${escuro})`)
+    ctx.fillStyle = mascara
+    ctx.fillRect(-4, -4, L + 8, A + 8)
+
+    // O brilho do facho é a luz espalhada pela água, e ela é DISCRETA. A 0.38
+    // no miolo ele virava uma névoa branca cobrindo meia tela: o fundo subia
+    // até o brilho do bicho e o contraste ia a zero — o bicho estava lá,
+    // desenhado, e ninguém via. Cone estreito e fraco devolve o contraste.
+    const raio = Math.min(L, A) * 0.55
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, raio)
-    g.addColorStop(0, `rgba(200, 245, 255, ${0.38 * perfil.farol})`)
-    g.addColorStop(0.3, `rgba(170, 230, 245, ${0.17 * perfil.farol})`)
-    g.addColorStop(0.62, `rgba(140, 210, 235, ${0.05 * perfil.farol})`)
+    g.addColorStop(0, `rgba(200, 245, 255, ${0.15 * perfil.farol})`)
+    g.addColorStop(0.3, `rgba(170, 230, 245, ${0.07 * perfil.farol})`)
+    g.addColorStop(0.62, `rgba(140, 210, 235, ${0.02 * perfil.farol})`)
     g.addColorStop(1, 'rgba(0, 0, 0, 0)')
     ctx.globalCompositeOperation = 'lighter'
     ctx.fillStyle = g

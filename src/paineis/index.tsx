@@ -44,6 +44,8 @@ type Props = {
   profundidade?: number
   /** A IA está processando: os controles do traço travam. */
   travado?: boolean
+  /** Painel de sonar: toca o ping a cada volta da varredura. */
+  aoPing?: () => void
 }
 
 /**
@@ -56,6 +58,7 @@ export function Painel({
   aoFechar,
   profundidade,
   travado,
+  aoPing,
 }: Props) {
   return (
     <div
@@ -68,7 +71,13 @@ export function Painel({
           <span className="painel__fechar">{painel.dica ?? 'esc pra fechar'}</span>
         </header>
         <div className="painel__corpo">
-          {corpoDoPainel(painel, { aoInterpretarTraco, aoFechar, profundidade, travado })}
+          {corpoDoPainel(painel, {
+            aoInterpretarTraco,
+            aoFechar,
+            profundidade,
+            travado,
+            aoPing,
+          })}
         </div>
       </div>
     </div>
@@ -80,6 +89,7 @@ type Extras = {
   aoFechar?: () => void
   profundidade?: number
   travado?: boolean
+  aoPing?: () => void
 }
 
 function corpoDoPainel(
@@ -88,7 +98,7 @@ function corpoDoPainel(
 ) {
   switch (nome) {
     case 'sonar':
-      return <PainelSonar />
+      return <PainelSonar aoPing={extras.aoPing} />
     case 'status':
       return <PainelStatus quedas={quedas} congelado={congelado} />
     case 'ficha':

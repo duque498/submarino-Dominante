@@ -260,8 +260,34 @@ repente.
   FRACO`) a cada 30–90 s. Na pane, as duas caem em estática até o `R`.
   `CenaBase.cameras: false` esconde os dois (as cenas de quiz usam isso).
 - **Retículo de rastreamento** que segue a fauna grande quando ela cruza o
-  quadro, com rótulo tipo `CETÁCEO · 26 M`.
+  quadro, com rótulo tipo `CETÁCEO · 26 M`. Com mais de um bicho na água ele
+  escolhe o mais **perto do centro**, senão ficava apontando pra borda.
 - **Painel `camera`** (`camera`, `camera 1`, `camera 2`) abre um feed grande.
+
+### Quem passa na frente da câmera
+
+O bestiário está em `src/mundo/bestiario.ts`. Cada espécie declara a faixa de
+profundidade em que vive, o porte e **como se desenha** — corpo em curvas de
+Bézier, cada nadadeira como peça à parte, gradiente de contraluz pra dar
+volume. Nada de elipse com triângulo atrás: aquilo vira recorte voando.
+
+| zona | quem aparece |
+|---|---|
+| 0–420 m | tartaruga, golfinho, raia-manta, tubarão |
+| 200–2200 m | lula, peixe-machado, água-viva grande |
+| 700–4200 m | peixe-pescador (com a isca acesa), peixe-víbora, cachalote |
+| 2200 m ⬇ | peixe-pelicano, lula-gigante |
+
+Descer troca o elenco, e o elenco de baixo é **maior**: o cachalote e a
+lula-gigante têm quase o dobro do porte de uma tartaruga. Quando a expedição
+sai da faixa de um bicho que ainda está atravessando o quadro, ele se apaga no
+escuro em vez de continuar ali — um tubarão a 4500 m entrega a farsa na hora.
+
+Da mesopelágica pra baixo as espécies têm **fotóforos**, e no abisso eles são
+quase a única coisa que se lê. Lá embaixo o bicho também deixa de ser silhueta
+contra a luz de cima (não existe luz de cima) e passa a ser objeto iluminado
+pelo farol do submarino — por isso as cores do corpo clareiam junto com
+`perfil.farol`.
 
 Existe **um** mundo, simulado uma vez por quadro em `src/mundo/`. Os canvases
 registrados só desenham o mesmo estado de pontos de vista diferentes — simular
@@ -305,20 +331,44 @@ solta uma estática, o orbe treme e o log registra um `WARN`.
 Qualquer cena pode ter comandos que **a própria IA digita**, sem o operador:
 
 ```json
-{ "id": "bio-intro", "tipo": "fala",
-  "comandos": [{ "texto": "abrir sonar", "atraso": 1500 }] }
+{ "id": "arte-intro", "tipo": "fala",
+  "comandos": [
+    { "texto": "espectro", "atraso": 11000, "aposLinha": 2, "discreto": true }
+  ] }
 ```
 
-`atraso` conta em ms a partir do início da cena. A digitação tem velocidade
-humana (~60 ms por caractere) e uma hesitação no meio. Se o comando não
-resolver em nada, o roteiro dá erro legível no carregamento.
+| campo | o que faz |
+|---|---|
+| `texto` | o comando, igual ao que o operador digitaria |
+| `atraso` | ms a partir do início da cena — o relógio de emergência |
+| `aposLinha` | **prefira este**: dispara quando a IA termina de dizer a linha de índice N |
+| `discreto` | age sem abrir o console e sem a IA responder na legenda |
+
+**`aposLinha` em vez de `atraso`.** O disparo usa os offsets reais de
+`tempos.json`, então ele acompanha a fala mesmo que a professora troque uma
+palavra e o mp3 mude de duração. Um atraso em ms vira mentira no primeiro
+ajuste de texto — e o painel brota no meio de uma frase. O `atraso` continua
+valendo como reserva, pra quando a cena não tiver tempos reais.
+
+**`discreto` pra comando que acontece no meio de uma fala.** O console fica na
+mesma faixa da legenda e a cobre; e a resposta da IA rouba a vez da narração.
+Com `discreto`, a IA simplesmente faz — o painel aparece sozinho enquanto ela
+continua falando, que é o efeito que se quer.
+
+A digitação (quando não é discreto) tem velocidade humana (~60 ms por
+caractere) e uma hesitação no meio. Se o comando não resolver em nada, ou se
+`aposLinha` apontar pra uma linha que não existe, o roteiro dá erro legível no
+carregamento.
 
 ## Painéis
 
 Overlays que se materializam sobre a área central. Um por vez; abrir outro
 substitui, e trocar de cena fecha.
 
-- `sonar` — varredura circular com contatos e anéis de distância.
+- `sonar` — varredura circular com contatos e anéis de distância, e **o ping
+  toca a cada volta**, quando a varredura passa pelo topo. Uma vez a cada ~4,8 s
+  e não a cada contato: o painel pode ficar minutos aberto na frente da
+  plateia, e ping demais vira barulho.
 - `status` — os seis subsistemas com barra e valor. Na Fase 2 é este painel que
   mostra a pane.
 - `ficha <nome>` — ficha de espécie. **Os dados são reais**, vêm de

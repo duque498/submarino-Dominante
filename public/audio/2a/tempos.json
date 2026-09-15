@@ -1,6 +1,6 @@
 {
   "arte-intro": {
-    "duracaoMs": 13200,
+    "duracaoMs": 23616,
     "linhas": [
       {
         "inicio": 0,
@@ -12,11 +12,19 @@
       },
       {
         "inicio": 8736,
-        "fim": 10464
+        "fim": 11040
       },
       {
-        "inicio": 11064,
-        "fim": 13056
+        "inicio": 11640,
+        "fim": 18456
+      },
+      {
+        "inicio": 19056,
+        "fim": 20784
+      },
+      {
+        "inicio": 21384,
+        "fim": 23376
       }
     ]
   },

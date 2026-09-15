@@ -37,6 +37,11 @@ const ESCALA_PASSO = 0.1
 const SEM_FORMA = -1
 /** Quanto tempo a IA "pensa" antes de responder a um comando. */
 const MS_PROCESSANDO = [600, 1200] as const
+/**
+ * Respiro entre a linha terminar e o comando roteirizado agir. Sem ele o painel
+ * abre em cima da última sílaba e parece atropelo.
+ */
+const PAUSA_APOS_LINHA = 450
 /** Reação do orbe a acerto, erro ou comando desconhecido. */
 const MS_REACAO = 600
 /** Intervalo entre um subsistema cair (ou voltar) e o próximo. */
@@ -165,6 +170,10 @@ export function Player({ roteiro, engine }: Props) {
   const [pane, setPane] = useState<EstadoPane | null>(null)
   /** Última profundidade declarada; cenas sem o campo herdam esta. */
   const refProfundidade = useRef(50)
+  /** performance.now() de quando a fala da cena começou a tocar. */
+  const refInicioAudio = useRef(0)
+  /** O próximo comando executado deve agir sem console e sem resposta? */
+  const refDiscreto = useRef(false)
   /** Lido dentro do efeito da cena, que não pode avançar por baixo da pane. */
   const refPaneAtiva = useRef(false)
   const refFimDaFalaPane = useRef(0)
@@ -429,15 +438,24 @@ export function Player({ roteiro, engine }: Props) {
 
   const executarComando = useCallback(
     async (texto: string, manterAberto: boolean) => {
-      setConsoleTravado(true)
-      setOrbeForcado('processando')
-      setRajadaLog([
-        'Interpretando comando...',
-        ...POOL_COMANDO.slice(1, 3),
-        `Entrada do operador: "${texto}"`,
-      ])
+      // Comando discreto: a IA age sem abrir o console e sem responder na
+      // legenda. É o modo pra quando ela está no meio de uma fala — o console
+      // cobre a legenda e a resposta roubaria a vez da narração.
+      const discreto = refDiscreto.current
+      refDiscreto.current = false
 
-      await esperar(sorteio(MS_PROCESSANDO[0], MS_PROCESSANDO[1]))
+      if (discreto) {
+        setRajadaLog([`Acionando subsistema: ${texto.toUpperCase()}`])
+      } else {
+        setConsoleTravado(true)
+        setOrbeForcado('processando')
+        setRajadaLog([
+          'Interpretando comando...',
+          ...POOL_COMANDO.slice(1, 3),
+          `Entrada do operador: "${texto}"`,
+        ])
+        await esperar(sorteio(MS_PROCESSANDO[0], MS_PROCESSANDO[1]))
+      }
 
       const comando = interpretar(texto)
 
@@ -548,13 +566,14 @@ export function Player({ roteiro, engine }: Props) {
           break
       }
 
-      if (comando.resposta) {
+      if (comando.resposta && !discreto) {
         // Respostas fixas têm mp3 gerado pelo script; as com parte variável
         // (nome de forma, de painel) vão só pra legenda.
         const chave = 'chaveAudio' in comando ? comando.chaveAudio : undefined
         if (chave) void falarAvulso(audioDaResposta(chave), [comando.resposta])
         else dizer([comando.resposta])
       }
+      if (discreto) return
       setOrbeForcado(null)
       setConsoleTravado(false)
       if (!manterAberto) setConsoleAberto(false)
@@ -693,6 +712,9 @@ export function Player({ roteiro, engine }: Props) {
       // Offsets medidos linha a linha no mp3: quando existem, a legenda troca
       // exatamente quando a voz troca.
       const reais = reproducao?.tocou ? engine.temposDaCena(roteiro.turma, cena.id) : null
+      // Âncora dos comandos com `aposLinha`: os offsets do tempos.json são
+      // relativos ao início do mp3, não ao início da cena.
+      refInicioAudio.current = performance.now()
       setSinc({ duracaoMs, ativa: true, tempos: reais?.linhas ?? null })
       setFalando(true)
 
@@ -806,18 +828,36 @@ export function Player({ roteiro, engine }: Props) {
     motor.estaticaGlobal = pane !== null && pane.fase !== 'voltando'
   }, [pane])
 
-  // Comandos roteirizados: a IA abre o console e digita sozinha.
+  // Comandos roteirizados: a IA age sozinha no meio da cena.
+  //
+  // `aposLinha` ancora o disparo no fim de uma fala, usando os offsets reais do
+  // tempos.json. É o que impede o painel de brotar no meio de uma frase — e
+  // continua certo quando a professora troca uma palavra e o mp3 muda de
+  // duração, coisa que um atraso em ms não aguenta.
   useEffect(() => {
     if (!cena?.comandos?.length) return
-    const timers = cena.comandos.map((comando) =>
-      setTimeout(() => {
+
+    const timers = cena.comandos.map((comando) => {
+      let atraso = comando.atraso
+      const linha =
+        comando.aposLinha !== undefined ? sinc.tempos?.[comando.aposLinha] : undefined
+      if (linha) {
+        const decorrido = performance.now() - refInicioAudio.current
+        atraso = Math.max(0, linha.fim + PAUSA_APOS_LINHA - decorrido)
+      }
+      return setTimeout(() => {
         if (refPaneAtiva.current) return
+        if (comando.discreto) {
+          refDiscreto.current = true
+          void executarComando(comando.texto, false)
+          return
+        }
         setConsoleAberto(true)
         setAutoComando(comando.texto)
-      }, comando.atraso),
-    )
+      }, atraso)
+    })
     return () => timers.forEach(clearTimeout)
-  }, [cena])
+  }, [cena, sinc.tempos, executarComando])
 
   // Fala avulsa sai de cena sozinha, exceto na pane.
   useEffect(() => {
@@ -928,6 +968,7 @@ export function Player({ roteiro, engine }: Props) {
               // câmeras estão mostrando naquele instante.
               profundidade={Math.round(motor.profundidade())}
               travado={tracoTravado}
+              aoPing={aoPing}
             />
           )}
           {mostrarCameras && (

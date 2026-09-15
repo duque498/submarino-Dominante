@@ -2,12 +2,28 @@ import { useEffect, useRef } from 'react'
 
 const ANEIS = [200, 400, 600, 800]
 const MAX_BLIPS = 7
+/** Velocidade da varredura, em rad/s. Uma volta leva ~4,8 s. */
+const VELOCIDADE = 1.3
+/** Topo do mostrador: no canvas o y cresce pra baixo, então 12h é 3π/2. */
+const TOPO = (Math.PI * 3) / 2
 
 type Blip = { angulo: number; distancia: number; nascimento: number; vida: number }
 
+type Props = {
+  /**
+   * Toca o ping. Uma vez por volta, quando a varredura passa pelo topo — que é
+   * a referência que todo mundo reconhece num mostrador de sonar. Mais que isso
+   * vira barulho: o painel pode ficar minutos aberto na frente da plateia.
+   */
+  aoPing?: () => void
+}
+
 /** Varredura de sonar. Puramente animada — nenhum dado real por trás. */
-export function PainelSonar() {
+export function PainelSonar({ aoPing }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
+  // Numa ref pra não religar a animação quando o Player recria o callback.
+  const refPing = useRef(aoPing)
+  refPing.current = aoPing
 
   useEffect(() => {
     const canvas = refCanvas.current
@@ -28,14 +44,19 @@ export function PainelSonar() {
     observador.observe(canvas)
 
     let quadro = 0
-    let angulo = 0
+    // Começa logo antes do topo pra o primeiro ping sair quase junto com a
+    // abertura do painel, em vez de o operador esperar uma volta inteira.
+    let angulo = TOPO - 0.25
     let anterior = performance.now()
 
     const desenhar = (agora: number) => {
       quadro = requestAnimationFrame(desenhar)
       const dt = Math.min(0.05, (agora - anterior) / 1000)
       anterior = agora
-      angulo = (angulo + dt * 1.3) % (Math.PI * 2)
+      const anguloAnterior = angulo
+      angulo = (angulo + dt * VELOCIDADE) % (Math.PI * 2)
+      // A volta zera o ângulo, então só conta cruzamento sem dar a volta.
+      if (anguloAnterior < TOPO && angulo >= TOPO) refPing.current?.()
 
       const c = lado / 2
       const raio = c * 0.92

@@ -107,6 +107,25 @@ export function validarRoteiro(dado: unknown): string[] {
           if (typeof comando.atraso !== 'number' || comando.atraso < 0) {
             erros.push(`${rotulo}: "atraso" deve ser o numero de ms apos o inicio da cena.`)
           }
+          if (comando.aposLinha !== undefined) {
+            const linhas = (cena as { tela?: { linhas?: unknown } }).tela?.linhas
+            const total = Array.isArray(linhas) ? linhas.length : 0
+            if (
+              typeof comando.aposLinha !== 'number' ||
+              !Number.isInteger(comando.aposLinha) ||
+              comando.aposLinha < 0
+            ) {
+              erros.push(`${rotulo}: "aposLinha" deve ser o indice de uma linha, comecando em 0.`)
+            } else if (comando.aposLinha >= total) {
+              erros.push(
+                `${rotulo}: "aposLinha" e ${comando.aposLinha}, mas esta cena tem ` +
+                  `${total} linha(s) de fala (indices 0 a ${Math.max(0, total - 1)}).`,
+              )
+            }
+          }
+          if (comando.discreto !== undefined && typeof comando.discreto !== 'boolean') {
+            erros.push(`${rotulo}: "discreto" deve ser true ou false.`)
+          }
           if (!comandoResolve(comando.texto)) {
             erros.push(
               `${rotulo}: o comando "${comando.texto}" nao resolve em nenhuma forma, ` +

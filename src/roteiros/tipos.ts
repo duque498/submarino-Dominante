@@ -45,8 +45,24 @@ export type CenaBase = {
 
 export type ComandoRoteirizado = {
   texto: string
-  /** ms depois do inicio da cena */
+  /**
+   * ms depois do inicio da cena. E o relogio de emergencia: usado quando
+   * `aposLinha` nao existe, ou quando a cena nao tem tempos reais de fala.
+   */
   atraso: number
+  /**
+   * Indice da linha de `tela.linhas` depois da qual o comando dispara. Prefira
+   * este campo a `atraso`: ele acompanha a fala mesmo que o texto mude e o mp3
+   * fique mais longo. Um atraso em ms vira mentira no dia em que a professora
+   * trocar uma palavra.
+   */
+  aposLinha?: number
+  /**
+   * Age sem abrir o console e sem a IA responder na legenda. E o modo certo
+   * quando o comando acontece NO MEIO de uma fala: o console cobre a legenda e
+   * a resposta rouba a vez da narracao.
+   */
+  discreto?: boolean
   /** mp3 opcional da resposta; sem ele, so legenda + sfx */
   audio?: string
 }

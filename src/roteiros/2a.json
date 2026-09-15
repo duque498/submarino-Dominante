@@ -83,6 +83,8 @@
         "linhas": [
           "Exploração concluída.",
           "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
+          "Mas nem toda cor chega ao fundo.",
+          "A luz vermelha se apaga nos primeiros metros. Quanto mais fundo a expedição desce, menos cores a água deixa passar.",
           "Próximo setor: Arte.",
           "Preparando nova exploração."
         ]
@@ -96,7 +98,9 @@
       "comandos": [
         {
           "texto": "espectro",
-          "atraso": 2000
+          "atraso": 11000,
+          "aposLinha": 2,
+          "discreto": true
         }
       ]
     },
