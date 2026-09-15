@@ -179,6 +179,33 @@ function seta(): HTMLCanvasElement {
   ])
 }
 
+/**
+ * Concha: leque a partir da charneira, com a borda superior ondulada. Não tenta
+ * ser uma vieira realista — em silhueta, o que identifica uma concha é o leque
+ * com estrias na borda, e é isso que sobrevive a 15 metros.
+ */
+function concha(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const cx = LADO / 2
+  const charneira = LADO * 0.94
+  const raio = LADO * 0.47
+
+  ctx.beginPath()
+  ctx.moveTo(cx, charneira)
+  const passos = 220
+  for (let i = 0; i <= passos; i++) {
+    const t = i / passos
+    // de ~189° a ~351°: o leque abre pra cima a partir da charneira.
+    const angulo = Math.PI * (1.05 + t * 0.9)
+    // 13 ondas na borda = as estrias da concha, sem virar serrilha.
+    const r = raio * (1 + 0.05 * Math.cos(t * Math.PI * 13))
+    ctx.lineTo(cx + Math.cos(angulo) * r, charneira + Math.sin(angulo) * r * 0.92)
+  }
+  ctx.closePath()
+  ctx.fill()
+  return canvas
+}
+
 /** Primitivas com nome fixo — valem no JSON e no console. */
 export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   circulo,
@@ -191,6 +218,7 @@ export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   anel,
   espiral,
   seta,
+  concha,
   'letra-d': () => glifo('D'),
 }
 

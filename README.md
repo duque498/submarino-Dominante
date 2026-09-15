@@ -127,6 +127,34 @@ Nos dois modos o log continua na direita, com metade da opacidade.
 As ~760 partículas do orbe podem assumir a silhueta de uma imagem: cada uma
 ganha um ponto-alvo dentro do desenho e o orbe interpola até lá em 1,4 s.
 
+**Quem faz a silhueta ser lida a 15 metros é o contorno, não o preenchimento.**
+A amostragem rasteriza a figura em 400×400, marca a borda por vizinhança
+4-conexa e **percorre essa borda pixel a pixel**, guardando a ordem do traçado.
+45% das partículas vão pro contorno, nessa ordem, e o orbe liga uma na seguinte
+como polilinha fechada. Uma figura pode ter mais de um contorno — o furo do
+anel, a barriga do "D" — e cada um é traçado separado.
+
+O que sobra vai pro interior em Poisson-disk, menor e a 50% de alpha: o interior
+é textura, a borda é a leitura. Ligar ponto a ponto por distância, que era como
+funcionava antes, criava arestas atravessando o meio da figura e transformava
+qualquer silhueta em nuvem.
+
+Três detalhes que vieram junto e importam mais do que parecem:
+
+- **Partícula de contorno fica em z = 0.** Com a profundidade falsa que o
+  interior usa, cada vizinha ganharia uma escala de perspectiva diferente e a
+  polilinha sairia serrilhada.
+- **Encaixe nos últimos 15% do morph.** O easing é remapeado pra chegar em 1 aos
+  85% do tempo; daí até o fim a partícula está exatamente em cima do alvo, sem
+  resíduo de interpolação. É nesse instante que o contorno aparece — desenhar a
+  polilinha no meio do morph faz a silhueta parecer um elástico.
+- **Em modo forma não há ruído por partícula.** Só uma respiração radial lenta,
+  igual pra todas, com um quarto da amplitude da esfera. A fase por partícula
+  que existia antes era exatamente o que borrava o contorno.
+
+A esfera não mudou: ela continua com as arestas por vizinhança e as duas
+passadas de brilho. O que é diferente vale só depois de `forma !== "esfera"`.
+
 O campo `formas` da cena lista, na ordem, o que o operador percorre com `M` e
 `N`. A primeira entra sozinha ao abrir a cena. `"esfera"` é um nome válido e é o
 padrão quando a cena não tem o campo.
@@ -259,6 +287,8 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 | `baleia`, `virar tartaruga`, `forma esfera` | morfa o orbe numa forma registrada |
 | `estrela`, `coracao`, `espiral`, `letra x`, `numero 7` | desenha a primitiva na hora e morfa |
 | `sonar`, `abrir status`, `mapa`, `ficha baleia`, `camera 1` | abre um painel |
+| `traco`, `desenhar` | abre a área de desenho: o aluno risca, a IA vira o risco |
+| `espectro`, `cores` | abre as faixas de cor apagando com a profundidade |
 | `cena 5`, `ir bio`, `proximo`, `voltar` | navega no roteiro |
 | `pane`, `reiniciar`, `limpar`, `ajuda` | comandos de sistema |
 | `profundidade 4500` | depuração: força a profundidade do cenário |
@@ -295,9 +325,52 @@ substitui, e trocar de cena fecha.
   `src/roteiros/fichas.json`: é conteúdo de Biologia, não cenografia. Tem
   entradas pra baleia, tartaruga, agua-viva, coral, peixe e mergulhador.
 - `mapa` — costa brasileira com marcadores em Abrolhos e no litoral amazônico.
+- `camera 1` / `camera 2` — a câmera externa em tela cheia.
+- `traco` (ou `desenhar`) — **o aluno desenha e a IA assume o desenho.** Ver
+  abaixo.
+- `espectro` (ou `cores`) — **as cores que o oceano apaga.** Ver abaixo.
 
 Painel novo = um arquivo em `src/paineis/` + uma linha em `nomes.ts` e no
 `index.tsx`.
+
+### `traco` — a IA interpreta o seu traço
+
+Área de desenho clara, cursor grande, `pointer events` (funciona com mouse,
+trackpad e **toque** — o Chromebook tem tela sensível). O traço passa por uma
+média móvel de 3 pontos, que tira o tremor do trackpad sem atrasar o risco.
+
+`Enter` ou o botão `INTERPRETAR` mandam a IA ler: ela entra em `processando`,
+o log vai em rajada, e o orbe morfa **no desenho do aluno**, pela mesma rotina
+de amostragem das outras formas. `Backspace` limpa, `Esc` fecha.
+
+O desenho vira uma forma temporária (`traco-1`, `traco-2`, …) que entra no
+rodízio de `M`/`N` da cena. Ela vive só na memória e **morre quando a cena
+muda**: de propósito não entra em `NOMES_FORMAS`, senão `traco-1` passaria a ser
+aceito no campo `formas` do JSON e apareceria no autocomplete de qualquer cena,
+prometendo uma forma que já não existe.
+
+O canvas do desenho é a *fonte* da amostragem, por isso ele é fundo claro com
+tinta escura: quem lê aquilo corta por luminância, e cinza médio deixaria o
+corte indeciso.
+
+Por que na aula de Arte: Arte é interpretação e representação. A IA mostra, ao
+vivo, que a mesma coisa pode ser lida de outra forma.
+
+### `espectro` — as cores que o oceano apaga
+
+Sete faixas de cor e um controle de profundidade (`↑` `↓`, `shift` acelera; abre
+na profundidade em que o submarino está). Conforme desce, cada faixa escurece na
+ordem real de absorção: o vermelho morre primeiro, o azul é o último a resistir.
+Embaixo, `A ESTA PROFUNDIDADE, UM PEIXE VERMELHO PARECE:` com a cor resultante.
+
+A queda é exponencial, não degrau — na água a luz vai sumindo, e um degrau
+ensinaria a coisa errada. Os números são **ordem de grandeza, não medição**:
+água limpa de oceano aberto; água de costa apaga tudo muito antes. Por isso os
+rótulos dizem "cerca de 10 m", e não um valor cravado.
+
+O passo do controle é proporcional à profundidade (1 m perto da superfície, 25 m
+lá embaixo). Com passo fixo de 10 m o painel pularia justamente a faixa onde o
+vermelho morre, que é o assunto dele.
 
 ## As duas camadas de áudio
 

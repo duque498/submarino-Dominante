@@ -5,13 +5,30 @@ import fichas from '../roteiros/fichas.json'
  * validador do roteiro e o parser de comandos precisam da lista sem arrastar
  * React e canvas junto.
  */
-export const PAINEIS: Array<{ nome: string; aliases: string[]; precisaArgumento?: boolean }> = [
+export const PAINEIS: Array<{
+  nome: string
+  aliases: string[]
+  precisaArgumento?: boolean
+  /**
+   * O painel escuta o teclado por conta própria e o operador perde as teclas
+   * de navegação enquanto ele estiver aberto. Sem isso o Enter do aluno, no
+   * painel de traço, avançaria a cena em vez de mandar interpretar o desenho.
+   */
+  capturaTeclado?: boolean
+}> = [
   { nome: 'sonar', aliases: ['radar', 'varredura'] },
   { nome: 'status', aliases: ['sistemas', 'diagnostico', 'subsistemas'] },
   { nome: 'ficha', aliases: ['catalogo', 'especie', 'dados'], precisaArgumento: true },
   { nome: 'mapa', aliases: ['rota', 'carta'] },
   { nome: 'camera', aliases: ['cam', 'cameras', 'externa', 'feed'] },
+  { nome: 'traco', aliases: ['desenhar', 'desenho', 'rabisco'], capturaTeclado: true },
+  { nome: 'espectro', aliases: ['cores', 'cor', 'luz'], capturaTeclado: true },
 ]
+
+/** O painel toma conta do teclado enquanto estiver aberto? */
+export function painelCapturaTeclado(nome: string | null | undefined): boolean {
+  return PAINEIS.some((p) => p.nome === nome && p.capturaTeclado === true)
+}
 
 /** Resolve um nome ou apelido pro nome canônico do painel. */
 export function resolverPainel(termo: string): string | null {

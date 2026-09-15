@@ -1526,3 +1526,180 @@ body {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+/* --------------------------------------------------------------------------
+   Painel de traço — o aluno desenha, a IA interpreta
+   -------------------------------------------------------------------------- */
+
+/* O .painel tem pointer-events: none pra não roubar clique de nada. Este é o
+   único painel em que o aluno precisa de fato tocar na tela, então a moldura
+   dele volta a receber ponteiro. */
+.painel--traco .painel__moldura {
+  pointer-events: auto;
+}
+
+.traco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.traco__tela {
+  display: block;
+  width: 100%;
+  height: clamp(220px, 44vh, 400px);
+  border: 1px solid var(--ciano-fraco);
+  border-radius: 4px;
+  /* Claro de propósito: quem lê este canvas é o amostrador de silhueta, que
+     corta por luminância. Tinta escura sobre fundo claro não deixa dúvida. */
+  background: #e8f6ef;
+  /* Sem isto o gesto de desenhar vira rolagem da página no touch. */
+  touch-action: none;
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><circle cx="20" cy="20" r="12" fill="none" stroke="%2304161a" stroke-width="2"/><path d="M20 3v9M20 28v9M3 20h9M28 20h9" stroke="%2304161a" stroke-width="2"/></svg>')
+      20 20,
+    crosshair;
+}
+
+.traco__rodape {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.traco__botao {
+  font-family: inherit;
+  font-size: clamp(11px, 1.3vh, 14px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border: 1px solid var(--verde);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--verde);
+  cursor: pointer;
+  transition: background 140ms linear, color 140ms linear;
+}
+
+.traco__botao:hover:not(:disabled) {
+  background: var(--verde);
+  color: var(--fundo);
+}
+
+.traco__botao:focus-visible {
+  outline: 2px solid var(--ciano);
+  outline-offset: 2px;
+}
+
+.traco__botao:disabled {
+  border-color: var(--ciano-fraco);
+  color: var(--ciano-fraco);
+  cursor: default;
+}
+
+.traco__dica {
+  font-size: clamp(10px, 1.2vh, 13px);
+  letter-spacing: 0.08em;
+  color: var(--ciano-fraco);
+}
+
+/* --------------------------------------------------------------------------
+   Painel de espectro — as cores que o oceano apaga
+   -------------------------------------------------------------------------- */
+
+.espectro {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.6vh, 16px);
+}
+
+.espectro__topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.espectro__medida {
+  font-size: clamp(22px, 4vh, 40px);
+  font-weight: 700;
+  color: var(--verde);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(77, 255, 166, 0.3);
+}
+
+.espectro__dica {
+  font-size: clamp(10px, 1.2vh, 13px);
+  letter-spacing: 0.08em;
+  color: var(--ciano-fraco);
+}
+
+.espectro__faixas {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.9vh, 9px);
+}
+
+.espectro__faixa {
+  display: grid;
+  grid-template-columns: clamp(64px, 9vw, 92px) 1fr clamp(76px, 11vw, 110px);
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 16px);
+}
+
+.espectro__nome {
+  font-size: clamp(10px, 1.3vh, 14px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto);
+}
+
+.espectro__barra {
+  height: clamp(12px, 2.4vh, 22px);
+  border: 1px solid #0d2f38;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #061a20;
+}
+
+.espectro__preenche {
+  height: 100%;
+  width: 100%;
+  /* A cor muda continuamente com a profundidade: a transição existe pra o olho
+     acompanhar o apagamento em vez de ver um salto. */
+  transition: background 220ms linear;
+}
+
+.espectro__sumico {
+  font-size: clamp(9px, 1.15vh, 12px);
+  letter-spacing: 0.06em;
+  color: var(--ciano-fraco);
+  text-align: right;
+}
+
+.espectro__resultado {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2vw, 20px);
+  padding-top: clamp(6px, 1.2vh, 12px);
+  border-top: 1px solid #0d2f38;
+  flex-wrap: wrap;
+}
+
+.espectro__pergunta {
+  flex: 1 1 260px;
+  font-size: clamp(10px, 1.35vh, 14px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto);
+}
+
+.espectro__amostra {
+  width: clamp(88px, 15vw, 150px);
+  height: clamp(30px, 5vh, 52px);
+  border: 1px solid var(--ciano-fraco);
+  border-radius: 3px;
+  transition: background 220ms linear;
+}

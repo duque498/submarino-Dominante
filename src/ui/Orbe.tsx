@@ -38,8 +38,14 @@ const MS_ATE_CONGELAR = 4200
 const MS_MORPH = 1400
 /** Até aqui as partículas se espalham um pouco antes de assentar. */
 const FRACAO_SOPRO = 0.4
-/** Arestas mais longas que isso não são desenhadas em modo forma: cruzariam vazios. */
-const ARESTA_MAX_FORMA = 0.2
+/**
+ * Modo forma: a partir daqui o morph já acabou. O easing é remapeado pra
+ * chegar em 1 neste ponto, então os últimos 15% são a silhueta encaixada
+ * exatamente no alvo, parada. É nesse instante que o contorno aparece.
+ */
+const FRACAO_ENCAIXE = 0.85
+/** Respiração da silhueta: um quarto da ondulação da esfera. */
+const FATOR_RESPIRACAO = 0.25
 
 type Ponto = { x: number; y: number; z: number; fase: number }
 type Aresta = [number, number]
@@ -77,17 +83,11 @@ function gerarPontos(quantidade: number): Ponto[] {
  * uns poucos ms, contra fazer isso a cada quadro, que seria inviável. Roda no
  * mount (esfera) e uma vez por forma, no instante em que ela assenta.
  */
-function gerarArestas(
-  xs: Float32Array,
-  ys: Float32Array,
-  zs: Float32Array,
-  comprimentoMax = Infinity,
-): Aresta[] {
+function gerarArestas(xs: Float32Array, ys: Float32Array, zs: Float32Array): Aresta[] {
   const total = xs.length
   const arestas: Aresta[] = []
   const vistas = new Set<number>()
   const candidatos: Array<{ indice: number; dist: number }> = []
-  const limite = comprimentoMax * comprimentoMax
 
   for (let i = 0; i < total; i++) {
     candidatos.length = 0
@@ -100,7 +100,6 @@ function gerarArestas(
     }
     candidatos.sort((um, outro) => um.dist - outro.dist)
     for (let k = 0; k < VIZINHOS_POR_PONTO && k < candidatos.length; k++) {
-      if (candidatos[k].dist > limite) break
       const j = candidatos[k].indice
       const chave = i < j ? i * total + j : j * total + i
       if (vistas.has(chave)) continue
@@ -193,6 +192,10 @@ export function Orbe({
     const projA = new Float32Array(total)
     /** Profundidade falsa em modo forma: só pra variar o alpha e dar volume. */
     const zFalso = new Float32Array(total)
+    /** 1 quando a partícula está no contorno da forma atual. */
+    const bordaParticula = new Uint8Array(total)
+    /** Índices de partícula na ordem do contorno, um array por contorno fechado. */
+    let contornoParticulas: number[][] = []
     /** Direção fixa do sopro de cada partícula durante o morph. */
     const soproX = new Float32Array(total)
     const soproY = new Float32Array(total)
@@ -210,14 +213,13 @@ export function Orbe({
       soproZ[i] = Math.cos(b)
     }
 
-    const arestasPorForma = new Map<string, Aresta[]>()
-    arestasPorForma.set(
-      FORMA_PADRAO,
-      gerarArestas(
-        Float32Array.from(esfera, (p) => p.x),
-        Float32Array.from(esfera, (p) => p.y),
-        Float32Array.from(esfera, (p) => p.z),
-      ),
+    // Só a esfera tem arestas por vizinhança. A silhueta é desenhada pelo
+    // contorno traçado na amostragem, que é ordenado — ligar por distância era
+    // o que produzia arestas atravessando o meio da figura.
+    const arestasEsfera = gerarArestas(
+      Float32Array.from(esfera, (p) => p.x),
+      Float32Array.from(esfera, (p) => p.y),
+      Float32Array.from(esfera, (p) => p.z),
     )
 
     /**
@@ -226,8 +228,9 @@ export function Orbe({
      * casamento ótimo custaria muito mais e a diferença não apareceria.
      */
     const casarComForma = (nome: string): boolean => {
-      const pontos = obterForma(nome)
-      if (!pontos || pontos.length === 0) return false
+      const forma = obterForma(nome)
+      const pontos = forma?.pontos
+      if (!forma || !pontos || pontos.length === 0) return false
 
       let pcx = 0
       let pcy = 0
@@ -258,21 +261,41 @@ export function Orbe({
           Math.atan2(pontos[b].y - acy, pontos[b].x - acx),
       )
 
+      // Onde cada ponto de borda mora dentro dos contornos, pra reconstruir a
+      // ordem do traçado depois do casamento.
+      const enderecoNoContorno = new Map<number, [number, number]>()
+      forma.contornos.forEach((contorno, c) => {
+        contorno.forEach((indicePonto, posicao) => {
+          enderecoNoContorno.set(indicePonto, [c, posicao])
+        })
+      })
+      contornoParticulas = forma.contornos.map((contorno) => new Array<number>(contorno.length).fill(-1))
+
       for (let k = 0; k < total; k++) {
-        const alvo = pontos[ordemAlvos[k % ordemAlvos.length]]
+        const indiceAlvo = ordemAlvos[k % ordemAlvos.length]
+        const alvo = pontos[indiceAlvo]
         const i = ordemParticulas[k]
         formaX[i] = alvo.x - acx
         formaY[i] = alvo.y - acy
-        formaZ[i] = zFalso[i]
+        // Partícula de contorno fica no plano z=0. Com profundidade falsa cada
+        // vizinha ganharia uma escala de perspectiva diferente e a polilinha
+        // sairia serrilhada — justamente o que estamos tentando eliminar.
+        formaZ[i] = alvo.borda ? 0 : zFalso[i] * 0.6
+        bordaParticula[i] = alvo.borda ? 1 : 0
+        const endereco = enderecoNoContorno.get(indiceAlvo)
+        if (endereco) contornoParticulas[endereco[0]][endereco[1]] = i
       }
+      // Posição sem partícula não deve existir (o casamento é bijetivo), mas se
+      // existir é melhor encurtar o contorno que desenhar uma reta pro índice 0.
+      contornoParticulas = contornoParticulas
+        .map((c) => c.filter((i) => i >= 0))
+        .filter((c) => c.length >= 2)
       return true
     }
 
     let destino = FORMA_PADRAO
     let morfando = false
     let inicioMorph = 0
-    /** Forma que já assentou e teve a vizinhança calculada. */
-    let formaAssentada = FORMA_PADRAO
 
     const iniciarMorph = (nome: string) => {
       if (nome !== FORMA_PADRAO && !casarComForma(nome)) {
@@ -377,21 +400,10 @@ export function Orbe({
       let avanco = 1
       if (morfando) {
         const bruto = Math.min(1, (agora - inicioMorph) / MS_MORPH)
-        avanco = easeOutCubic(bruto)
-        if (bruto >= 1) {
-          morfando = false
-          // Assentou: agora sim vale pagar o O(N²), uma vez por forma. Se o
-          // operador tiver apertado M três vezes, só a forma final chega aqui.
-          if (destino !== formaAssentada) {
-            formaAssentada = destino
-            if (destino !== FORMA_PADRAO && !arestasPorForma.has(destino)) {
-              arestasPorForma.set(
-                destino,
-                gerarArestas(formaX, formaY, formaZ, ARESTA_MAX_FORMA),
-              )
-            }
-          }
-        }
+        // Remapeado pra chegar em 1 no encaixe: dali até o fim a partícula fica
+        // exatamente em cima do alvo, sem resíduo de interpolação nem sopro.
+        avanco = bruto >= FRACAO_ENCAIXE ? 1 : easeOutCubic(bruto / FRACAO_ENCAIXE)
+        if (bruto >= 1) morfando = false
       }
 
       const emForma = destino !== FORMA_PADRAO
@@ -400,9 +412,11 @@ export function Orbe({
 
       // 1) alvo do quadro
       if (emForma) {
+        // Respiração radial lenta, IGUAL pra todas as partículas: a fase por
+        // partícula que existia aqui era ruído, e ruído num contorno é borrão.
+        const resp =
+          1 + (0.025 + amplitude * 0.25) * FATOR_RESPIRACAO * Math.sin(t * 0.9)
         for (let i = 0; i < total; i++) {
-          // Respiração sutil: a silhueta não gira, só pulsa de leve.
-          const resp = 1 + (0.025 + amplitude * 0.25) * Math.sin(t * 1.4 + esfera[i].fase)
           alvoX[i] = formaX[i] * resp
           alvoY[i] = formaY[i] * resp
           alvoZ[i] = formaZ[i]
@@ -457,34 +471,74 @@ export function Orbe({
         projA[i] = (0.12 + ((zr + 1) / 2) * 0.88) * brilho
       }
 
-      // Arestas somem durante o morph: ligações da esfera não fazem sentido
-      // numa silhueta a meio caminho.
-      const arestas = morfando ? null : arestasPorForma.get(destino)
-      if (arestas) {
-        const forcaLinha = emForma ? 0.45 : 1
-        const passos: Array<{ espessura: number; alpha: number }> = [
-          { espessura: refCompacto.current ? 1.6 : 2.6, alpha: 0.1 * forcaLinha },
-          { espessura: 0.7, alpha: 0.55 * forcaLinha },
-        ]
-        for (const passo of passos) {
-          ctx.lineWidth = passo.espessura
-          ctx.beginPath()
-          for (let i = 0; i < arestas.length; i++) {
-            if (pularArestas && i % 2) continue
-            const [a, b] = arestas[i]
-            ctx.moveTo(projX[a], projY[a])
-            ctx.lineTo(projX[b], projY[b])
-          }
-          ctx.strokeStyle = `rgba(${paleta.linha}, ${passo.alpha * brilho})`
-          ctx.stroke()
-        }
+      // Vinheta atrás da silhueta: escurece o fundo logo ali e o contorno
+      // descola do HUD. Entra e sai junto com o morph.
+      if (fatorForma > 0.01) {
+        const vinheta = ctx.createRadialGradient(cx, cy, 0, cx, cy, raioBase * 1.6)
+        vinheta.addColorStop(0, `rgba(1, 6, 8, ${0.6 * fatorForma})`)
+        vinheta.addColorStop(0.7, `rgba(1, 6, 8, ${0.34 * fatorForma})`)
+        vinheta.addColorStop(1, 'rgba(1, 6, 8, 0)')
+        ctx.fillStyle = vinheta
+        ctx.fillRect(0, 0, largura, altura)
       }
 
-      // Pontos: um retângulo de 1–2 px é bem mais barato que um arc() por ponto.
-      const lado = refCompacto.current ? 1.4 : 1.9
-      for (let i = 0; i < total; i++) {
-        ctx.fillStyle = `rgba(${paleta.ponto}, ${Math.min(1, projA[i])})`
-        ctx.fillRect(projX[i] - lado / 2, projY[i] - lado / 2, lado, lado)
+      if (emForma) {
+        // Contorno: UMA passada fina, e só depois do encaixe. Desenhar a
+        // polilinha no meio do morph faria a silhueta parecer um elástico.
+        if (avanco >= 1 && contornoParticulas.length > 0) {
+          ctx.lineWidth = refCompacto.current ? 0.9 : 1.2
+          ctx.lineJoin = 'round'
+          ctx.beginPath()
+          for (const contorno of contornoParticulas) {
+            ctx.moveTo(projX[contorno[0]], projY[contorno[0]])
+            for (let k = 1; k < contorno.length; k++) {
+              ctx.lineTo(projX[contorno[k]], projY[contorno[k]])
+            }
+            ctx.closePath()
+          }
+          ctx.strokeStyle = `rgba(${paleta.ponto}, ${Math.min(1, 0.82 * brilho)})`
+          ctx.stroke()
+        }
+
+        // Dois pesos de ponto: a borda é a leitura, o interior é textura.
+        const ladoBorda = refCompacto.current ? 1.7 : 2.2
+        const ladoInterior = refCompacto.current ? 1.2 : 1.5
+        for (let i = 0; i < total; i++) {
+          const naBorda = bordaParticula[i] === 1
+          const lado = naBorda ? ladoBorda : ladoInterior
+          const alpha = Math.min(1, projA[i]) * (naBorda ? 1 : 0.5)
+          ctx.fillStyle = `rgba(${paleta.ponto}, ${alpha})`
+          ctx.fillRect(projX[i] - lado / 2, projY[i] - lado / 2, lado, lado)
+        }
+      } else {
+        // Esfera: halo grosso + traço fino, ponto de tamanho único. Intocada —
+        // é a identidade do orbe em repouso.
+        const arestas = morfando ? null : arestasEsfera
+        if (arestas) {
+          const passos: Array<{ espessura: number; alpha: number }> = [
+            { espessura: refCompacto.current ? 1.6 : 2.6, alpha: 0.1 },
+            { espessura: 0.7, alpha: 0.55 },
+          ]
+          for (const passo of passos) {
+            ctx.lineWidth = passo.espessura
+            ctx.beginPath()
+            for (let i = 0; i < arestas.length; i++) {
+              if (pularArestas && i % 2) continue
+              const [a, b] = arestas[i]
+              ctx.moveTo(projX[a], projY[a])
+              ctx.lineTo(projX[b], projY[b])
+            }
+            ctx.strokeStyle = `rgba(${paleta.linha}, ${passo.alpha * brilho})`
+            ctx.stroke()
+          }
+        }
+
+        // Um retângulo de 1–2 px é bem mais barato que um arc() por ponto.
+        const lado = refCompacto.current ? 1.4 : 1.9
+        for (let i = 0; i < total; i++) {
+          ctx.fillStyle = `rgba(${paleta.ponto}, ${Math.min(1, projA[i])})`
+          ctx.fillRect(projX[i] - lado / 2, projY[i] - lado / 2, lado, lado)
+        }
       }
 
       // Partículas soltas orbitando fora da esfera.

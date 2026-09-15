@@ -23,8 +23,8 @@ export function PainelFicha({ argumento }: Props) {
     const canvas = refCanvas.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
-    const pontos = obterForma(nome)
-    if (!ctx || !pontos) return
+    const forma = obterForma(nome)
+    if (!ctx || !forma) return
 
     const caixa = canvas.getBoundingClientRect()
     canvas.width = Math.max(1, Math.round(caixa.width))
@@ -33,8 +33,9 @@ export function PainelFicha({ argumento }: Props) {
     const m = canvas.height / 2
     const raio = Math.min(c, m) * 0.9
 
-    ctx.fillStyle = 'rgba(77, 255, 166, 0.75)'
-    for (const ponto of pontos) {
+    // Na miniatura a borda também manda: o interior entra mais apagado.
+    for (const ponto of forma.pontos) {
+      ctx.fillStyle = ponto.borda ? 'rgba(77, 255, 166, 0.85)' : 'rgba(77, 255, 166, 0.35)'
       ctx.fillRect(c + ponto.x * raio - 0.5, m + ponto.y * raio - 0.5, 1.2, 1.2)
     }
   }, [nome])

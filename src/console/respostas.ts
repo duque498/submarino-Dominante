@@ -18,6 +18,8 @@ export const RESPOSTAS = {
   retornando: 'Retornando.',
   paneAlerta: 'ALERTA. FALHA NO SISTEMA DE BORDO.',
   reiniciado: '...sistema reiniciado.',
+  tracoInterpretado: 'Traço interpretado. Assumindo forma.',
+  espectro: 'Nem toda cor chega ao fundo.',
 } as const
 
 export type ChaveResposta = keyof typeof RESPOSTAS

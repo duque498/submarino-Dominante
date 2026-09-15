@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConsoleComandos } from '../console/Console'
 import { interpretar, vocabulario } from '../console/comandos'
-import { audioDaResposta } from '../console/respostas'
-import { carregarFormas, FORMA_PADRAO, prepararGlifo } from '../formas'
+import { audioDaResposta, RESPOSTAS } from '../console/respostas'
+import {
+  carregarFormas,
+  FORMA_PADRAO,
+  limparTracos,
+  prepararGlifo,
+  registrarTraco,
+} from '../formas'
 import { Feed } from '../mundo/Feed'
 import { motor } from '../mundo/motor'
-import { Painel, type PainelAberto } from '../paineis'
+import { Painel, painelCapturaTeclado, type PainelAberto } from '../paineis'
 import type { Queda } from '../paineis/PainelStatus'
 import type { Cena, CenaPane, Roteiro } from '../roteiros/tipos'
 import { Apresentacao } from '../cenas/Apresentacao'
@@ -134,6 +140,13 @@ export function Player({ roteiro, engine }: Props) {
   const [consoleTravado, setConsoleTravado] = useState(false)
   const [autoComando, setAutoComando] = useState<string | null>(null)
   const [painel, setPainel] = useState<PainelAberto | null>(null)
+  /**
+   * Desenhos feitos no painel de traço nesta cena. Entram no rodízio de M/N
+   * junto das formas do roteiro e morrem quando a cena vira.
+   */
+  const [tracos, setTracos] = useState<string[]>([])
+  /** A IA está lendo o desenho: os controles do painel de traço travam. */
+  const [tracoTravado, setTracoTravado] = useState(false)
   /** Fala avulsa da IA: resposta de comando, feedback de quiz ou alerta da pane. */
   const [fala, setFala] = useState<Fala | null>(null)
   const [rajadaLog, setRajadaLog] = useState<string[] | null>(null)
@@ -158,7 +171,12 @@ export function Player({ roteiro, engine }: Props) {
   const proximaChave = useRef(0)
 
   const cena = sequencia[indice]
-  const formasDaCena = useMemo(() => cena?.formas ?? [], [cena])
+  // O que M e N percorrem: as formas do roteiro mais os traços desenhados
+  // agora. Os traços NÃO existem pro JSON nem pro autocomplete — só aqui.
+  const formasDaCena = useMemo(
+    () => [...(cena?.formas ?? []), ...tracos],
+    [cena, tracos],
+  )
   const formaDaLista =
     indiceForma >= 0 && indiceForma < formasDaCena.length
       ? formasDaCena[indiceForma]
@@ -373,6 +391,41 @@ export function Player({ roteiro, engine }: Props) {
     await carregarFormas([nome], QTD_PONTOS)
     return nome
   }, [])
+
+  /**
+   * O desenho do aluno vira a silhueta do orbe.
+   *
+   * A pausa antes de morfar é dramaturgia, não cálculo: amostrar o canvas leva
+   * poucos ms, mas quem desenhou precisa VER o sistema lendo o traço. Sem ela a
+   * forma trocaria instantaneamente e pareceria que nada foi interpretado.
+   */
+  const aoInterpretarTraco = useCallback(
+    async (canvas: HTMLCanvasElement) => {
+      setTracoTravado(true)
+      setOrbeForcado('processando')
+      setRajadaLog([
+        'Digitalizando traço...',
+        'Extraindo contorno...',
+        `Mapeando para ${QTD_PONTOS} partículas...`,
+      ])
+      await esperar(sorteio(MS_PROCESSANDO[0], MS_PROCESSANDO[1]))
+
+      const chave = registrarTraco(canvas, QTD_PONTOS)
+      // Entra no fim da lista de M/N e já fica selecionado, pra o operador
+      // continuar navegando dali em vez de voltar pro começo.
+      setIndiceForma((cena?.formas?.length ?? 0) + tracos.length)
+      setTracos([...tracos, chave])
+      setFormaForcada(null)
+      setPainel(null)
+      setOrbeForcado(null)
+      setTracoTravado(false)
+      engine.tocarSfx('ok')
+      void falarAvulso(audioDaResposta('tracoInterpretado'), [
+        RESPOSTAS.tracoInterpretado,
+      ])
+    },
+    [cena, tracos, engine, falarAvulso],
+  )
 
   const executarComando = useCallback(
     async (texto: string, manterAberto: boolean) => {
@@ -594,9 +647,9 @@ export function Player({ roteiro, engine }: Props) {
         reiniciarDaPane,
       ],
     ),
-    // Com o console aberto o input captura tudo: nenhuma tecla de navegação
-    // pode disparar enquanto o operador digita.
-    !consoleAberto,
+    // Com o console aberto o input captura tudo. Os painéis de traço e de
+    // espectro também: o Enter do aluno é "interpretar", não "avançar cena".
+    !consoleAberto && !painelCapturaTeclado(painel?.nome),
   )
 
   // --- ciclo da cena -------------------------------------------------------
@@ -613,6 +666,10 @@ export function Player({ roteiro, engine }: Props) {
     setFaseDinamica('pergunta')
     setEscolhidaQuiz(null)
     setEscolhidaVF(null)
+    // Os desenhos pertencem à cena em que foram feitos.
+    limparTracos()
+    setTracos([])
+    setTracoTravado(false)
     if (!refPaneAtiva.current) setPainel(null)
 
     if (cena.sfx) engine.tocarSfx(cena.sfx)
@@ -864,6 +921,13 @@ export function Player({ roteiro, engine }: Props) {
                 // Durante a pane o Esc não fecha nada: quem sai da pane é o R.
                 dica: pane ? 'r pra reiniciar o sistema' : undefined,
               }}
+              aoInterpretarTraco={aoInterpretarTraco}
+              aoFechar={() => setPainel(null)}
+              // Profundidade VIVA, não a declarada na cena: assim o comando
+              // "profundidade N" também move o painel, e ele bate com o que as
+              // câmeras estão mostrando naquele instante.
+              profundidade={Math.round(motor.profundidade())}
+              travado={tracoTravado}
             />
           )}
           {mostrarCameras && (

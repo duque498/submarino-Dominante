@@ -1,4 +1,4 @@
-import { amostrarCanvas, amostrarImagem, type PontoForma } from './amostrar'
+import { amostrarCanvas, amostrarImagem, type FormaAmostrada } from './amostrar'
 import { gerarGlifo, PRIMITIVAS } from './primitivas'
 
 /**
@@ -40,10 +40,10 @@ export function formaRegistrada(nome: string): boolean {
 }
 
 /** Cache de amostragem. Uma forma só é convertida em pontos uma vez por sessão. */
-const cache = new Map<string, PontoForma[]>()
+const cache = new Map<string, FormaAmostrada>()
 
 /** Pontos já amostrados de uma forma, ou null se ela ainda não foi carregada. */
-export function obterForma(nome: string): PontoForma[] | null {
+export function obterForma(nome: string): FormaAmostrada | null {
   return cache.get(nome) ?? null
 }
 
@@ -90,7 +90,37 @@ export function prepararGlifo(texto: string, quantidade: number): string {
   return chave
 }
 
+/**
+ * Desenhos feitos pelo aluno no painel de traço.
+ *
+ * Vivem só na memória e só até trocar de cena. De propósito NÃO entram em
+ * NOMES_FORMAS: se entrassem, "traco-1" passaria a ser aceito no campo
+ * "formas" do JSON e apareceria no autocomplete de qualquer cena — prometendo
+ * uma forma que não existe mais assim que a cena vira.
+ */
+const tracos: string[] = []
+
+/** Amostra o desenho e devolve a chave dele ("traco-1", "traco-2", ...). */
+export function registrarTraco(canvas: HTMLCanvasElement, quantidade: number): string {
+  const chave = `traco-${tracos.length + 1}`
+  cache.set(chave, amostrarCanvas(canvas, quantidade))
+  tracos.push(chave)
+  return chave
+}
+
+export function tracosRegistrados(): string[] {
+  return [...tracos]
+}
+
+/** Chamado ao trocar de cena: os desenhos daquela cena morrem com ela. */
+export function limparTracos(): void {
+  for (const chave of tracos) cache.delete(chave)
+  tracos.length = 0
+}
+
 /** Nome legível de uma forma, pro indicador e pra resposta da IA. */
 export function rotuloDaForma(nome: string): string {
-  return nome.startsWith('glifo:') ? nome.slice(6) : nome
+  if (nome.startsWith('glifo:')) return nome.slice(6)
+  if (nome.startsWith('traco-')) return `traço ${nome.slice(6)}`
+  return nome
 }

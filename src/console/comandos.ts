@@ -11,7 +11,13 @@ import { MOLDES, RESPOSTAS, type ChaveResposta } from './respostas'
 
 export type Comando =
   | { tipo: 'forma'; nome: string; argumento?: string; resposta: string; chaveAudio?: ChaveResposta }
-  | { tipo: 'painel'; nome: string; argumento?: string; resposta: string }
+  | {
+      tipo: 'painel'
+      nome: string
+      argumento?: string
+      resposta: string
+      chaveAudio?: ChaveResposta
+    }
   | { tipo: 'cena'; alvo: number | string; resposta: string }
   | {
       tipo: 'sistema'
@@ -60,6 +66,8 @@ export function vocabulario(): string[] {
     'esfera',
     ...NOMES_PAINEIS,
     ...NOMES_FICHAS.map((nome: string) => `ficha ${nome}`),
+    'traco',
+    'espectro',
     'pane',
     'reiniciar',
     'limpar',
@@ -132,6 +140,16 @@ export function interpretar(entrada: string): Comando {
         tipo: 'desconhecido',
         entrada: bruto,
         resposta: MOLDES.fichaSemArgumento(NOMES_FICHAS.join(', ')),
+      }
+    }
+    // O espectro abre com fala própria: ele é conteúdo da aula de Arte, não
+    // um painel de instrumento. Os outros só anunciam que abriram.
+    if (painel === 'espectro') {
+      return {
+        tipo: 'painel',
+        nome: painel,
+        resposta: RESPOSTAS.espectro,
+        chaveAudio: 'espectro',
       }
     }
     return {
