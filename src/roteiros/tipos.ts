@@ -5,7 +5,7 @@ export type Turma = '2A' | '2B' | '3A'
 
 export const TURMAS: Turma[] = ['2A', '2B', '3A']
 
-export type Sfx = 'sonar' | 'alarme' | 'estatica' | 'ok' | 'pressurizacao'
+export type Sfx = 'sonar' | 'alarme' | 'estatica' | 'ok' | 'pressurizacao' | 'casco'
 
 export type Avanco = 'auto' | 'manual'
 
@@ -43,6 +43,10 @@ export type CenaBase = {
   cameras?: boolean
 }
 
+/**
+ * @deprecated Substituido pelas `acoes` por linha (ver `Linha`). Continua no
+ * modelo so pra nao quebrar roteiro antigo; o Diretor converte na entrada.
+ */
 export type ComandoRoteirizado = {
   texto: string
   /**
@@ -67,9 +71,50 @@ export type ComandoRoteirizado = {
   audio?: string
 }
 
+/**
+ * Prazo de validade de um painel ou de uma forma aberta pelo Diretor.
+ *
+ * Todo painel e toda forma automatica tem prazo declarado, e o Diretor fecha
+ * sozinho quando ele vence. E essa a diferenca entre direcao e bagunca: sem
+ * prazo, um painel fica esquecido na frente da plateia ate alguem notar.
+ */
+export type Prazo =
+  | 'fimLinha'
+  | 'fimCena'
+  | { linha: number }
+  | { segundos: number }
+
+/** Quando a acao dispara: ao COMECAR a linha (padrao) ou ao terminar. */
+export type Quando = 'inicio' | 'fim'
+
+export type Acao =
+  | { tipo: 'painel'; nome: string; args?: string; quando?: Quando; ate: Prazo }
+  | { tipo: 'forma'; nome: string; quando?: Quando; ate: Prazo }
+  | { tipo: 'fechar'; alvo: 'painel' | 'forma' | 'tudo'; quando?: Quando }
+  | { tipo: 'mapa'; marcador: string; quando?: Quando; ate?: Prazo }
+  | { tipo: 'camera'; qual: 1 | 2; quando?: Quando; ate: Prazo }
+  | { tipo: 'sfx'; nome: string; quando?: Quando }
+  | { tipo: 'mergulho'; para: number; quando?: Quando }
+
+/**
+ * Uma linha de fala. String simples continua valendo — a maioria das linhas
+ * nao manda em nada e nao precisa virar objeto.
+ */
+export type Linha = string | { texto: string; acoes?: Acao[] }
+
+/** O texto de uma linha, seja ela string ou objeto. */
+export function textoDaLinha(linha: Linha): string {
+  return typeof linha === 'string' ? linha : linha.texto
+}
+
+/** As acoes explicitas de uma linha, ou lista vazia. */
+export function acoesDaLinha(linha: Linha): Acao[] {
+  return typeof linha === 'string' ? [] : (linha.acoes ?? [])
+}
+
 export type CenaFala = CenaBase & {
   tipo: 'fala'
-  tela: { titulo?: string; linhas: string[]; status?: string }
+  tela: { titulo?: string; linhas: Linha[]; status?: string }
   /** ./audio/2a/<id>.mp3 */
   audio: string
 }
@@ -93,7 +138,7 @@ export type CenaTransicao = CenaBase & {
   tipo: 'transicao'
   /** "2o ano B" */
   destino: string
-  tela: { linhas: string[] }
+  tela: { linhas: Linha[] }
   audio: string
 }
 

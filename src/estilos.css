@@ -1703,3 +1703,137 @@ body {
   border-radius: 3px;
   transition: background 220ms linear;
 }
+
+/* --------------------------------------------------------------------------
+   Painel aberto pela fala — faixa de cima, legenda intacta embaixo
+   -------------------------------------------------------------------------- */
+
+/* A regra é essa e não tem exceção: painel que o Diretor abre no meio de uma
+   fala ocupa a metade de cima da área central. A legenda continua inteira
+   embaixo. Se o painel não couber na faixa, ele encolhe — a legenda nunca
+   some, porque é ela que carrega o texto da professora. */
+.painel--faixa {
+  inset: 0 0 46% 0;
+  align-items: center;
+}
+
+.painel--faixa .painel__moldura {
+  width: min(100%, 620px);
+  max-height: 100%;
+}
+
+.painel--faixa .painel__corpo {
+  overflow: auto;
+  padding: clamp(6px, 1.2vh, 12px) clamp(8px, 1.4vw, 16px);
+}
+
+/* Na faixa o mostrador fica achatado; deixa o canvas acompanhar em vez de
+   estourar pra fora da moldura. */
+.painel--faixa .painel__sonar-canvas,
+.painel--faixa .painel__mapa-canvas {
+  max-height: clamp(130px, 26vh, 230px);
+}
+
+.painel--faixa .espectro__medida {
+  font-size: clamp(18px, 3vh, 28px);
+}
+
+/* Saída: o painel que fecha fica ~200 ms se desfazendo. Corte seco faz a troca
+   parecer falha de render; com a saída, ela parece direção. */
+.painel--saindo {
+  animation: painel-sair 200ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes painel-sair {
+  to {
+    opacity: 0;
+    background: rgba(2, 10, 12, 0);
+  }
+}
+
+.painel--saindo .painel__moldura {
+  animation: moldura-sair 200ms ease-in forwards;
+}
+
+@keyframes moldura-sair {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+    clip-path: inset(46% 0 46% 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .painel--saindo,
+  .painel--saindo .painel__moldura {
+    animation-duration: 1ms;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Sequência de mergulho
+   -------------------------------------------------------------------------- */
+
+/* A moldura inteira inclina 1,5° na fase de inclinação e volta. É pouco de
+   propósito: o suficiente pro corpo sentir que algo se moveu, pouco o bastante
+   pra ninguém ficar enjoado olhando um projetor por cinco minutos. */
+/* Girar a moldura inteira é girar seis canvases junto. Sem promover a camada
+   antes, o navegador rerasteriza tudo a cada quadro do giro: medido, 48 fps
+   contra 56 sem a inclinação. O `will-change` entra com a classe do mergulho —
+   antes do giro começar, que é a única hora em que ele adianta alguma coisa —
+   e sai no fim, porque camada promovida custa memória de vídeo e o Chromebook
+   da escola não tem de sobra. */
+.hud--mergulhando .hud__moldura {
+  will-change: transform;
+}
+
+.hud--inclinado .hud__moldura {
+  transform: rotate(1.5deg);
+}
+
+.hud__moldura {
+  transition: transform 460ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+/* Coluna d'água: borda esquerda, fora do caminho da legenda (embaixo) e do
+   log de sistemas (à direita). */
+.coluna {
+  position: absolute;
+  top: 4%;
+  bottom: 18%;
+  left: 0;
+  z-index: 7;
+  width: 90px;
+  pointer-events: none;
+  animation: coluna-entrar 320ms ease-out;
+}
+
+.coluna__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--linha, #0d2f38);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  background: rgba(2, 10, 12, 0.55);
+}
+
+@keyframes coluna-entrar {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud__moldura {
+    transition-duration: 1ms;
+  }
+  .hud--inclinado .hud__moldura {
+    transform: none;
+  }
+  .coluna {
+    animation-duration: 1ms;
+  }
+}

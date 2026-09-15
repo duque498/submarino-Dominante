@@ -34,6 +34,13 @@ export type Pincel = {
   farol: number
   /** Opacidade geral já calculada pela distância e pela zona. */
   alpha: number
+  /**
+   * Modo silhueta: preenche tudo de preto chapado, sem gradiente, sem olho e
+   * sem fotóforo. É assim que o orbe reaproveita estes desenhos — quem lê a
+   * silhueta é o amostrador de formas, que corta por luminância, e um
+   * gradiente ali deixaria o corte indeciso.
+   */
+  silhueta?: boolean
 }
 
 export type Especie = {
@@ -83,6 +90,14 @@ const misturarCor = (
  */
 function encorpar(p: Pincel, forcaContorno = 1) {
   const { ctx, alt, alpha, luz } = p
+  if (p.silhueta) {
+    ctx.fillStyle = '#000'
+    ctx.fill()
+    ctx.strokeStyle = '#000'
+    ctx.lineWidth = Math.max(2, p.comp * 0.02)
+    ctx.stroke()
+    return
+  }
   const f = Math.max(0, Math.min(1, p.farol))
   const g = ctx.createLinearGradient(0, -alt, 0, alt)
   g.addColorStop(0, rgba(misturarCor(DORSO, DORSO_FAROL, f), alpha * (0.5 + luz * 0.5 + f * 0.45)))
@@ -90,7 +105,7 @@ function encorpar(p: Pincel, forcaContorno = 1) {
   g.addColorStop(1, rgba(misturarCor(BARRIGA, BARRIGA_FAROL, f), alpha * (0.3 + luz * 0.4 + f * 0.5)))
   ctx.fillStyle = g
   ctx.fill()
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * (0.75 + f * 0.22) * forcaContorno})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * (0.75 + f * 0.22) * forcaContorno})`
   ctx.lineWidth = Math.max(0.7, p.comp * 0.006)
   ctx.stroke()
 }
@@ -98,6 +113,8 @@ function encorpar(p: Pincel, forcaContorno = 1) {
 /** Fio de luz no dorso: é ele que separa o bicho da água atrás. */
 function contraluz(p: Pincel, traçar: () => void) {
   const { ctx, alpha, luz } = p
+  // Contraluz é volume, e silhueta não tem volume.
+  if (p.silhueta) return
   ctx.beginPath()
   traçar()
   ctx.strokeStyle = `rgba(190, 245, 250, ${alpha * (0.25 + luz * 0.5 + p.farol * 0.35)})`
@@ -114,6 +131,8 @@ function contraluz(p: Pincel, traçar: () => void) {
  */
 function olho(p: Pincel, x: number, y: number, r: number) {
   const { ctx, alpha } = p
+  // Na silhueta o olho seria um furo branco no meio do bicho.
+  if (p.silhueta) return
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
   ctx.fillStyle = `rgba(3, 9, 13, ${alpha})`
@@ -130,6 +149,7 @@ function olho(p: Pincel, x: number, y: number, r: number) {
 /** Ponto de luz viva. O halo é o que faz parecer luz e não tinta clara. */
 function fotoforo(p: Pincel, x: number, y: number, r: number, forca = 1) {
   const { ctx, alpha, t, fase } = p
+  if (p.silhueta) return
   const pulso = 0.6 + 0.4 * Math.sin(t * 2.4 + fase + x * 0.35)
   const halo = ctx.createRadialGradient(x, y, 0, x, y, r * 4)
   halo.addColorStop(0, `rgba(${BIOLUM}, ${alpha * 0.85 * pulso * forca})`)
@@ -201,7 +221,7 @@ function tartaruga(p: Pincel) {
   encorpar(p)
 
   // escudos do casco: quatro divisões acompanhando a cúpula
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.3})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.3})`
   ctx.lineWidth = Math.max(0.5, comp * 0.004)
   for (let i = 0; i < 4; i++) {
     const x = comp * (0.2 - i * 0.16)
@@ -327,7 +347,7 @@ function raia(p: Pincel) {
   ctx.beginPath()
   ctx.moveTo(-comp * 0.32, 0)
   ctx.quadraticCurveTo(-comp * 0.62, bate * alt * 0.22, -comp * 0.98, bate * alt * 0.4)
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.6})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.6})`
   ctx.lineWidth = Math.max(0.7, comp * 0.008)
   ctx.stroke()
 
@@ -438,7 +458,7 @@ function lula(p: Pincel) {
       comp * 0.5, espalha * alt * 0.75 + o * alt * 0.2,
       comp * 0.66 + o * comp * 0.02, espalha * alt * 1.15 + o * alt * 0.3,
     )
-    ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.5})`
+    ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.5})`
     ctx.lineWidth = Math.max(0.6, comp * 0.008)
     ctx.stroke()
   }
@@ -455,7 +475,7 @@ function lula(p: Pincel) {
       comp * 0.8, lado * alt * 0.8 + o * alt * 0.6,
       fx, fy,
     )
-    ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.6})`
+    ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.6})`
     ctx.lineWidth = Math.max(0.6, comp * 0.007)
     ctx.stroke()
     ctx.beginPath()
@@ -512,7 +532,7 @@ function peixeMachado(p: Pincel) {
   encorpar(p, 0.6)
 
   // costelas prateadas: o corpo do machado é espelhado
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.22})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.22})`
   ctx.lineWidth = Math.max(0.5, comp * 0.004)
   for (let i = 0; i < 4; i++) {
     const x = comp * (0.22 - i * 0.1)
@@ -617,7 +637,7 @@ function peixePescador(p: Pincel) {
   ctx.closePath()
   ctx.fillStyle = `rgba(3, 10, 14, ${alpha})`
   ctx.fill()
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.7})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.7})`
   ctx.lineWidth = Math.max(0.7, comp * 0.006)
   ctx.stroke()
 
@@ -640,7 +660,7 @@ function peixePescador(p: Pincel) {
   ctx.beginPath()
   ctx.moveTo(comp * 0.02, -alt * 1.05)
   ctx.quadraticCurveTo(comp * 0.24, -alt * 1.7, ix, iy)
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.6})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.6})`
   ctx.lineWidth = Math.max(0.7, comp * 0.007)
   ctx.stroke()
   fotoforo(p, ix, iy, Math.max(1.6, comp * 0.022), 1.4)
@@ -711,7 +731,7 @@ function peixeVibora(p: Pincel) {
   ctx.beginPath()
   ctx.moveTo(comp * 0.04, -alt * 0.95)
   ctx.quadraticCurveTo(comp * 0.34, -alt * 2.2, lx, ly)
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.55})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.55})`
   ctx.lineWidth = Math.max(0.6, comp * 0.006)
   ctx.stroke()
   fotoforo(p, lx, ly, Math.max(1.1, comp * 0.013), 1.2)
@@ -758,7 +778,7 @@ function cachalote(p: Pincel) {
   encorpar(p, 0.6)
 
   // rugas do dorso
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.25})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.25})`
   ctx.lineWidth = Math.max(0.5, comp * 0.004)
   for (let i = 0; i < 4; i++) {
     const x = -comp * (0.1 + i * 0.07)
@@ -797,7 +817,7 @@ function peixePelicano(p: Pincel) {
     -comp * 0.72, alt * 2.0 * ondula(1),
     cx, cy,
   )
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.55})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.55})`
   ctx.lineWidth = Math.max(0.8, comp * 0.014)
   ctx.stroke()
   fotoforo(p, cx, cy, Math.max(1.3, comp * 0.018), 1.3)
@@ -819,7 +839,7 @@ function peixePelicano(p: Pincel) {
   encorpar(p)
 
   // as pregas da bolsa, que dizem que aquilo estica
-  ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * 0.25})`
+  ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * 0.25})`
   ctx.lineWidth = Math.max(0.5, comp * 0.004)
   for (let i = 0; i < 4; i++) {
     const k = 0.2 + i * 0.18
@@ -869,7 +889,7 @@ function lulaGigante(p: Pincel) {
       comp * 0.8, espalha * alt * 1.2 + o * alt * 0.8,
       fim, espalha * alt * 1.3 + o * alt * 1.0,
     )
-    ctx.strokeStyle = `rgba(${CONTORNO}, ${alpha * (longo ? 0.6 : 0.45)})`
+    ctx.strokeStyle = p.silhueta ? '#000' : `rgba(${CONTORNO}, ${alpha * (longo ? 0.6 : 0.45)})`
     ctx.lineWidth = Math.max(0.6, comp * (longo ? 0.009 : 0.007))
     ctx.stroke()
     if (longo) {

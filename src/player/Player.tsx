@@ -6,14 +6,26 @@ import {
   carregarFormas,
   FORMA_PADRAO,
   limparTracos,
+  obterForma,
   prepararGlifo,
   registrarTraco,
 } from '../formas'
 import { Feed } from '../mundo/Feed'
 import { motor } from '../mundo/motor'
 import { Painel, painelCapturaTeclado, type PainelAberto } from '../paineis'
+import { Diretor, type PainelPedido } from '../diretor/diretor'
+import { ColunaDagua } from '../diretor/ColunaDagua'
+import {
+  logDaFase,
+  MINIMO_PARA_MERGULHAR,
+  planejarMergulho,
+  quadroDe,
+  type FaseMergulho,
+  type PlanoMergulho,
+} from '../diretor/mergulho'
+import { planejar } from '../ui/ritmoLegenda'
 import type { Queda } from '../paineis/PainelStatus'
-import type { Cena, CenaPane, Roteiro } from '../roteiros/tipos'
+import { textoDaLinha, type Cena, type CenaPane, type Roteiro } from '../roteiros/tipos'
 import { Apresentacao } from '../cenas/Apresentacao'
 import { Fala } from '../cenas/Fala'
 import { Quiz, type FaseDinamica } from '../cenas/Quiz'
@@ -37,11 +49,6 @@ const ESCALA_PASSO = 0.1
 const SEM_FORMA = -1
 /** Quanto tempo a IA "pensa" antes de responder a um comando. */
 const MS_PROCESSANDO = [600, 1200] as const
-/**
- * Respiro entre a linha terminar e o comando roteirizado agir. Sem ele o painel
- * abre em cima da última sílaba e parece atropelo.
- */
-const PAUSA_APOS_LINHA = 450
 /** Reação do orbe a acerto, erro ou comando desconhecido. */
 const MS_REACAO = 600
 /** Intervalo entre um subsistema cair (ou voltar) e o próximo. */
@@ -69,7 +76,9 @@ export function audioDaCena(cena: Cena): string | null {
 
 /** Linhas que a legenda vai mostrar, se a cena tiver legenda. */
 function linhasDaLegenda(cena: Cena): string[] | null {
-  return cena.tipo === 'fala' || cena.tipo === 'transicao' ? cena.tela.linhas : null
+  return cena.tipo === 'fala' || cena.tipo === 'transicao'
+    ? cena.tela.linhas.map(textoDaLinha)
+    : null
 }
 
 /** Linhas só pra estimar duração em cenas que não têm legenda. */
@@ -77,7 +86,7 @@ function linhasDeReferencia(cena: Cena): string[] {
   switch (cena.tipo) {
     case 'fala':
     case 'transicao':
-      return cena.tela.linhas
+      return cena.tela.linhas.map(textoDaLinha)
     case 'apresentacao':
       return [cena.tela.titulo]
     case 'quiz':
@@ -152,6 +161,24 @@ export function Player({ roteiro, engine }: Props) {
   const [tracos, setTracos] = useState<string[]>([])
   /** A IA está lendo o desenho: os controles do painel de traço travam. */
   const [tracoTravado, setTracoTravado] = useState(false)
+  /** Mergulho em curso: plano + instante em que começou. */
+  const [mergulho, setMergulho] = useState<{ plano: PlanoMergulho; inicio: number } | null>(
+    null,
+  )
+  const [faseMergulho, setFaseMergulho] = useState<FaseMergulho | null>(null)
+  /**
+   * Profundidade do quadro atual do mergulho.
+   *
+   * Numa REF, não em estado: isto muda 60 vezes por segundo, e como estado
+   * forçaria um render do Player inteiro por quadro — HUD, painel, feeds,
+   * legenda e log. Medido: 49 fps. A coluna d'água lê daqui dentro do próprio
+   * requestAnimationFrame, que é o mesmo padrão do nível de áudio no orbe.
+   */
+  const refProfMergulho = useRef(0)
+  /** `?gatilhos=off` na URL, ou o comando `gatilhos off` no console. */
+  const [gatilhosLigados, setGatilhosLigados] = useState(
+    () => !/(^|[?&])gatilhos=off(&|$)/i.test(window.location.search),
+  )
   /** Fala avulsa da IA: resposta de comando, feedback de quiz ou alerta da pane. */
   const [fala, setFala] = useState<Fala | null>(null)
   const [rajadaLog, setRajadaLog] = useState<string[] | null>(null)
@@ -194,6 +221,9 @@ export function Player({ roteiro, engine }: Props) {
 
   const avancar = useCallback(() => {
     if (refPaneAtiva.current) return
+    // A seta direita corta o mergulho. Quem está no palco não pode ficar
+    // refém de uma animação de cinco segundos.
+    setMergulho(null)
     setIndice((atual) => Math.min(atual + 1, sequencia.length - 1))
   }, [sequencia.length])
 
@@ -203,6 +233,28 @@ export function Player({ roteiro, engine }: Props) {
   }, [])
 
   const lerNivel = useCallback(() => engine.nivel(), [engine])
+
+  /**
+   * Começa uma sequência de mergulho — ou não, se a distância for pequena.
+   *
+   * Abaixo de 100 m não vale a produção inteira: o HUD ticka e pronto. Uma
+   * sequência de 5 segundos pra descer 40 m faria a apresentação parecer lenta
+   * exatamente onde ela devia ser fluida.
+   */
+  const iniciarMergulho = useCallback((para: number) => {
+    const de = motor.profundidade()
+    refProfundidade.current = para
+    if (Math.abs(para - de) < MINIMO_PARA_MERGULHAR) {
+      motor.definirAlvo(para)
+      return
+    }
+    setMergulho((atual) => {
+      // A cena declara a profundidade E a linha pode ter a ação de mergulho.
+      // Pedir duas vezes o mesmo destino não recomeça a descida.
+      if (atual && atual.plano.para === para) return atual
+      return { plano: planejarMergulho(de, para), inicio: performance.now() }
+    })
+  }, [])
 
   /** Põe uma fala avulsa na legenda. `fixa` = não sai sozinha (usada na pane). */
   const dizer = useCallback(
@@ -436,6 +488,125 @@ export function Player({ roteiro, engine }: Props) {
     [cena, tracos, engine, falarAvulso],
   )
 
+  // --- diretor de cena ------------------------------------------------------
+
+  // As saídas ficam numa ref pra o Diretor ser criado UMA vez: ele tem estado
+  // (o que está aberto, os cooldowns) e recriá-lo por render perderia tudo.
+  const refSaidas = useRef({
+    painel: (pedido: PainelPedido | null) => {
+      setPainel((atual) => {
+        if (!pedido) {
+          // Só fecha o que o próprio Diretor abriu. Painel do operador é dele.
+          return atual?.origem === 'diretor' ? null : atual
+        }
+        return {
+          nome: pedido.nome,
+          argumento: pedido.args,
+          contato: pedido.contato,
+          origem: 'diretor' as const,
+        }
+      })
+    },
+    forma: (nome: string | null) => {
+      if (!nome) {
+        setFormaForcada(null)
+        return
+      }
+      void (async () => {
+        await carregarFormas([nome], QTD_PONTOS)
+        // Forma que não existe (PNG ainda não chegou e não há primitiva
+        // homônima) some em silêncio: o carregarFormas já avisou no console do
+        // navegador, e o log de bordo é da apresentação, não do desenvolvimento.
+        if (obterForma(nome)) setFormaForcada(nome)
+      })()
+    },
+    sfx: (nome: string) => engine.tocarSfx(nome as never),
+    mergulho: (para: number) => refSaidas.current.aoMergulhar(para),
+    /** Preenchido logo abaixo: o callback só existe depois do useCallback. */
+    aoMergulhar: (_para: number) => {},
+    log: (linhas: string[]) => setRajadaLog(linhas),
+  })
+
+  const refDiretor = useRef<Diretor | null>(null)
+  if (!refDiretor.current) {
+    refDiretor.current = new Diretor({
+      painel: (p) => refSaidas.current.painel(p),
+      forma: (f) => refSaidas.current.forma(f),
+      sfx: (n) => refSaidas.current.sfx(n),
+      mergulho: (m) => refSaidas.current.mergulho(m),
+      log: (l) => refSaidas.current.log(l),
+    })
+  }
+  const diretor = refDiretor.current
+
+  useEffect(() => {
+    diretor.ligarGatilhos(gatilhosLigados)
+  }, [diretor, gatilhosLigados])
+
+  useEffect(() => {
+    refSaidas.current.aoMergulhar = iniciarMergulho
+  }, [iniciarMergulho])
+
+  /**
+   * A linha do tempo do mergulho, rodando num rAF.
+   *
+   * Cancelar é simplesmente parar: a limpeza deste efeito zera a inclinação e
+   * a turbulência e crava a profundidade no destino. Por isso a seta direita
+   * (que troca de cena) corta a sequência sem deixar o mundo torto.
+   */
+  useEffect(() => {
+    if (!mergulho) return
+    const { plano, inicio } = mergulho
+    let quadro = 0
+    let faseAnterior: FaseMergulho | null = null
+    let proximoEstalo = 0
+
+    const passo = (agora: number) => {
+      const q = quadroDe(plano, agora - inicio)
+      motor.pitch = q.pitch
+      motor.turbulencia = q.turbulencia
+      motor.fixarProfundidade(q.profundidade)
+      refProfMergulho.current = q.profundidade
+
+      if (q.fase !== faseAnterior) {
+        faseAnterior = q.fase
+        setFaseMergulho(q.fase)
+        const linhas = logDaFase(q.fase, plano)
+        if (linhas) setRajadaLog(linhas)
+        if (q.fase === 'aviso') engine.tocarSfx('pressurizacao')
+        if (q.fase === 'estabilizacao') engine.tocarSfx('sonar')
+      }
+
+      // Estalos de casco: mais frequentes quanto mais fundo. É o aço avisando.
+      if (q.fase === 'descida' && agora > proximoEstalo) {
+        engine.tocarSfx('casco')
+        const fundura = Math.min(1, q.profundidade / 4000)
+        proximoEstalo = agora + 950 - fundura * 550 + Math.random() * 700
+      }
+
+      if (q.fase === 'fim') {
+        setMergulho(null)
+        setFaseMergulho(null)
+        return
+      }
+      quadro = requestAnimationFrame(passo)
+    }
+
+    setOrbeForcado('processando')
+    quadro = requestAnimationFrame(passo)
+    return () => {
+      cancelAnimationFrame(quadro)
+      motor.pitch = 0
+      motor.turbulencia = 0
+      motor.fixarProfundidade(plano.para)
+      setOrbeForcado(null)
+      setFaseMergulho(null)
+    }
+  }, [mergulho, engine])
+
+  /** Qualquer mexida do operador cala o Diretor até a próxima cena. */
+  const operadorAssumiu = useCallback(() => diretor.operadorAssumiu(), [diretor])
+
   const executarComando = useCallback(
     async (texto: string, manterAberto: boolean) => {
       // Comando discreto: a IA age sem abrir o console e sem responder na
@@ -458,6 +629,8 @@ export function Player({ roteiro, engine }: Props) {
       }
 
       const comando = interpretar(texto)
+      // Comando digitado é o operador tomando a direção pra si.
+      diretor.operadorAssumiu()
 
       switch (comando.tipo) {
         case 'forma': {
@@ -468,7 +641,11 @@ export function Player({ roteiro, engine }: Props) {
           break
         }
         case 'painel':
-          setPainel({ nome: comando.nome, argumento: comando.argumento })
+          setPainel({
+            nome: comando.nome,
+            argumento: comando.argumento,
+            origem: 'operador',
+          })
           engine.tocarSfx('ok')
           break
         case 'cena': {
@@ -554,6 +731,17 @@ export function Player({ roteiro, engine }: Props) {
           engine.tocarSfx('ok')
           break
         }
+        case 'gatilhos': {
+          const ligar = comando.ligar ?? !gatilhosLigados
+          setGatilhosLigados(ligar)
+          setRajadaLog([
+            ligar
+              ? 'Direção automática: ATIVA (a IA ilustra o que fala)'
+              : 'Direção automática: DESLIGADA (só ações do roteiro)',
+          ])
+          engine.tocarSfx('ok')
+          break
+        }
         case 'profundidade':
           refProfundidade.current = comando.metros
           motor.definirAlvo(comando.metros, 2500)
@@ -621,18 +809,21 @@ export function Player({ roteiro, engine }: Props) {
             void reiniciarDaPane()
             break
           case 'proximaForma':
+            operadorAssumiu()
             if (formasDaCena.length > 0) {
               setFormaForcada(null)
               setIndiceForma((atual) => (atual + 1) % formasDaCena.length)
             }
             break
           case 'formaAnterior':
+            operadorAssumiu()
             if (formasDaCena.length > 0) {
               setFormaForcada(null)
               setIndiceForma((atual) => (atual <= 0 ? formasDaCena.length - 1 : atual - 1))
             }
             break
           case 'esfera':
+            operadorAssumiu()
             setFormaForcada(null)
             setIndiceForma(SEM_FORMA)
             break
@@ -651,6 +842,9 @@ export function Player({ roteiro, engine }: Props) {
             setConsoleAberto(true)
             break
           case 'fechar':
+            // Esc é a declaração mais clara de "eu assumo": o Diretor para de
+            // decidir até a próxima cena, e não reabre o que acabou de fechar.
+            operadorAssumiu()
             if (!refPaneAtiva.current) setPainel(null)
             break
         }
@@ -664,6 +858,7 @@ export function Player({ roteiro, engine }: Props) {
         responderVF,
         dispararPane,
         reiniciarDaPane,
+        operadorAssumiu,
       ],
     ),
     // Com o console aberto o input captura tudo. Os painéis de traço e de
@@ -677,6 +872,7 @@ export function Player({ roteiro, engine }: Props) {
     if (!cena) return
 
     let cancelado = false
+    diretor.novaCena(cena)
     setSinc({ duracaoMs: null, ativa: false, tempos: null })
     setFalando(false)
     setIndiceForma(cena.formas && cena.formas.length > 0 ? 0 : SEM_FORMA)
@@ -757,9 +953,12 @@ export function Player({ roteiro, engine }: Props) {
     return () => {
       cancelado = true
       setLinhaGuiada(null)
+      // Fim de cena fecha tudo, mesmo o que tinha prazo maior. A cena seguinte
+      // começa limpa — é o operador quem chama o que quiser nela.
+      diretor.cenaTerminou()
       engine.pararVoz()
     }
-  }, [cena, indice, sequencia, engine, avancar, roteiro.turma])
+  }, [cena, indice, sequencia, engine, avancar, roteiro.turma, diretor])
 
   // Diagnóstico de áudio no próprio log da tela: quem opera não vai abrir o
   // console do navegador no meio da feira.
@@ -818,46 +1017,53 @@ export function Player({ roteiro, engine }: Props) {
   useEffect(() => {
     if (!cena || cena.profundidade === undefined) return
     if (cena.profundidade === refProfundidade.current) return
-    refProfundidade.current = cena.profundidade
-    motor.definirAlvo(cena.profundidade)
-    engine.tocarSfx('pressurizacao')
-  }, [cena, engine])
+    iniciarMergulho(cena.profundidade)
+  }, [cena, iniciarMergulho])
 
   // Nos feeds, a pane é perda total de sinal.
   useEffect(() => {
     motor.estaticaGlobal = pane !== null && pane.fase !== 'voltando'
   }, [pane])
 
-  // Comandos roteirizados: a IA age sozinha no meio da cena.
-  //
-  // `aposLinha` ancora o disparo no fim de uma fala, usando os offsets reais do
-  // tempos.json. É o que impede o painel de brotar no meio de uma frase — e
-  // continua certo quando a professora troca uma palavra e o mp3 muda de
-  // duração, coisa que um atraso em ms não aguenta.
+  /**
+   * Eventos de linha pro Diretor.
+   *
+   * O plano vem do MESMO módulo que move a legenda (`planejar`), com os mesmos
+   * tempos reais do tempos.json. É o que garante que o painel abre na sílaba
+   * que o justifica: se a legenda e o Diretor tivessem cada um o seu relógio,
+   * os dois divergiriam no primeiro ajuste de texto.
+   */
   useEffect(() => {
-    if (!cena?.comandos?.length) return
+    if (!cena || !sinc.ativa || refPaneAtiva.current) return
+    const linhas = linhasDaLegenda(cena)
+    if (!linhas || linhas.length === 0) return
 
-    const timers = cena.comandos.map((comando) => {
-      let atraso = comando.atraso
-      const linha =
-        comando.aposLinha !== undefined ? sinc.tempos?.[comando.aposLinha] : undefined
-      if (linha) {
-        const decorrido = performance.now() - refInicioAudio.current
-        atraso = Math.max(0, linha.fim + PAUSA_APOS_LINHA - decorrido)
-      }
-      return setTimeout(() => {
-        if (refPaneAtiva.current) return
-        if (comando.discreto) {
-          refDiscreto.current = true
-          void executarComando(comando.texto, false)
-          return
-        }
-        setConsoleAberto(true)
-        setAutoComando(comando.texto)
-      }, atraso)
+    const plano = planejar(linhas, sinc.duracaoMs, sinc.tempos)
+    const base = refInicioAudio.current
+    const agora = performance.now()
+    const timers: number[] = []
+    plano.forEach((linha, i) => {
+      timers.push(
+        window.setTimeout(
+          () => diretor.linhaComecou(i),
+          Math.max(0, base + linha.inicio - agora),
+        ),
+      )
+      timers.push(
+        window.setTimeout(
+          () => diretor.linhaTerminou(i),
+          Math.max(0, base + linha.inicio + linha.duracao - agora),
+        ),
+      )
     })
-    return () => timers.forEach(clearTimeout)
-  }, [cena, sinc.tempos, executarComando])
+    return () => timers.forEach((id) => clearTimeout(id))
+  }, [cena, sinc, diretor])
+
+  /** Vence o que tem prazo em segundos. 120 ms é fino o bastante pro olho. */
+  useEffect(() => {
+    const id = window.setInterval(() => diretor.tique(performance.now()), 120)
+    return () => clearInterval(id)
+  }, [diretor])
 
   // Fala avulsa sai de cena sozinha, exceto na pane.
   useEffect(() => {
@@ -896,6 +1102,8 @@ export function Player({ roteiro, engine }: Props) {
       rota={pane ? 'FALHA DE SISTEMA' : rotaDaCena(cena)}
       sonar={pane ? 'OFFLINE' : cena.tipo === 'transicao' ? 'VARRENDO' : 'ATIVO'}
       rodapeEsquerda={`turma ${roteiro.turma}`}
+      inclinado={faseMergulho === 'inclinacao'}
+      mergulhando={mergulho !== null}
       rodapeDireita={
         pane
           ? 'pane · R pra reiniciar'
@@ -952,25 +1160,25 @@ export function Player({ roteiro, engine }: Props) {
             aoZerarTimer,
             aoPing,
           )}
-          {painel && (
-            <Painel
-              painel={{
+          <Painel
+            painel={
+              painel && {
                 ...painel,
                 quedas: quedasVisiveis,
                 congelado: pane?.fase === 'congelado',
                 // Durante a pane o Esc não fecha nada: quem sai da pane é o R.
                 dica: pane ? 'r pra reiniciar o sistema' : undefined,
-              }}
-              aoInterpretarTraco={aoInterpretarTraco}
-              aoFechar={() => setPainel(null)}
-              // Profundidade VIVA, não a declarada na cena: assim o comando
-              // "profundidade N" também move o painel, e ele bate com o que as
-              // câmeras estão mostrando naquele instante.
-              profundidade={Math.round(motor.profundidade())}
-              travado={tracoTravado}
-              aoPing={aoPing}
-            />
-          )}
+              }
+            }
+            aoInterpretarTraco={aoInterpretarTraco}
+            aoFechar={() => setPainel(null)}
+            // Profundidade VIVA, não a declarada na cena: assim o comando
+            // "profundidade N" também move o painel, e ele bate com o que as
+            // câmeras estão mostrando naquele instante.
+            profundidade={Math.round(motor.profundidade())}
+            travado={tracoTravado}
+            aoPing={aoPing}
+          />
           {mostrarCameras && (
             <>
               <Feed
@@ -984,6 +1192,12 @@ export function Player({ roteiro, engine }: Props) {
                 camera={{ x0: 1.4, abertura: 1, espelhado: true }}
               />
             </>
+          )}
+          {mergulho && (
+            <ColunaDagua
+              lerProfundidade={() => refProfMergulho.current}
+              alvo={mergulho.plano.para}
+            />
           )}
           <ConsoleComandos
             aberto={consoleAberto}

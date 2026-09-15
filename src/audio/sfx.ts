@@ -18,6 +18,7 @@ export type NomeSfx =
   | 'ok'
   | 'pressurizacao'
   | 'bipe-timer'
+  | 'casco'
 
 /** Solta os nós quando o som acaba, pra não acumular no grafo. */
 function limpar(fonte: AudioScheduledSourceNode, ...nos: AudioNode[]) {
@@ -160,6 +161,49 @@ function bipeTimer(ctx: AudioContext, destino: AudioNode, t: number) {
   tom(ctx, destino, 1200, t, 0.05, 0.5, 'triangle')
 }
 
+/**
+ * Estalo de casco sob pressão: um pulso grave curto, com a ressonância do
+ * metal por cima.
+ *
+ * O medo aqui é o aço, não o susto — por isso não tem ataque estalado nem
+ * agudo. É um "toc" fundo que a caixa reproduz mais como pressão no peito do
+ * que como som, que é exatamente o que se quer quando o número da profundidade
+ * está subindo na tela.
+ */
+function casco(ctx: AudioContext, destino: AudioNode, t: number) {
+  // corpo: seno grave caindo, o "toc"
+  const grave = ctx.createOscillator()
+  const ganhoGrave = ctx.createGain()
+  grave.type = 'sine'
+  grave.frequency.setValueAtTime(96, t)
+  grave.frequency.exponentialRampToValueAtTime(38, t + 0.2)
+  envelope(ganhoGrave, t, 0.5, 0.004, 0.28)
+  grave.connect(ganhoGrave).connect(destino)
+  limpar(grave, ganhoGrave)
+  grave.start(t)
+  grave.stop(t + 0.35)
+
+  // ressonância: ruído passando por um passa-banda alto e estreito, que é o
+  // metal respondendo ao pulso
+  const amostras = Math.floor(ctx.sampleRate * 0.25)
+  const buffer = ctx.createBuffer(1, amostras, ctx.sampleRate)
+  const dados = buffer.getChannelData(0)
+  for (let i = 0; i < amostras; i++) {
+    dados[i] = (Math.random() * 2 - 1) * (1 - i / amostras) ** 3
+  }
+  const fonte = ctx.createBufferSource()
+  fonte.buffer = buffer
+  const banda = ctx.createBiquadFilter()
+  banda.type = 'bandpass'
+  banda.frequency.value = 420 + Math.random() * 260
+  banda.Q.value = 9
+  const ganhoRes = ctx.createGain()
+  envelope(ganhoRes, t, 0.24, 0.002, 0.22)
+  fonte.connect(banda).connect(ganhoRes).connect(destino)
+  limpar(fonte, banda, ganhoRes)
+  fonte.start(t)
+}
+
 const SINTETIZADORES: Record<
   NomeSfx,
   (ctx: AudioContext, destino: AudioNode, t: number) => void
@@ -170,6 +214,7 @@ const SINTETIZADORES: Record<
   ok,
   pressurizacao,
   'bipe-timer': bipeTimer,
+  casco,
 }
 
 /** Toca um efeito sintetizado agora. Não bloqueia nada. */
@@ -187,6 +232,7 @@ export const SEQUENCIA_TESTE: NomeSfx[] = [
   'estatica',
   'alarme',
   'pressurizacao',
+  'casco',
 ]
 
 /**

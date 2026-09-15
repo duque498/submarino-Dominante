@@ -43,6 +43,12 @@ export type Comando =
       motor?: 'mp3' | 'sistema'
       resposta: string
     }
+  | {
+      tipo: 'gatilhos'
+      /** true liga, false desliga, null só relata o estado. */
+      ligar: boolean | null
+      resposta: string
+    }
   | { tipo: 'desconhecido'; entrada: string; resposta: string; chaveAudio?: ChaveResposta }
 
 /** Minúsculas, sem acento, sem espaço sobrando. */
@@ -81,6 +87,8 @@ export function vocabulario(): string[] {
     'profundidade 4500',
     'som',
     'ambiente',
+    'gatilhos off',
+    'gatilhos on',
     'vozes',
     'voz 1',
     'voz sistema',
@@ -191,7 +199,20 @@ export function interpretar(entrada: string): Comando {
     }
   }
 
-  // 5) profundidade (comando de depuração: força o cenário numa faixa)
+  // 5) gatilhos semânticos: liga e desliga a direção automática na hora
+  const comandoDeGatilhos = /^(?:gatilhos|gatilho|automatico|auto)(?:\s+(.+))?$/.exec(texto)
+  if (comandoDeGatilhos) {
+    const arg = (comandoDeGatilhos[1] ?? '').trim()
+    if (/^(on|ligar|ligado|sim|1)$/.test(arg)) {
+      return { tipo: 'gatilhos', ligar: true, resposta: 'Direção automática ativada.' }
+    }
+    if (/^(off|desligar|desligado|nao|0)$/.test(arg)) {
+      return { tipo: 'gatilhos', ligar: false, resposta: 'Direção automática desativada.' }
+    }
+    return { tipo: 'gatilhos', ligar: null, resposta: 'Consultando direção automática.' }
+  }
+
+  // 6) profundidade (comando de depuração: força o cenário numa faixa)
   const profundidade = /^(?:profundidade|prof|descer|subir)\s+(\d+)$/.exec(texto)
   if (profundidade) {
     const metros = Math.max(0, Math.min(11000, Number(profundidade[1])))

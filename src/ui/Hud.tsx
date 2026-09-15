@@ -8,11 +8,23 @@ type Props = {
   /** Rodapé discreto: turma e posição no roteiro. */
   rodapeEsquerda?: string
   rodapeDireita?: string
+  /** Inclina a moldura inteira 1,5° durante a fase de inclinação do mergulho. */
+  inclinado?: boolean
+  /** Mergulho em curso: promove a camada da moldura antes do giro começar. */
+  mergulhando?: boolean
   children: ReactNode
 }
 
 /** Moldura fixa da apresentação: barra de status, scanlines e cantos de mira. */
-export function Hud({ rota, sonar = 'ATIVO', rodapeEsquerda, rodapeDireita, children }: Props) {
+export function Hud({
+  rota,
+  sonar = 'ATIVO',
+  rodapeEsquerda,
+  rodapeDireita,
+  inclinado = false,
+  mergulhando = false,
+  children,
+}: Props) {
   const refMetros = useRef<HTMLElement>(null)
 
   // O número é escrito direto no DOM: durante a descida ele muda várias vezes
@@ -26,7 +38,11 @@ export function Hud({ rota, sonar = 'ATIVO', rodapeEsquerda, rodapeDireita, chil
   }, [])
 
   return (
-    <div className="hud">
+    <div
+      className={
+        'hud' + (mergulhando ? ' hud--mergulhando' : '') + (inclinado ? ' hud--inclinado' : '')
+      }
+    >
       <div className="hud__moldura">
         <span className="hud__canto hud__canto--no" />
         <span className="hud__canto hud__canto--ne" />

@@ -1,12 +1,19 @@
+import { ESPECIES } from '../mundo/bestiario'
+
 /**
- * Formas geradas em código, sem imagem. Servem pra dois casos:
+ * Formas geradas em código, sem imagem. Servem pra três casos:
  *
  *  - provisoriamente, no lugar das silhuetas que ainda não chegaram;
  *  - permanentemente, pro console: quando o operador digita "estrela" a forma
- *    é desenhada na hora e amostrada pela mesma rotina dos PNGs.
+ *    é desenhada na hora e amostrada pela mesma rotina dos PNGs;
+ *  - pros gatilhos semânticos, que precisam de uma forma pra cada palavra do
+ *    dicionário e não podem depender de PNG que ainda não existe.
  *
- * Nada aqui tenta desenhar uma baleia: figura orgânica feita com paths fica
- * pior do que não ter figura nenhuma. São primitivas geométricas.
+ * As geométricas são desenhadas aqui. As orgânicas (baleia, tartaruga,
+ * água-viva) NÃO são redesenhadas: elas vêm do bestiário das câmeras, em modo
+ * silhueta. Desenhar uma baleia duas vezes, em dois arquivos, com dois níveis
+ * de capricho, é como as duas versões acabam diferentes — e a plateia veria a
+ * baleia boa na câmera e uma pior no orbe.
  */
 
 const LADO = 256
@@ -206,6 +213,192 @@ function concha(): HTMLCanvasElement {
   return canvas
 }
 
+/** Lado maior pras silhuetas orgânicas: tentáculo e nadadeira saem do corpo. */
+const LADO_GRANDE = 512
+
+/**
+ * Pega uma espécie do bestiário e rasteriza a silhueta dela. O amostrador
+ * normaliza pela caixa do desenho, então o que importa aqui é não deixar nada
+ * sair do canvas.
+ */
+function doBestiario(chave: string): () => HTMLCanvasElement {
+  return () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = LADO_GRANDE
+    canvas.height = LADO_GRANDE
+    const ctx = canvas.getContext('2d')!
+    const especie = ESPECIES.find((e) => e.chave === chave)
+    if (!especie) return canvas
+    const comp = LADO_GRANDE * 0.46
+    ctx.translate(LADO_GRANDE / 2, LADO_GRANDE / 2)
+    especie.desenhar({
+      ctx,
+      comp,
+      alt: comp * especie.proporcao,
+      // Tempo fixo: a forma do orbe é uma pose, não uma animação.
+      t: 0.8,
+      fase: 0.4,
+      luz: 1,
+      farol: 0,
+      alpha: 1,
+      silhueta: true,
+    })
+    return canvas
+  }
+}
+
+/** Peixe genérico — "peixe", "peixes", "cardume". Corpo, dorsal e cauda. */
+function peixe(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const cx = LADO / 2
+  const cy = LADO / 2
+  const c = LADO * 0.4
+  const a = c * 0.42
+  // cauda em forquilha
+  ctx.beginPath()
+  ctx.moveTo(cx - c * 0.55, cy)
+  ctx.lineTo(cx - c * 1.0, cy - a * 0.95)
+  ctx.lineTo(cx - c * 0.82, cy)
+  ctx.lineTo(cx - c * 1.0, cy + a * 0.95)
+  ctx.closePath()
+  ctx.fill()
+  // corpo
+  ctx.beginPath()
+  ctx.moveTo(cx + c, cy)
+  ctx.bezierCurveTo(cx + c * 0.4, cy - a, cx - c * 0.2, cy - a, cx - c * 0.6, cy)
+  ctx.bezierCurveTo(cx - c * 0.2, cy + a, cx + c * 0.4, cy + a, cx + c, cy)
+  ctx.closePath()
+  ctx.fill()
+  // dorsal e ventral
+  ctx.beginPath()
+  ctx.moveTo(cx + c * 0.1, cy - a * 0.8)
+  ctx.lineTo(cx - c * 0.1, cy - a * 1.75)
+  ctx.lineTo(cx - c * 0.4, cy - a * 0.72)
+  ctx.closePath()
+  ctx.fill()
+  ctx.beginPath()
+  ctx.moveTo(cx + c * 0.2, cy + a * 0.72)
+  ctx.lineTo(cx + c * 0.02, cy + a * 1.5)
+  ctx.lineTo(cx - c * 0.16, cy + a * 0.68)
+  ctx.closePath()
+  ctx.fill()
+  return canvas
+}
+
+/** Coral ramificado — "coral", "corais", "recife". */
+function coral(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  ctx.strokeStyle = '#000'
+  ctx.lineCap = 'round'
+  const ramo = (x: number, y: number, angulo: number, comp: number, nivel: number) => {
+    if (nivel === 0 || comp < LADO * 0.02) return
+    const fx = x + Math.cos(angulo) * comp
+    const fy = y + Math.sin(angulo) * comp
+    ctx.lineWidth = Math.max(2, nivel * LADO * 0.014)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(fx, fy)
+    ctx.stroke()
+    ramo(fx, fy, angulo - 0.42, comp * 0.72, nivel - 1)
+    ramo(fx, fy, angulo + 0.42, comp * 0.72, nivel - 1)
+    if (nivel > 3) ramo(fx, fy, angulo + 0.05, comp * 0.66, nivel - 2)
+  }
+  // três troncos saindo da mesma base, pra ler como colônia e não como árvore
+  ramo(LADO * 0.5, LADO * 0.95, -Math.PI / 2, LADO * 0.2, 5)
+  ramo(LADO * 0.42, LADO * 0.95, -Math.PI / 2 - 0.4, LADO * 0.15, 4)
+  ramo(LADO * 0.58, LADO * 0.95, -Math.PI / 2 + 0.4, LADO * 0.15, 4)
+  return canvas
+}
+
+/** Mergulhador de perfil — "mergulhador", "mergulho", "mergulhar". */
+function mergulhador(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const u = LADO / 100
+  // pé-de-pato
+  ctx.beginPath()
+  ctx.moveTo(22 * u, 54 * u)
+  ctx.lineTo(6 * u, 44 * u)
+  ctx.lineTo(4 * u, 58 * u)
+  ctx.lineTo(20 * u, 62 * u)
+  ctx.closePath()
+  ctx.fill()
+  // pernas e tronco, numa só massa
+  ctx.beginPath()
+  ctx.moveTo(20 * u, 50 * u)
+  ctx.quadraticCurveTo(44 * u, 46 * u, 62 * u, 40 * u)
+  ctx.quadraticCurveTo(74 * u, 36 * u, 78 * u, 30 * u)
+  ctx.lineTo(70 * u, 22 * u)
+  ctx.quadraticCurveTo(56 * u, 32 * u, 34 * u, 38 * u)
+  ctx.quadraticCurveTo(24 * u, 42 * u, 18 * u, 44 * u)
+  ctx.closePath()
+  ctx.fill()
+  // cilindro nas costas
+  ctx.beginPath()
+  ctx.ellipse(50 * u, 30 * u, 13 * u, 7 * u, -0.34, 0, Math.PI * 2)
+  ctx.fill()
+  // cabeça com máscara
+  ctx.beginPath()
+  ctx.arc(80 * u, 24 * u, 9 * u, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.moveTo(86 * u, 20 * u)
+  ctx.lineTo(95 * u, 22 * u)
+  ctx.lineTo(94 * u, 30 * u)
+  ctx.lineTo(85 * u, 29 * u)
+  ctx.closePath()
+  ctx.fill()
+  // braço estendido à frente
+  ctx.beginPath()
+  ctx.moveTo(74 * u, 30 * u)
+  ctx.quadraticCurveTo(84 * u, 42 * u, 96 * u, 44 * u)
+  ctx.lineTo(96 * u, 50 * u)
+  ctx.quadraticCurveTo(78 * u, 48 * u, 68 * u, 34 * u)
+  ctx.closePath()
+  ctx.fill()
+  return canvas
+}
+
+/** Submarino de perfil — "submarino", "DOMI", "expedição", "tripulação". */
+function submarino(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const u = LADO / 100
+  // casco
+  ctx.beginPath()
+  ctx.moveTo(90 * u, 50 * u)
+  ctx.bezierCurveTo(86 * u, 36 * u, 40 * u, 34 * u, 16 * u, 42 * u)
+  ctx.quadraticCurveTo(10 * u, 44 * u, 10 * u, 50 * u)
+  ctx.quadraticCurveTo(10 * u, 56 * u, 16 * u, 58 * u)
+  ctx.bezierCurveTo(40 * u, 66 * u, 86 * u, 64 * u, 90 * u, 50 * u)
+  ctx.closePath()
+  ctx.fill()
+  // vela (torre de comando)
+  ctx.beginPath()
+  ctx.moveTo(56 * u, 38 * u)
+  ctx.lineTo(54 * u, 22 * u)
+  ctx.lineTo(42 * u, 22 * u)
+  ctx.lineTo(38 * u, 39 * u)
+  ctx.closePath()
+  ctx.fill()
+  // periscópio
+  ctx.fillRect(48 * u, 12 * u, 3 * u, 11 * u)
+  // leme de profundidade
+  ctx.beginPath()
+  ctx.moveTo(22 * u, 44 * u)
+  ctx.lineTo(14 * u, 30 * u)
+  ctx.lineTo(9 * u, 32 * u)
+  ctx.lineTo(16 * u, 47 * u)
+  ctx.closePath()
+  ctx.fill()
+  // hélice
+  ctx.beginPath()
+  ctx.moveTo(10 * u, 50 * u)
+  ctx.lineTo(3 * u, 40 * u)
+  ctx.lineTo(3 * u, 60 * u)
+  ctx.closePath()
+  ctx.fill()
+  return canvas
+}
+
 /** Primitivas com nome fixo — valem no JSON e no console. */
 export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   circulo,
@@ -219,6 +412,17 @@ export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   espiral,
   seta,
   concha,
+  peixe,
+  coral,
+  mergulhador,
+  submarino,
+  // Do bestiário das câmeras, em silhueta: mesmo desenho que passa na câmera.
+  baleia: doBestiario('cachalote'),
+  tartaruga: doBestiario('tartaruga'),
+  'agua-viva': doBestiario('agua-viva'),
+  raia: doBestiario('raia'),
+  tubarao: doBestiario('tubarao'),
+  lula: doBestiario('lula-gigante'),
   'letra-d': () => glifo('D'),
 }
 

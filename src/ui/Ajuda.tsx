@@ -14,6 +14,7 @@ const ATALHOS: Array<[string, string]> = [
   ['P', 'dispara a pane de qualquer cena'],
   ['R', 'durante a pane: reinicia o sistema'],
   ['M / N', 'próxima / anterior forma do orbe'],
+  ['/ + gatilhos off', 'a IA para de decidir sozinha'],
   ['O', 'volta o orbe pra esfera'],
   ['[ / ]', 'diminui / aumenta o orbe'],
   ['/', 'abre o console de comandos'],

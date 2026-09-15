@@ -1,13 +1,14 @@
-import { comandoResolve } from '../console/comandos'
+import { marcadorExiste, NOMES_MARCADORES } from '../paineis/mapa'
 import { formaRegistrada, NOMES_FORMAS } from '../formas'
-import type { Cena, Roteiro, Turma } from './tipos'
+import { NOMES_PAINEIS } from '../paineis/nomes'
+import type { Acao, Cena, Linha, Roteiro, Turma } from './tipos'
 import { TURMAS } from './tipos'
 
 // Quem edita os JSONs nao e programador: os erros precisam dizer EXATAMENTE
 // qual cena e qual campo estao errados, em portugues.
 
 const TIPOS_VALIDOS = ['fala', 'apresentacao', 'transicao', 'quiz', 'vf', 'pane']
-const SFX_VALIDOS = ['sonar', 'alarme', 'estatica', 'ok', 'pressurizacao']
+const SFX_VALIDOS = ['sonar', 'alarme', 'estatica', 'ok', 'pressurizacao', 'casco']
 
 function ehTextoPreenchido(valor: unknown): valor is string {
   return typeof valor === 'string' && valor.trim().length > 0
@@ -15,6 +16,139 @@ function ehTextoPreenchido(valor: unknown): valor is string {
 
 function ehListaDeTextos(valor: unknown): valor is string[] {
   return Array.isArray(valor) && valor.length > 0 && valor.every(ehTextoPreenchido)
+}
+
+/** Uma linha e um texto solto ou um objeto com texto e acoes. */
+function ehLinha(valor: unknown): valor is Linha {
+  if (ehTextoPreenchido(valor)) return true
+  return (
+    typeof valor === 'object' &&
+    valor !== null &&
+    ehTextoPreenchido((valor as { texto?: unknown }).texto)
+  )
+}
+
+function ehListaDeLinhas(valor: unknown): valor is Linha[] {
+  return Array.isArray(valor) && valor.length > 0 && valor.every(ehLinha)
+}
+
+/** Confere um prazo de vida ("ate"). `total` e quantas linhas a cena tem. */
+function conferirPrazo(prazo: unknown, total: number, onde: string, erros: string[]) {
+  if (prazo === 'fimLinha' || prazo === 'fimCena') return
+  if (typeof prazo === 'object' && prazo !== null) {
+    const p = prazo as { linha?: unknown; segundos?: unknown }
+    if (typeof p.linha === 'number') {
+      if (!Number.isInteger(p.linha) || p.linha < 0 || p.linha >= total) {
+        erros.push(
+          `${onde}: "ate.linha" e ${p.linha}, mas esta cena tem ${total} linha(s) ` +
+            `(indices 0 a ${Math.max(0, total - 1)}).`,
+        )
+      }
+      return
+    }
+    if (typeof p.segundos === 'number' && p.segundos > 0) return
+  }
+  erros.push(
+    `${onde}: "ate" deve ser "fimLinha", "fimCena", { "linha": N } ou { "segundos": N }.`,
+  )
+}
+
+/** Confere as acoes de uma linha: nomes que nao existem viram erro legivel. */
+function conferirAcoes(linha: Linha, total: number, onde: string, erros: string[]) {
+  if (typeof linha === 'string') return
+  const acoes = (linha as { acoes?: unknown }).acoes
+  if (acoes === undefined) return
+  if (!Array.isArray(acoes)) {
+    erros.push(`${onde}: "acoes" deve ser uma lista.`)
+    return
+  }
+
+  acoes.forEach((bruta, i) => {
+    const acao = bruta as Partial<Acao> & { tipo?: string }
+    const rotulo = `${onde}, acao ${i + 1}`
+    if (acao?.quando !== undefined && acao.quando !== 'inicio' && acao.quando !== 'fim') {
+      erros.push(`${rotulo}: "quando" deve ser "inicio" ou "fim".`)
+    }
+    switch (acao?.tipo) {
+      case 'painel': {
+        const nome = (acao as { nome?: unknown }).nome
+        if (!ehTextoPreenchido(nome) || !NOMES_PAINEIS.includes(nome)) {
+          erros.push(
+            `${rotulo}: painel "${String(nome)}" nao existe. ` +
+              `Disponiveis: ${NOMES_PAINEIS.join(', ')}.`,
+          )
+        }
+        conferirPrazo((acao as { ate?: unknown }).ate, total, rotulo, erros)
+        break
+      }
+      case 'forma': {
+        const nome = (acao as { nome?: unknown }).nome
+        if (!ehTextoPreenchido(nome) || !formaRegistrada(nome)) {
+          erros.push(
+            `${rotulo}: a forma "${String(nome)}" nao esta registrada. ` +
+              `Formas disponiveis: ${NOMES_FORMAS.join(', ')}.`,
+          )
+        }
+        conferirPrazo((acao as { ate?: unknown }).ate, total, rotulo, erros)
+        break
+      }
+      case 'mapa': {
+        const marcador = (acao as { marcador?: unknown }).marcador
+        if (!ehTextoPreenchido(marcador) || !marcadorExiste(marcador)) {
+          erros.push(
+            `${rotulo}: marcador "${String(marcador)}" nao existe no mapa. ` +
+              `Disponiveis: ${NOMES_MARCADORES.join(', ')}.`,
+          )
+        }
+        const ate = (acao as { ate?: unknown }).ate
+        if (ate !== undefined) conferirPrazo(ate, total, rotulo, erros)
+        break
+      }
+      case 'camera': {
+        const qual = (acao as { qual?: unknown }).qual
+        if (qual !== 1 && qual !== 2) {
+          erros.push(`${rotulo}: "qual" deve ser 1 ou 2.`)
+        }
+        conferirPrazo((acao as { ate?: unknown }).ate, total, rotulo, erros)
+        break
+      }
+      case 'fechar': {
+        const alvo = (acao as { alvo?: unknown }).alvo
+        if (alvo !== 'painel' && alvo !== 'forma' && alvo !== 'tudo') {
+          erros.push(`${rotulo}: "alvo" deve ser "painel", "forma" ou "tudo".`)
+        }
+        break
+      }
+      case 'sfx': {
+        const nome = (acao as { nome?: unknown }).nome
+        if (!ehTextoPreenchido(nome) || !SFX_VALIDOS.includes(nome)) {
+          erros.push(`${rotulo}: sfx "${String(nome)}" nao existe. Use: ${SFX_VALIDOS.join(', ')}.`)
+        }
+        break
+      }
+      case 'mergulho': {
+        const para = (acao as { para?: unknown }).para
+        if (typeof para !== 'number' || para < 0) {
+          erros.push(`${rotulo}: "para" deve ser a profundidade-alvo em metros.`)
+        }
+        break
+      }
+      default:
+        erros.push(
+          `${rotulo}: tipo "${String(acao?.tipo)}" desconhecido. ` +
+            `Use: painel, forma, fechar, mapa, camera, sfx ou mergulho.`,
+        )
+    }
+  })
+}
+
+/** Roda a conferencia de acoes em todas as linhas da cena. */
+function conferirLinhas(linhas: unknown, onde: string, erros: string[]) {
+  if (!Array.isArray(linhas)) return
+  linhas.forEach((linha, i) => {
+    if (!ehLinha(linha)) return
+    conferirAcoes(linha as Linha, linhas.length, `${onde}, linha ${i}`, erros)
+  })
 }
 
 /**
@@ -95,45 +229,14 @@ export function validarRoteiro(dado: unknown): string[] {
     }
 
     if (cena.comandos !== undefined) {
-      if (!Array.isArray(cena.comandos) || cena.comandos.length === 0) {
-        erros.push(`${onde}: campo "comandos" deve ser uma lista nao vazia.`)
-      } else {
-        cena.comandos.forEach((comando, posicao) => {
-          const rotulo = `${onde}, comando ${posicao + 1}`
-          if (!ehTextoPreenchido(comando?.texto)) {
-            erros.push(`${rotulo}: campo "texto" faltando.`)
-            return
-          }
-          if (typeof comando.atraso !== 'number' || comando.atraso < 0) {
-            erros.push(`${rotulo}: "atraso" deve ser o numero de ms apos o inicio da cena.`)
-          }
-          if (comando.aposLinha !== undefined) {
-            const linhas = (cena as { tela?: { linhas?: unknown } }).tela?.linhas
-            const total = Array.isArray(linhas) ? linhas.length : 0
-            if (
-              typeof comando.aposLinha !== 'number' ||
-              !Number.isInteger(comando.aposLinha) ||
-              comando.aposLinha < 0
-            ) {
-              erros.push(`${rotulo}: "aposLinha" deve ser o indice de uma linha, comecando em 0.`)
-            } else if (comando.aposLinha >= total) {
-              erros.push(
-                `${rotulo}: "aposLinha" e ${comando.aposLinha}, mas esta cena tem ` +
-                  `${total} linha(s) de fala (indices 0 a ${Math.max(0, total - 1)}).`,
-              )
-            }
-          }
-          if (comando.discreto !== undefined && typeof comando.discreto !== 'boolean') {
-            erros.push(`${rotulo}: "discreto" deve ser true ou false.`)
-          }
-          if (!comandoResolve(comando.texto)) {
-            erros.push(
-              `${rotulo}: o comando "${comando.texto}" nao resolve em nenhuma forma, ` +
-                `painel ou acao. Confira o nome.`,
-            )
-          }
-        })
-      }
+      // O modelo de comandos roteirizados saiu na Fase 3.5: quem decide agora e
+      // o Diretor, pelas `acoes` de cada linha. Deixar o campo passar calado
+      // seria pior que o erro — o roteiro pareceria certo e nada aconteceria.
+      erros.push(
+        `${onde}: o campo "comandos" nao existe mais. Ponha uma acao na linha ` +
+          `que justifica o efeito: { "texto": "...", "acoes": [{ "tipo": "painel", ` +
+          `"nome": "sonar", "ate": "fimLinha" }] }.`,
+      )
     }
 
     if (cena.formas !== undefined) {
@@ -154,8 +257,10 @@ export function validarRoteiro(dado: unknown): string[] {
 
     switch (cena.tipo) {
       case 'fala': {
-        if (!ehListaDeTextos(cena.tela?.linhas)) {
-          erros.push(`${onde}: "tela.linhas" precisa ser uma lista de textos nao vazia.`)
+        if (!ehListaDeLinhas(cena.tela?.linhas)) {
+          erros.push(`${onde}: "tela.linhas" precisa ser uma lista de falas nao vazia.`)
+        } else {
+          conferirLinhas(cena.tela.linhas, onde, erros)
         }
         if (!ehTextoPreenchido(cena.audio)) {
           erros.push(`${onde}: campo "audio" precisa ser o caminho do mp3.`)
@@ -181,8 +286,10 @@ export function validarRoteiro(dado: unknown): string[] {
         if (!ehTextoPreenchido(cena.destino)) {
           erros.push(`${onde}: campo "destino" faltando (ex.: "2o ano B").`)
         }
-        if (!ehListaDeTextos(cena.tela?.linhas)) {
-          erros.push(`${onde}: "tela.linhas" precisa ser uma lista de textos nao vazia.`)
+        if (!ehListaDeLinhas(cena.tela?.linhas)) {
+          erros.push(`${onde}: "tela.linhas" precisa ser uma lista de falas nao vazia.`)
+        } else {
+          conferirLinhas(cena.tela.linhas, onde, erros)
         }
         if (!ehTextoPreenchido(cena.audio)) {
           erros.push(`${onde}: campo "audio" precisa ser o caminho do mp3.`)

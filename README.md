@@ -9,13 +9,15 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 3 concluída.** Todos os tipos de cena funcionam: `fala`,
+**Fase 3.5 concluída.** Todos os tipos de cena funcionam: `fala`,
 `apresentacao`, `transicao`, `quiz`, `vf` e `pane`. Mais HUD, orbe que morfa em
 silhuetas, legenda sincronizada, log de sistemas, console de comandos, painéis,
-câmeras externas com o oceano procedural, profundidade real e o pipeline de
-voz. Falta só preencher os roteiros do 2B e do 3A (Fase 4).
-As cenas `quiz`, `vf` e `pane` estão no roteiro mas ainda aparecem como
-"a implementar (Fase 2)". Os mp3 ainda não existem (Fase 3).
+câmeras externas com o oceano procedural, profundidade real, o pipeline de voz
+e o **Diretor de cena** — a IA passou a reagir ao que ela mesma está dizendo, em
+vez de a um relógio.
+
+Falta preencher os roteiros do 2B e do 3A (Fase 4) e as dinâmicas de quiz do
+roteiro final.
 
 ## Stack
 
@@ -81,6 +83,7 @@ Sem `?turma=`, o app mostra uma tela pedindo pra escolher a turma (teclas 1, 2, 
 | `↑` / `↓` | histórico de comandos |
 | `M` / `N` | próxima / anterior forma do orbe na cena atual |
 | `O` | volta o orbe pra esfera, de qualquer cena |
+| qualquer uma acima | suspende a direção automática até a próxima cena |
 | `[` / `]` | diminui / aumenta o orbe em 10% (ajuste ao vivo; não persiste) |
 
 **A primeira tela pede uma tecla qualquer.** Isso não é decoração: o Chrome só
@@ -228,8 +231,9 @@ coisa só: **quantos metros**. As câmeras não sabem qual turma está apresenta
 ### Profundidade
 
 `CenaBase.profundidade` (metros) é a profundidade-alvo da cena. Ao entrar nela o
-submarino **desce ou sobe animado** até lá — 3 a 6 s conforme a distância, com o
-número do HUD tickando. Cena sem o campo herda a da cena anterior.
+submarino **desce ou sobe animado** até lá, com o número do HUD tickando. Cena
+sem o campo herda a da cena anterior. Quando o salto é grande, uma ação de linha
+pode transformá-lo na sequência de mergulho — ver abaixo.
 
 Referência pra quem preencher os JSONs do 2B e do 3A (provisório, ajustável):
 
@@ -238,6 +242,40 @@ Referência pra quem preencher os JSONs do 2B e do 3A (provisório, ajustável):
 | **2A** | 50 → 900 m | `entrada` 50, `bio` 120, `arte` 300, `ef` 450, `quiz-intro` 600, `transicao-2b` 900 |
 | **2B** | ~900 → 3000 m | começa onde o 2A parou e desce até a batipelágica |
 | **3A** | ~3000 → 5500 m | chega ao abissal; a **cena final volta pra 0** (retorno à superfície) |
+
+### Mergulho
+
+Mudar de profundidade era um número tickando no HUD. Agora, quando a distância
+passa de **100 m**, vira uma sequência com peso — é o que transforma "próxima
+cena" em "estamos descendo":
+
+| fase | duração | o que acontece |
+|---|---|---|
+| aviso | 0,5 s | log de bordo: lastro, vedação, destino |
+| inclinação | 1,0 s | a proa baixa; o HUD inteiro inclina 1,5° |
+| descida | 2–4 s | a água corre, o casco estala, o número sobe com easing |
+| estabilização | 0,7 s | o casco passa do ponto e volta |
+
+A sequência é disparada por uma ação de linha
+(`{ "tipo": "mergulho", "para": 900 }`), então ela cai no ponto da fala em que a
+IA diz que vão descer. `→` cancela: `src/diretor/mergulho.ts` é função pura do
+tempo decorrido, sem estado escondido, e cancelar é parar de chamar.
+
+Durante o mergulho aparece a **coluna d'água** na borda esquerda: as quatro
+zonas empilhadas, o submarino descendo, o alvo tracejado e bolhas subindo. Cada
+zona ocupa um quarto da altura e **não** a fatia proporcional — numa régua
+linear a eufótica, onde a apresentação inteira acontece, teria 3% da coluna e
+seria ilegível. É infográfico, não instrumento de medida.
+
+> **Custo medido, e ele não fecha.** Em headless neste container (sem GPU,
+> render por software) a linha de base é 58,5 fps; o mergulho puro cai pra 54,5
+> e o mergulho com o mapa aberto pra **50,8 fps**. O culpado dominante é a
+> inclinação do HUD — `transform: rotate(1.5deg)` na moldura inteira custa ~7
+> fps, e `will-change` não ajudou porque não há GPU pra promover a camada.
+> Numa máquina com aceleração isso provavelmente some, mas **eu não pude
+> verificar**. Se o Chromebook engasgar no mergulho, o conserto é uma linha:
+> apagar `.hud--inclinado .hud__moldura { transform: rotate(1.5deg) }` em
+> `src/estilos.css`. Perde-se a inclinação; ganha-se a fluidez.
 
 ### Zonas
 
@@ -317,6 +355,7 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 | `espectro`, `cores` | abre as faixas de cor apagando com a profundidade |
 | `cena 5`, `ir bio`, `proximo`, `voltar` | navega no roteiro |
 | `pane`, `reiniciar`, `limpar`, `ajuda` | comandos de sistema |
+| `gatilhos`, `gatilhos off`, `gatilhos on` | liga/desliga a direção automática |
 | `profundidade 4500` | depuração: força a profundidade do cenário |
 | `som` | toca todos os efeitos em sequência, pra conferir os alto-falantes |
 | `ambiente` | liga/desliga o som de fundo do oceano |
@@ -326,39 +365,117 @@ Comando não reconhecido **nunca** vira "comando inválido" seco — no palco is
 parece defeito. A IA responde `Comando não reconhecido pelo sistema de bordo.`,
 solta uma estática, o orbe treme e o log registra um `WARN`.
 
-### Comandos roteirizados
+## Direção de cena
 
-Qualquer cena pode ter comandos que **a própria IA digita**, sem o operador:
+A IA não fala sozinha numa tela parada: enquanto ela narra, painéis abrem, o
+orbe muda de forma, o submarino desce. Quem decide isso é o **Diretor**
+(`src/diretor/`), e ele tem duas fontes, nesta ordem:
+
+1. **Ações escritas no JSON**, linha a linha. Quem escreve o roteiro manda.
+2. **Gatilhos semânticos** — a IA reage a palavras da própria fala, mas só nos
+   espaços que a linha deixou vazios.
+
+E uma regra acima das duas: **o operador sempre vence.** `M`, `N`, `O`, `Esc`
+ou qualquer comando no console suspendem a direção automática **até a próxima
+cena** — e sem fechar nada: o que estava na tela continua, agora sob controle
+dele. No palco, um sistema que reabre o que a pessoa acabou de fechar é pior
+que um sistema burro.
+
+Isto substituiu o modelo antigo de `comandos` com `atraso`/`aposLinha`. Um
+roteiro que ainda tenha o campo `comandos` dá erro legível no carregamento,
+apontando pro campo novo.
+
+### Ações por linha
+
+Uma linha de fala pode ser uma string ou um objeto com ações:
 
 ```json
 { "id": "arte-intro", "tipo": "fala",
-  "comandos": [
-    { "texto": "espectro", "atraso": 11000, "aposLinha": 2, "discreto": true }
-  ] }
+  "tela": { "linhas": [
+    "Cada faixa de cor morre numa profundidade diferente.",
+    { "texto": "Repare no que sobra quando a luz acaba.",
+      "acoes": [
+        { "tipo": "painel", "nome": "espectro", "quando": "fim", "ate": "fimCena" }
+      ] }
+  ] } }
 ```
 
-| campo | o que faz |
+| tipo | o que faz |
 |---|---|
-| `texto` | o comando, igual ao que o operador digitaria |
-| `atraso` | ms a partir do início da cena — o relógio de emergência |
-| `aposLinha` | **prefira este**: dispara quando a IA termina de dizer a linha de índice N |
-| `discreto` | age sem abrir o console e sem a IA responder na legenda |
+| `painel` | abre um painel (`nome`, `args` opcional) |
+| `forma` | morfa o orbe numa forma registrada |
+| `fechar` | fecha o `alvo`: `"painel"`, `"forma"` ou `"tudo"` |
+| `mapa` | abre o mapa já focado num `marcador` |
+| `camera` | abre a câmera externa, `qual: 1` ou `2` |
+| `sfx` | toca um efeito |
+| `mergulho` | inicia a sequência de mergulho até `para` (metros) |
 
-**`aposLinha` em vez de `atraso`.** O disparo usa os offsets reais de
-`tempos.json`, então ele acompanha a fala mesmo que a professora troque uma
-palavra e o mp3 mude de duração. Um atraso em ms vira mentira no primeiro
-ajuste de texto — e o painel brota no meio de uma frase. O `atraso` continua
-valendo como reserva, pra quando a cena não tiver tempos reais.
+Dois campos valem pra quase todas:
 
-**`discreto` pra comando que acontece no meio de uma fala.** O console fica na
-mesma faixa da legenda e a cobre; e a resposta da IA rouba a vez da narração.
-Com `discreto`, a IA simplesmente faz — o painel aparece sozinho enquanto ela
-continua falando, que é o efeito que se quer.
+- **`quando`** — `"inicio"` (padrão) ou `"fim"`: antes de a IA dizer a linha, ou
+  depois de ela terminar. `"fim"` é o que impede o painel de brotar no meio de
+  uma frase.
+- **`ate`** — o **prazo**, e é a peça central. Tudo que o Diretor abre tem
+  validade declarada e ele fecha sozinho quando vence. Nunca existe um painel
+  esquecido na frente da plateia.
 
-A digitação (quando não é discreto) tem velocidade humana (~60 ms por
-caractere) e uma hesitação no meio. Se o comando não resolver em nada, ou se
-`aposLinha` apontar pra uma linha que não existe, o roteiro dá erro legível no
-carregamento.
+| prazo | vence |
+|---|---|
+| `"fimLinha"` | quando a linha acabar |
+| `"fimCena"` | quando a cena acabar |
+| `{ "linha": 4 }` | quando a linha de índice 4 terminar |
+| `{ "segundos": 12 }` | 12 s depois de abrir |
+
+O disparo usa os offsets reais de `tempos.json`, então ele acompanha a fala
+mesmo que a professora troque uma palavra e o mp3 mude de duração. Era isso que
+o `atraso` em ms não conseguia: virava mentira no primeiro ajuste de texto.
+
+### Gatilhos semânticos
+
+O dicionário está em `src/roteiros/gatilhos.json` — texto puro, editável por
+quem não programa. Ele liga palavra a resultado:
+
+```json
+{ "formas":  { "baleia": ["baleia", "baleias", "cetáceo", "jubarte"] },
+  "paineis": { "sonar":  ["sonar", "varredura", "detectado", "localizado"] },
+  "marcadores": { "abrolhos": ["Abrolhos"] } }
+```
+
+Regras da comparação: **palavra inteira** (`mar` não casa em `marcador`), sem
+acento e sem maiúscula, e expressão de várias palavras vale (`mar aberto`).
+Quando mais de um casa na mesma linha: **marcadores > painéis > formas**, e
+entra só uma forma e um painel por linha — o primeiro na ordem do texto.
+
+O que segura o excesso são as folgas, todas no topo de `src/diretor/diretor.ts`:
+
+| folga | valor | por quê |
+|---|---|---|
+| sobrevida da forma | 1,5 s | a forma não some no instante em que a frase acaba |
+| teto do painel por gatilho | 20 s | painel de gatilho nunca vira mobília |
+| mesmo painel de novo | 30 s | evita o sonar piscando a cada "detectado" |
+| mesma forma de novo | 10 s | evita o orbe vibrando entre duas silhuetas |
+| entre dois painéis quaisquer | 12 s | ver abaixo |
+
+> A última **não estava na especificação; é acréscimo meu.** Sem ela a cena de
+> entrada do 2A abre `status`, `sonar`, `mapa` e `camera` em quatro linhas
+> seguidas, porque as quatro palavras estão lá. Vira pisca-pisca. Se a
+> professora quiser essa cadência, basta abaixar `ESPERA_ENTRE_PAINEIS_MS`.
+
+Um painel aberto por gatilho não ocupa a tela inteira: ele entra na **faixa de
+cima** (`.painel--faixa`, 54% da altura), porque a legenda mora embaixo e
+**legenda nunca é coberta**. Painel aberto pelo operador continua grande.
+
+### Desligar tudo
+
+```
+/  gatilhos off      desliga a direção automática agora
+/  gatilhos on       religa
+/  gatilhos          consulta o estado
+```
+
+E `?gatilhos=off` na URL começa a apresentação já sem eles — só as ações
+escritas no JSON rodam. É o modo de ensaio: útil pra conferir se o roteiro se
+sustenta sem a direção automática.
 
 ## Painéis
 
@@ -374,7 +491,8 @@ substitui, e trocar de cena fecha.
 - `ficha <nome>` — ficha de espécie. **Os dados são reais**, vêm de
   `src/roteiros/fichas.json`: é conteúdo de Biologia, não cenografia. Tem
   entradas pra baleia, tartaruga, agua-viva, coral, peixe e mergulhador.
-- `mapa` — costa brasileira com marcadores em Abrolhos e no litoral amazônico.
+- `mapa` — costa brasileira que se desenha na frente da plateia e fecha num
+  marcador. `mapa abrolhos` já abre focado. Ver abaixo.
 - `camera 1` / `camera 2` — a câmera externa em tela cheia.
 - `traco` (ou `desenhar`) — **o aluno desenha e a IA assume o desenho.** Ver
   abaixo.
@@ -382,6 +500,39 @@ substitui, e trocar de cena fecha.
 
 Painel novo = um arquivo em `src/paineis/` + uma linha em `nomes.ts` e no
 `index.tsx`.
+
+### `mapa` — a rota da expedição
+
+Entrada em três tempos, e ela existe por um motivo de palco: um mapa que
+aparece pronto é um slide; desenhado na frente da plateia, vira instrumento
+ligando.
+
+1. a costa brasileira se desenha, de norte a sul (~500 ms);
+2. o enquadramento fecha no marcador pedido (~800 ms);
+3. o marcador pulsa, com anel de mira e uma linha de contexto embaixo.
+
+Marcador novo **na mesma cena é pan, não corte**: a suavização exponencial do
+enquadramento dá isso de graça, e o olho acompanha a viagem em vez de se perder
+num salto. É o que acontece na transição do 2A pro 2B, que vai de Abrolhos a
+Fernando de Noronha sem piscar.
+
+Os marcadores vivem em `src/paineis/mapa.ts`, separados do componente de
+propósito: o validador do roteiro precisa saber se `{ "tipo": "mapa",
+"marcador": "abrolhos" }` existe e não pode arrastar React e canvas junto pra
+descobrir.
+
+| chave | onde |
+|---|---|
+| `abrolhos` | maior banco de corais do Atlântico Sul |
+| `amazonia` | foz do Amazonas: manguezais e corais profundos |
+| `fernando-de-noronha` | arquipélago vulcânico, 350 km da costa |
+| `costa-sudeste` | ponto de partida da expedição |
+| `baia-de-todos-os-santos` | — |
+| `atol-das-rocas` | único atol do Atlântico Sul |
+
+As coordenadas são aproximadas de propósito: é um mostrador de bordo pra ler a
+15 metros, não carta de navegação. Marcador novo = mais uma entrada nessa lista,
+e ele já passa a valer no JSON, no console e no dicionário de gatilhos.
 
 ### `traco` — a IA interpreta o seu traço
 
@@ -490,7 +641,8 @@ Campos comuns a todas:
 - `id` — único dentro da turma; **é o nome do mp3** que vai ser gerado.
 - `avanco` — `"auto"` (avança sozinha quando o áudio termina) ou `"manual"`
   (espera o operador apertar `→`).
-- `sfx` — efeito sonoro opcional: `"sonar"`, `"alarme"`, `"estatica"` ou `"ok"`.
+- `sfx` — efeito sonoro opcional: `"sonar"`, `"alarme"`, `"estatica"`, `"ok"`,
+  `"pressurizacao"`, `"bipe-timer"` ou `"casco"`.
 - `log` — lista opcional de linhas fictícias pro painel da direita, exibidas
   enquanto essa cena estiver no ar. Ex.: `["Carregando setor: BIOLOGIA",
   "Consultando catálogo de espécies..."]`.
@@ -693,7 +845,8 @@ só os nós que o próprio efeito criou, nunca `replaceChildren()`.
 
 ## Efeitos sonoros
 
-Os SFX (`sonar`, `alarme`, `estatica`, `ok`, `pressurizacao`, `bipe-timer`)
+Os SFX (`sonar`, `alarme`, `estatica`, `ok`, `pressurizacao`, `bipe-timer`,
+`casco`)
 são **sintetizados em código** com a Web Audio API, em `src/audio/sfx.ts`. Não
 dá pra depender de o professor baixar arquivos do freesound na véspera da
 feira: o projeto roda completo sem nenhum mp3 de efeito.
@@ -711,9 +864,9 @@ somar acima de 1 e distorcer.
 A primeira tecla (a da ativação) já dá um **bipe duplo** de confirmação. Se
 esse bipe não sai, o problema é o áudio da máquina, não o app.
 
-Pra um teste completo, `/` e depois `som`: toca os seis efeitos em sequência
-(cerca de 7 s) e escreve no log o estado do `AudioContext`. `running` significa
-que o navegador liberou o áudio.
+Pra um teste completo, `/` e depois `som`: toca os sete efeitos em sequência e
+escreve no log o estado do `AudioContext`. `running` significa que o navegador
+liberou o áudio.
 
 ## Estrutura
 
@@ -726,10 +879,11 @@ src/
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
   audio/             efeitos, ambiente do oceano e a voz do navegador
   console/           barra de comando, parser e as respostas fixas da IA
-  paineis/           sonar, status, ficha, mapa e o registro
+  paineis/           sonar, status, ficha, mapa, traco, espectro e o registro
+  diretor/           Diretor de cena, gatilhos semânticos, mergulho e coluna d'água
   mundo/             o oceano procedural: perfil por profundidade, motor e Feed
   formas/            registro das silhuetas, amostragem e primitivas
-  roteiros/          tipos.ts, validar.ts, fichas.json e os JSONs de cada turma
+  roteiros/          tipos.ts, validar.ts, fichas.json, gatilhos.json e os JSONs
 scripts/
   gerar_audios.py    voz da IA: kokoro/edge/espeak + ffmpeg + tempos.json
   embutir_audios.py  gera public/audios.js (camada A)

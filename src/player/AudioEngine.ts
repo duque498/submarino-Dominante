@@ -53,6 +53,7 @@ const CAMINHOS_SFX: Record<Sfx, string> = {
   estatica: './audio/sfx/estatica.mp3',
   ok: './audio/sfx/ok.mp3',
   pressurizacao: './audio/sfx/pressurizacao.mp3',
+  casco: './audio/sfx/casco.mp3',
 }
 
 /** Efeitos moram em audio/sfx/ e seguem regra própria — ver preload(). */

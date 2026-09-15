@@ -13,7 +13,19 @@
         "linhas": [
           "Sistemas de bordo ativados...",
           "Sonar funcionando.",
-          "Rota definida.",
+          {
+            "texto": "Rota definida.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "mapa",
+                "args": "costa-sudeste",
+                "ate": {
+                  "linha": 4
+                }
+              }
+            ]
+          },
           "Bem-vindos ao Submarino DOMI.",
           "Hoje, nossa missão é embarcar em uma expedição pelas profundezas do oceano, explorando suas formas de vida, suas relações com o ser humano e diferentes maneiras de compreender esse imenso ambiente.",
           "Tripulação, preparem-se. Nossa expedição vai começar.",
@@ -37,7 +49,18 @@
         "titulo": "SETOR LOCALIZADO",
         "status": "AJUSTANDO PROFUNDIDADE",
         "linhas": [
-          "Primeiro setor localizado: Biologia.",
+          {
+            "texto": "Primeiro setor localizado: Biologia.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "sonar",
+                "ate": {
+                  "linha": 1
+                }
+              }
+            ]
+          },
           "Ajustando profundidade...",
           "Iniciando exploração da vida nos oceanos."
         ]
@@ -47,12 +70,6 @@
         "Consultando catálogo de espécies...",
         "Profundidade alvo: 600 m",
         "Lanternas externas: ligadas"
-      ],
-      "comandos": [
-        {
-          "texto": "abrir sonar",
-          "atraso": 1500
-        }
       ]
     },
     {
@@ -83,7 +100,17 @@
         "linhas": [
           "Exploração concluída.",
           "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
-          "Mas nem toda cor chega ao fundo.",
+          {
+            "texto": "Mas nem toda cor chega ao fundo.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "espectro",
+                "quando": "fim",
+                "ate": "fimCena"
+              }
+            ]
+          },
           "A luz vermelha se apaga nos primeiros metros. Quanto mais fundo a expedição desce, menos cores a água deixa passar.",
           "Próximo setor: Arte.",
           "Preparando nova exploração."
@@ -94,14 +121,6 @@
         "Carregando setor: ARTE",
         "Indexando registros visuais da expedição...",
         "Calibrando câmeras de documentação"
-      ],
-      "comandos": [
-        {
-          "texto": "espectro",
-          "atraso": 11000,
-          "aposLinha": 2,
-          "discreto": true
-        }
       ]
     },
     {
@@ -131,7 +150,17 @@
         "linhas": [
           "Setor Arte explorado com sucesso.",
           "Nossa expedição continua.",
-          "O próximo setor nos leva a uma relação diferente entre o ser humano e o ambiente marinho. Educação Física.",
+          {
+            "texto": "O próximo setor nos leva a uma relação diferente entre o ser humano e o ambiente marinho. Educação Física.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "mapa",
+                "args": "abrolhos",
+                "ate": "fimCena"
+              }
+            ]
+          },
           "Iniciando exploração."
         ]
       },
@@ -140,12 +169,6 @@
         "Carregando setor: EDUCAÇÃO FÍSICA",
         "Medindo resistência da corrente...",
         "Monitorando sinais vitais da tripulação"
-      ],
-      "comandos": [
-        {
-          "texto": "mapa",
-          "atraso": 2000
-        }
       ]
     },
     {
@@ -280,10 +303,35 @@
       "audio": "./audio/2a/transicao-2b.mp3",
       "tela": {
         "linhas": [
-          "Setores do 2º ano A explorados com sucesso.",
-          "Alterando rota...",
+          {
+            "texto": "Setores do 2º ano A explorados com sucesso.",
+            "acoes": [
+              {
+                "tipo": "mergulho",
+                "para": 900
+              }
+            ]
+          },
+          {
+            "texto": "Alterando rota...",
+            "acoes": [
+              {
+                "tipo": "mapa",
+                "marcador": "abrolhos",
+                "ate": "fimCena"
+              }
+            ]
+          },
           "Destino: 2º ano B.",
-          "Preparando transferência da expedição."
+          {
+            "texto": "Preparando transferência da expedição.",
+            "acoes": [
+              {
+                "tipo": "mapa",
+                "marcador": "fernando-de-noronha"
+              }
+            ]
+          }
         ]
       },
       "log": [

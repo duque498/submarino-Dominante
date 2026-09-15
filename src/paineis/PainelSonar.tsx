@@ -7,7 +7,35 @@ const VELOCIDADE = 1.3
 /** Topo do mostrador: no canvas o y cresce pra baixo, então 12h é 3π/2. */
 const TOPO = (Math.PI * 3) / 2
 
-type Blip = { angulo: number; distancia: number; nascimento: number; vida: number }
+type Blip = {
+  angulo: number
+  distancia: number
+  nascimento: number
+  vida: number
+  /** Contato nomeado: o que a IA acabou de citar na fala. */
+  rotulo?: string
+}
+
+/**
+ * Nome da forma citada na fala -> rótulo de contato no mostrador.
+ *
+ * O sonar não diz "baleia": diz o que um instrumento diria. É o mesmo
+ * vocabulário do retículo das câmeras, de propósito — os dois mostradores
+ * falando a mesma língua fazem o submarino parecer um sistema só.
+ */
+const ROTULO_CONTATO: Record<string, string> = {
+  baleia: 'CETÁCEO',
+  tartaruga: 'QUELÔNIO',
+  peixe: 'CARDUME',
+  'agua-viva': 'CNIDÁRIO',
+  coral: 'ESTRUTURA RECIFAL',
+  mergulhador: 'CORPO HUMANO',
+  submarino: 'CASCO METÁLICO',
+  onda: 'SUPERFÍCIE',
+}
+
+/** Quanto o sonar leva pra "achar" o contato que a fala citou. */
+const MS_ATE_CONTATO = 1200
 
 type Props = {
   /**
@@ -16,14 +44,29 @@ type Props = {
    * vira barulho: o painel pode ficar minutos aberto na frente da plateia.
    */
   aoPing?: () => void
+  /**
+   * Nome da forma citada na linha que abriu o sonar. Com ele, o mostrador
+   * encontra um contato "de frente" em ~1,2 s, com o rótulo da espécie: é o
+   * que liga o que ela diz ao que a plateia vê acontecer.
+   */
+  contato?: string
+  /**
+   * Aberto pela fala (por ação do roteiro ou por gatilho). Muda o
+   * comportamento: a varredura começa no topo e o primeiro contato aparece de
+   * frente em ~1,2 s. O `contato` só dá o NOME a ele, quando a linha citou um
+   * bicho — sem nome, o contato aparece igual, só anônimo.
+   */
+  daFala?: boolean
 }
 
 /** Varredura de sonar. Puramente animada — nenhum dado real por trás. */
-export function PainelSonar({ aoPing }: Props) {
+export function PainelSonar({ aoPing, contato, daFala = false }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
   // Numa ref pra não religar a animação quando o Player recria o callback.
   const refPing = useRef(aoPing)
   refPing.current = aoPing
+  const refContato = useRef(contato)
+  refContato.current = contato
 
   useEffect(() => {
     const canvas = refCanvas.current
@@ -44,10 +87,14 @@ export function PainelSonar({ aoPing }: Props) {
     observador.observe(canvas)
 
     let quadro = 0
-    // Começa logo antes do topo pra o primeiro ping sair quase junto com a
-    // abertura do painel, em vez de o operador esperar uma volta inteira.
-    let angulo = TOPO - 0.25
-    let anterior = performance.now()
+    // Aberto por fala, a varredura começa EXATAMENTE no topo: assim o contato
+    // que a IA citou aparece na direção "de frente", e não onde o ponteiro por
+    // acaso tivesse parado. Sem contato, começa logo antes do topo pra o
+    // primeiro ping sair junto com a abertura.
+    let angulo = daFala ? TOPO : TOPO - 0.25
+    const nascimento = performance.now()
+    let contatoMarcado = false
+    let anterior = nascimento
 
     const desenhar = (agora: number) => {
       quadro = requestAnimationFrame(desenhar)
@@ -104,7 +151,22 @@ export function PainelSonar({ aoPing }: Props) {
       ctx.lineWidth = 1.5
       ctx.stroke()
 
-      // contatos: nascem sob a varredura e desbotam
+      // O contato nomeado: aparece de frente, no tempo certo, com o ping.
+      if (!contatoMarcado && daFala && agora - nascimento >= MS_ATE_CONTATO) {
+        contatoMarcado = true
+        blips.push({
+          angulo: TOPO + (Math.random() - 0.5) * 0.16,
+          distancia: 0.42 + Math.random() * 0.16,
+          nascimento: agora,
+          vida: 9000,
+          rotulo: refContato.current
+            ? (ROTULO_CONTATO[refContato.current] ?? refContato.current.toUpperCase())
+            : undefined,
+        })
+        refPing.current?.()
+      }
+
+      // contatos de cenário: nascem sob a varredura e desbotam
       if (blips.length < MAX_BLIPS && Math.random() < 0.02) {
         blips.push({
           angulo: angulo + (Math.random() - 0.5) * 0.2,
@@ -123,9 +185,18 @@ export function PainelSonar({ aoPing }: Props) {
         const bx = c + Math.cos(blip.angulo) * raio * blip.distancia
         const by = c + Math.sin(blip.angulo) * raio * blip.distancia
         ctx.beginPath()
-        ctx.arc(bx, by, 2.5 + (1 - idade) * 2, 0, Math.PI * 2)
+        ctx.arc(bx, by, (blip.rotulo ? 3.5 : 2.5) + (1 - idade) * 2, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(255, 194, 77, ${(1 - idade) * 0.9})`
         ctx.fill()
+        if (blip.rotulo) {
+          ctx.beginPath()
+          ctx.arc(bx, by, 11 + (1 - idade) * 5, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(255, 194, 77, ${(1 - idade) * 0.55})`
+          ctx.lineWidth = 1
+          ctx.stroke()
+          ctx.fillStyle = `rgba(255, 194, 77, ${Math.min(1, (1 - idade) * 1.4)})`
+          ctx.fillText(`CONTATO: ${blip.rotulo}`, bx + 15, by + 4)
+        }
       }
     }
 

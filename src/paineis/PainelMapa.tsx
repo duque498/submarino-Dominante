@@ -1,49 +1,40 @@
 import { useEffect, useRef } from 'react'
+import { acharMarcador, caixaDaCosta, COSTA, MARCADORES, type Marcador } from './mapa'
 
 /**
- * Costa brasileira em traço grosso — aproximação cartográfica suficiente pra
- * leitura a 15 metros, não um mapa de navegação. Pares [longitude, latitude].
+ * Rota da expedição.
+ *
+ * O mapa tem uma entrada em três tempos, e ela existe por um motivo de palco:
+ * um mapa que simplesmente aparece pronto é um slide. Desenhando a costa na
+ * frente da plateia, ele vira um instrumento ligando.
+ *
+ *  1. a costa se desenha, de norte a sul (~500 ms);
+ *  2. a câmera fecha no marcador pedido (~800 ms);
+ *  3. o marcador pulsa.
+ *
+ * Marcador novo na mesma cena é PAN, não corte: a suavização exponencial do
+ * enquadramento dá isso de graça, e o olho acompanha a viagem em vez de se
+ * perder num salto.
  */
-const COSTA: Array<[number, number]> = [
-  [-51.0, 4.3],
-  [-50.0, 1.0],
-  [-48.5, -0.8],
-  [-46.5, -1.0],
-  [-44.3, -2.5],
-  [-42.8, -2.7],
-  [-41.0, -2.9],
-  [-38.5, -3.7],
-  [-37.0, -4.9],
-  [-35.2, -5.8],
-  [-34.8, -7.1],
-  [-35.0, -8.1],
-  [-36.0, -9.7],
-  [-37.1, -11.0],
-  [-38.5, -12.9],
-  [-39.0, -14.8],
-  [-39.0, -16.4],
-  [-39.7, -18.0],
-  [-40.8, -19.6],
-  [-41.8, -21.2],
-  [-43.2, -22.9],
-  [-45.0, -23.7],
-  [-47.0, -24.7],
-  [-48.5, -26.0],
-  [-48.6, -27.6],
-  [-50.0, -29.3],
-  [-51.2, -31.0],
-  [-52.3, -32.2],
-  [-53.4, -33.7],
-]
 
-/** Pontos que piscam no mapa. */
-const MARCADORES = [
-  { nome: 'ABROLHOS', lon: -38.7, lat: -17.9 },
-  { nome: 'MANGUEZAIS', lon: -48.5, lat: -0.9 },
-]
+type Props = {
+  /** Chave do marcador em foco. Sem ela, mostra a costa inteira. */
+  marcador?: string
+}
 
-export function PainelMapa() {
+/** ~500 ms desenhando a costa. */
+const MS_TRACO = 500
+/** Quanto o enquadramento se aproxima por quadro. Dá ~800 ms de zoom. */
+const SUAVIZACAO = 0.055
+/** Meia-largura do enquadramento, em graus, quando fechado num marcador. */
+const GRAUS_FECHADO = 7
+
+type Enquadre = { lon: number; lat: number; graus: number }
+
+export function PainelMapa({ marcador }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
+  const refMarcador = useRef(marcador)
+  refMarcador.current = marcador
 
   useEffect(() => {
     const canvas = refCanvas.current
@@ -64,51 +55,95 @@ export function PainelMapa() {
     const observador = new ResizeObserver(ajustar)
     observador.observe(canvas)
 
-    const lons = COSTA.map((p) => p[0])
-    const lats = COSTA.map((p) => p[1])
-    const minLon = Math.min(...lons)
-    const maxLon = Math.max(...lons)
-    const minLat = Math.min(...lats)
-    const maxLat = Math.max(...lats)
+    const caixa = caixaDaCosta()
+    const inteiro: Enquadre = {
+      lon: (caixa.minLon + caixa.maxLon) / 2,
+      lat: (caixa.minLat + caixa.maxLat) / 2,
+      graus: Math.max(caixa.maxLon - caixa.minLon, caixa.maxLat - caixa.minLat) / 2 + 1.5,
+    }
+    // Começa aberto e fecha: o zoom conta a história de "estamos aqui".
+    const atual: Enquadre = { ...inteiro }
 
+    const nascimento = performance.now()
     let quadro = 0
+
     const desenhar = (agora: number) => {
       quadro = requestAnimationFrame(desenhar)
-      const margem = Math.min(largura, altura) * 0.12
-      const escala = Math.min(
-        (largura - margem * 2) / (maxLon - minLon),
-        (altura - margem * 2) / (maxLat - minLat),
-      )
-      const offX = (largura - (maxLon - minLon) * escala) / 2
-      const offY = (altura - (maxLat - minLat) * escala) / 2
+      const alvoMarcador = acharMarcador(refMarcador.current)
+      const alvo: Enquadre = alvoMarcador
+        ? { lon: alvoMarcador.lon, lat: alvoMarcador.lat, graus: GRAUS_FECHADO }
+        : inteiro
+
+      atual.lon += (alvo.lon - atual.lon) * SUAVIZACAO
+      atual.lat += (alvo.lat - atual.lat) * SUAVIZACAO
+      atual.graus += (alvo.graus - atual.graus) * SUAVIZACAO
+
+      const escala = Math.min(largura, altura) / (atual.graus * 2)
       const proj = (lon: number, lat: number): [number, number] => [
-        offX + (lon - minLon) * escala,
-        offY + (maxLat - lat) * escala,
+        largura / 2 + (lon - atual.lon) * escala,
+        altura / 2 - (lat - atual.lat) * escala,
       ]
 
       ctx.clearRect(0, 0, largura, altura)
 
+      // 1) costa, desenhada progressivamente
+      const traco = Math.min(1, (agora - nascimento) / MS_TRACO)
+      const ate = Math.max(1, Math.floor(traco * (COSTA.length - 1)))
       ctx.beginPath()
-      COSTA.forEach(([lon, lat], i) => {
-        const [x, y] = proj(lon, lat)
+      for (let i = 0; i <= ate; i++) {
+        const [x, y] = proj(COSTA[i][0], COSTA[i][1])
         if (i === 0) ctx.moveTo(x, y)
         else ctx.lineTo(x, y)
-      })
+      }
+      // A ponta que ainda está sendo desenhada anda entre dois vértices.
+      if (ate < COSTA.length - 1) {
+        const fracao = traco * (COSTA.length - 1) - ate
+        const [ax, ay] = COSTA[ate]
+        const [bx, by] = COSTA[ate + 1]
+        const [x, y] = proj(ax + (bx - ax) * fracao, ay + (by - ay) * fracao)
+        ctx.lineTo(x, y)
+      }
       ctx.strokeStyle = 'rgba(56, 232, 255, 0.75)'
       ctx.lineWidth = 2
+      ctx.lineJoin = 'round'
       ctx.stroke()
 
-      ctx.font = `${Math.max(9, altura * 0.035)}px ui-monospace, monospace`
-      for (const marcador of MARCADORES) {
-        const [x, y] = proj(marcador.lon, marcador.lat)
-        const pulso = (Math.sin(agora / 320) + 1) / 2
+      if (traco < 1) return
+
+      // 2) marcadores. O em foco pulsa e mostra a nota; os outros ficam
+      //    discretos, só pra o mapa não parecer vazio.
+      const fonte = Math.max(9, Math.min(largura, altura) * 0.035)
+      ctx.font = `${fonte}px ui-monospace, monospace`
+      const pulso = (Math.sin(agora / 320) + 1) / 2
+
+      const pintar = (m: Marcador, emFoco: boolean) => {
+        const [x, y] = proj(m.lon, m.lat)
+        if (x < -80 || x > largura + 80 || y < -40 || y > altura + 40) return
+        const r = emFoco ? 3 + pulso * 5 : 2.5
         ctx.beginPath()
-        ctx.arc(x, y, 3 + pulso * 4, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255, 194, 77, ${0.3 + pulso * 0.6})`
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+        ctx.fillStyle = emFoco
+          ? `rgba(255, 194, 77, ${0.35 + pulso * 0.6})`
+          : 'rgba(56, 232, 255, 0.45)'
         ctx.fill()
-        ctx.fillStyle = 'rgba(255, 194, 77, 0.9)'
-        ctx.fillText(marcador.nome, x + 10, y + 4)
+        if (!emFoco) return
+        // Anel de mira, pra o marcador em foco não competir com os outros.
+        ctx.beginPath()
+        ctx.arc(x, y, 10 + pulso * 4, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(255, 194, 77, ${0.5 - pulso * 0.25})`
+        ctx.lineWidth = 1
+        ctx.stroke()
+        ctx.fillStyle = 'rgba(255, 194, 77, 0.95)'
+        ctx.fillText(m.rotulo, x + 14, y + 4)
+        if (m.nota) {
+          ctx.fillStyle = 'rgba(189, 255, 240, 0.6)'
+          ctx.font = `${fonte * 0.78}px ui-monospace, monospace`
+          ctx.fillText(m.nota, x + 14, y + 4 + fonte)
+          ctx.font = `${fonte}px ui-monospace, monospace`
+        }
       }
+
+      for (const m of MARCADORES) pintar(m, m.chave === alvoMarcador?.chave)
     }
 
     quadro = requestAnimationFrame(desenhar)

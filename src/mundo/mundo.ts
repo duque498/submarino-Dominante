@@ -103,6 +103,14 @@ export class MotorMundo {
   // Qualidade adaptativa, igual à do orbe.
   private mediaQuadro = 16
   private economizar = false
+  /**
+   * Inclinação do mergulho, -1 a 1. Positivo desloca a janela do mundo pra
+   * baixo, o que na tela lê como o horizonte da água SUBINDO — a proa apontou
+   * pro fundo. É só um offset em y: nenhuma simulação nova, nenhum custo.
+   */
+  pitch = 0
+  /** Fluxo de bolhas durante o mergulho, 0 a 1. */
+  turbulencia = 0
 
   constructor() {
     this.semear()
@@ -345,9 +353,13 @@ export class MotorMundo {
     }
 
     // partículas: bolhas sobem perto da superfície, neve marinha desce no fundo
-    const subindo = this.perfil.bolhas > this.perfil.neve
+    // Durante o mergulho tudo sobe em fluxo, independente da zona: é a água
+    // passando pelo casco, não a partícula de sempre.
+    const subindo = this.turbulencia > 0.05 ? true : this.perfil.bolhas > this.perfil.neve
+    // A turbulência multiplica a velocidade: no mergulho a água passa rápido.
+    const corrida = 1 + this.turbulencia * 5
     for (const particula of this.particulas) {
-      particula.y += (subindo ? -particula.v : particula.v * 0.35) * dt
+      particula.y += (subindo ? -particula.v : particula.v * 0.35) * dt * corrida
       particula.x += Math.sin(this.t * 0.7 + particula.fase) * 0.004 * dt * 60
       if (particula.y < -0.05) particula.y = 1.05
       if (particula.y > 1.05) particula.y = -0.05
@@ -388,12 +400,15 @@ export class MotorMundo {
     const tremor = perfil.tremor * (Math.sin(agora / 90) + Math.sin(agora / 37)) * 0.9
     ctx.translate(tremor, tremor * 0.4)
 
-    // fundo
+    // fundo — pintado ANTES da inclinação, senão sobraria faixa vazia na borda
     const gradiente = ctx.createLinearGradient(0, 0, 0, A)
     gradiente.addColorStop(0, rgba(perfil.fundoTopo, 1))
     gradiente.addColorStop(1, rgba(perfil.fundoBaixo, 1))
     ctx.fillStyle = gradiente
     ctx.fillRect(-4, -4, L + 8, A + 8)
+
+    // Inclinação do mergulho: desloca o conteúdo, não o fundo.
+    if (this.pitch !== 0) ctx.translate(0, this.pitch * A * 0.14)
 
     const mundoParaTela = (x: number) => {
       let dx = x - camera.x0
@@ -648,7 +663,10 @@ export class MotorMundo {
     visivel: (sx: number, margem?: number) => boolean,
   ) {
     void L
-    const densidade = Math.max(perfil.bolhas, perfil.neve)
+    // No mergulho a densidade sobe: é a esteira de bolhas do lastro. Mas só
+    // até a metade — a 1.0 são 130 partículas por câmera, e três câmeras
+    // desenhando isso custaram 2 fps medidos. O olho não distingue.
+    const densidade = Math.max(perfil.bolhas, perfil.neve, this.turbulencia * 0.5)
     if (densidade < 0.02) return
     const bolha = perfil.bolhas > perfil.neve
     let quantas = Math.round(this.particulas.length * densidade)
