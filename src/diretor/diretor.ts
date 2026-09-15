@@ -99,7 +99,13 @@ export class Diretor {
 
   private ultimoPainelEm = new Map<string, number>()
   private ultimaFormaEm = new Map<string, number>()
-  private ultimoPainelQualquerEm = 0
+  /**
+   * -Infinity, e não 0: `performance.now()` conta desde o carregamento da
+   * página, então com 0 aqui os primeiros 12 s da apresentação ficariam sem
+   * gatilho de painel — e quanto tempo isso engole dependeria de quão rápido o
+   * operador apertou a tecla de ativação. Ninguém ia entender por quê.
+   */
+  private ultimoPainelQualquerEm = -Infinity
 
   constructor(saida: Saida) {
     this.saida = saida
