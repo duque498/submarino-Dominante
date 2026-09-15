@@ -7,7 +7,7 @@ import {
   type Prazo,
   type Quando,
 } from '../roteiros/tipos'
-import { gatilhosDe, painelDe } from './gatilhos'
+import { assuntoDe, gatilhosDe, painelDe } from './gatilhos'
 
 /**
  * O Diretor de cena.
@@ -43,8 +43,19 @@ export type PainelPedido = {
   contato?: string
 }
 
+/** Por que um painel automático saiu. Vai pro rodapé de depuração e pro log. */
+export type MotivoFecho = 'assunto' | 'teto' | 'prazo' | 'troca'
+
 export type Saida = {
   painel: (pedido: PainelPedido | null) => void
+  /**
+   * O painel vai encerrar: é a hora de despedida, não o fechamento.
+   *
+   * Existe porque um painel que some é ambíguo — a plateia não sabe se acabou
+   * ou se quebrou. Aqui o Player escreve `Encerrando <painel>` no log e, no
+   * caso do sonar, dá o ping final e apaga o contato antes de o painel sair.
+   */
+  despedida: (nome: string, motivo: MotivoFecho) => void
   forma: (nome: string | null) => void
   sfx: (nome: string) => void
   mergulho: (para: number) => void
@@ -69,6 +80,29 @@ const ESPERA_MESMA_FORMA_MS = 10_000
  * básico da narradora; o freio fica aqui, num número só, fácil de mexer.
  */
 const ESPERA_ENTRE_PAINEIS_MS = 12_000
+/**
+ * Cauda: quanto o painel ainda fica depois que o assunto dele acabou.
+ *
+ * A IA fecha o que abriu ANTES de mudar de assunto, não no meio da frase
+ * seguinte. 0,8 s é o tempo de a linha acabar, a plateia registrar, e o painel
+ * sair sem parecer que alguém apertou um botão.
+ */
+const CAUDA_ASSUNTO_MS = 800
+/**
+ * Piso: nenhum painel automático vive menos que isto.
+ *
+ * Um painel que aparece e some em dois segundos a plateia lê como defeito, não
+ * como direção — e pior, ninguém teve tempo de olhar o que ele mostrava.
+ */
+const MINIMO_PAINEL_MS = 4000
+/**
+ * Entre a despedida e a saída do sonar.
+ *
+ * Só o sonar precisa disso: ele tem um contato marcado na tela, e sumir com o
+ * contato junto com o painel desperdiça a única coisa que aquele mostrador
+ * tinha pra dizer. Neste intervalo sai o ping final e o contato se apaga.
+ */
+const MS_DESPEDIDA_SONAR = 450
 
 type Origem = 'acao' | 'gatilho'
 
@@ -79,6 +113,51 @@ type Vigencia = {
   linha: number
   /** Timestamp absoluto de expiração, ou Infinity quando não é por tempo. */
   expiraEm: number
+  /** Quando abriu. É a partir daqui que o piso de 4 s conta. */
+  abertoEm: number
+  /** Nome do painel (a Vigência de forma não usa). */
+  nome?: string
+  args?: string
+  /** O termo do dicionário que abriu, quando veio de gatilho. */
+  termo?: string
+  /**
+   * Vive por ASSUNTO: não vence por linha, vence quando a fala muda de tema.
+   * Só painel de gatilho.
+   */
+  porAssunto?: boolean
+  /** Última avaliação da próxima linha, pro rodapé de depuração. */
+  relacionaProxima?: boolean | null
+  /** O termo que fez a próxima linha ainda ser do mesmo assunto. */
+  termoProxima?: string
+  /** Instante em que a despedida começa. Indefinido = nada agendado. */
+  encerrandoEm?: number
+  /** Instante em que o painel sai de fato (depois da despedida). */
+  saiEm?: number
+  motivo?: MotivoFecho
+  /** Regra 2: a próxima linha abre outro painel, a troca é no início dela. */
+  trocaNaProxima?: boolean
+}
+
+/** Leitura ao vivo pro rodapé de `?debugDiretor=1`. Nada aqui decide nada. */
+export type EstadoDiretor = {
+  suspenso: boolean
+  gatilhos: boolean
+  painel: string | null
+  args?: string
+  origem: Origem | null
+  termo?: string
+  abertoNaLinha: number | null
+  /** O `ate` declarado no roteiro, quando o painel veio de uma ação. */
+  ate?: Prazo
+  /** null = ainda não avaliado (nenhuma linha terminou desde que abriu). */
+  relacionaProxima: boolean | null
+  termoProxima?: string
+  motivo?: MotivoFecho
+  faltaPraEncerrar: number | null
+  faltaPraSair: number | null
+  faltaPraTeto: number | null
+  trocaNaProxima: boolean
+  forma: string | null
 }
 
 const quandoDa = (acao: Acao): Quando => ('quando' in acao && acao.quando) || 'inicio'
@@ -147,13 +226,23 @@ export class Diretor {
 
   linhaComecou(indice: number) {
     if (this.suspenso) return
+    const anterior = this.painel
     this.aplicarAcoes(indice, 'inicio')
     this.aplicarGatilhos(indice)
+
+    // Regra 2: o painel anterior esperava a troca desta linha. Se o painel
+    // novo entrou, o pedirPainel já o substituiu e não há nada a fazer. Se a
+    // troca não veio (o gatilho previsto não passou pelas folgas), o assunto
+    // dele acabou de qualquer jeito — encerra agora, sem esperar mais.
+    if (anterior?.trocaNaProxima && this.painel === anterior) {
+      this.encerrar(anterior, 'troca', performance.now())
+    }
   }
 
   linhaTerminou(indice: number) {
     if (this.suspenso) return
     this.aplicarAcoes(indice, 'fim')
+    this.avaliarPainel(indice)
     this.venceramNaLinha(indice)
   }
 
@@ -163,10 +252,51 @@ export class Diretor {
     this.fecharTudo()
   }
 
-  /** Chamado periodicamente pelo Player: vence o que é por tempo. */
+  /**
+   * Chamado periodicamente pelo Player: vence o que é por tempo.
+   *
+   * O painel sai em DUAS fases. Primeiro a despedida (o log escreve
+   * `Encerrando <painel>`, o sonar dá o ping final); só depois ele sai de fato,
+   * com a animação inteira. Um painel que pisca e some não é direção, é falha.
+   */
   tique(agora: number) {
-    if (this.painel && agora >= this.painel.expiraEm) this.pedirPainel(null, null)
+    const v = this.painel
+    if (v) {
+      if (v.saiEm !== undefined && agora >= v.saiEm) {
+        this.pedirPainel(null, null)
+      } else if (v.encerrandoEm !== undefined && agora >= v.encerrandoEm) {
+        this.despedir(v, v.motivo ?? 'assunto', agora)
+      } else if (agora >= v.expiraEm) {
+        this.encerrar(v, 'teto', agora)
+      }
+    }
     if (this.forma && agora >= this.forma.expiraEm) this.pedirForma(null, null)
+  }
+
+  /**
+   * O estado que o rodapé de `?debugDiretor=1` mostra. Só leitura: quem chama
+   * é um componente de depuração rodando a 8 Hz, e ele não decide nada.
+   */
+  estado(agora: number): EstadoDiretor {
+    const v = this.painel
+    return {
+      suspenso: this.suspenso,
+      gatilhos: this.gatilhosLigados,
+      painel: v?.nome ?? null,
+      args: v?.args,
+      origem: v?.origem ?? null,
+      termo: v?.termo,
+      abertoNaLinha: v?.linha ?? null,
+      ate: v && !v.porAssunto ? v.ate : undefined,
+      relacionaProxima: v?.relacionaProxima ?? null,
+      termoProxima: v?.termoProxima,
+      motivo: v?.motivo,
+      faltaPraEncerrar: v?.encerrandoEm !== undefined ? v.encerrandoEm - agora : null,
+      faltaPraSair: v?.saiEm !== undefined ? v.saiEm - agora : null,
+      faltaPraTeto: v && Number.isFinite(v.expiraEm) ? v.expiraEm - agora : null,
+      trocaNaProxima: v?.trocaNaProxima === true,
+      forma: this.nomeForma,
+    }
   }
 
   // --- ações explícitas -----------------------------------------------------
@@ -194,6 +324,9 @@ export class Diretor {
           origem: 'acao',
           ate: acao.ate,
           linha,
+          abertoEm: agora,
+          nome: acao.nome,
+          args: acao.args,
           expiraEm: prazoEmTempo(acao.ate, agora),
         })
         break
@@ -202,6 +335,9 @@ export class Diretor {
           origem: 'acao',
           ate: acao.ate ?? 'fimCena',
           linha,
+          abertoEm: agora,
+          nome: 'mapa',
+          args: acao.marcador,
           expiraEm: prazoEmTempo(acao.ate ?? 'fimCena', agora),
         })
         break
@@ -210,6 +346,9 @@ export class Diretor {
           origem: 'acao',
           ate: acao.ate,
           linha,
+          abertoEm: agora,
+          nome: 'camera',
+          args: String(acao.qual),
           expiraEm: prazoEmTempo(acao.ate, agora),
         })
         break
@@ -218,6 +357,7 @@ export class Diretor {
           origem: 'acao',
           ate: acao.ate,
           linha,
+          abertoEm: agora,
           expiraEm: prazoEmTempo(acao.ate, agora),
         })
         break
@@ -271,9 +411,15 @@ export class Diretor {
           },
           {
             origem: 'gatilho',
-            // Ela costuma comentar na linha seguinte o que acabou de abrir.
-            ate: { linha: indice + 1 },
+            // Não vence por linha: vence quando a fala muda de assunto. O
+            // `ate` fica só como registro de que o teto é o único prazo duro.
+            ate: 'fimCena',
+            porAssunto: true,
             linha: indice,
+            abertoEm: agora,
+            nome: pedido.nome,
+            args: pedido.args,
+            termo: pedido.termo,
             expiraEm: agora + TETO_PAINEL_GATILHO_MS,
           },
         )
@@ -290,6 +436,7 @@ export class Diretor {
           origem: 'gatilho',
           ate: 'fimLinha',
           linha: indice,
+          abertoEm: agora,
           expiraEm: Infinity,
         })
       }
@@ -307,11 +454,16 @@ export class Diretor {
     // Painel aberto por ação escrita no roteiro é intocável enquanto está no
     // ar, MESMO que o gatilho peça o mesmo painel. Sem isto, o gatilho caía no
     // ramo de "mesmo painel, prazo novo" do pedirPainel e trocava o prazo do
-    // JSON (`fimCena`) pelo prazo curto do gatilho (`{ linha: i + 1 }`) — o
-    // espectro da Arte, declarado até o fim da cena, fechava uma linha depois
-    // de a IA dizer "a luz vermelha se apaga". Ação explícita vence gatilho,
-    // e vencer inclui não ter o prazo encurtado por baixo.
+    // JSON (`fimCena`) pelo prazo curto do gatilho — o espectro da Arte,
+    // declarado até o fim da cena, fechava uma linha depois de a IA dizer "a
+    // luz vermelha se apaga". Ação explícita vence gatilho, e vencer inclui
+    // não ter o prazo encurtado por baixo.
     if (this.painel?.origem === 'acao') return false
+    return this.podeAbrirIgnorandoOAtual(nome, agora)
+  }
+
+  /** Só as folgas, sem olhar o que está aberto. É o que a previsão usa. */
+  private podeAbrirIgnorandoOAtual(nome: string, agora: number): boolean {
     // A câmera por gatilho só faz sentido quando os mini-feeds estão fora:
     // com eles na tela, abrir a câmera grande é repetir o que já se vê.
     if (nome === 'camera' && this.cena?.cameras !== false) return false
@@ -322,12 +474,108 @@ export class Diretor {
 
   // --- prazos ---------------------------------------------------------------
 
+  /**
+   * Fim de linha: o painel automático continua ou encerra?
+   *
+   * A regra é de ASSUNTO, não de contagem de linhas. Olha a próxima linha: se
+   * ela ainda toca o mesmo grupo do dicionário (pro mapa, qualquer marcador
+   * também vale), o painel fica. Se não, ele encerra 0,8 s depois desta linha
+   * — a IA fecha o que abriu ANTES de mudar de assunto, não durante a frase
+   * seguinte.
+   */
+  private avaliarPainel(indice: number) {
+    const v = this.painel
+    if (!v || v.saiEm !== undefined || v.encerrandoEm !== undefined) return
+    const agora = performance.now()
+
+    // Painel escrito no roteiro respeita o `ate` e nada mais: quem escreveu
+    // disse até quando, e o dicionário não tem voz nisso. A única concessão é
+    // a cauda do `fimLinha`, que é o mesmo problema de não cortar no meio da
+    // frase seguinte.
+    if (!v.porAssunto) {
+      if (venceuNaLinha(v, indice)) {
+        if (v.ate === 'fimLinha') this.agendar(v, 'prazo', agora)
+        else this.encerrar(v, 'prazo', agora)
+      }
+      return
+    }
+
+    const proxima = this.linhas[indice + 1]
+    const liga = proxima ? assuntoDe(textoDaLinha(proxima), v.nome ?? '') : null
+    v.relacionaProxima = proxima ? liga !== null : false
+    v.termoProxima = liga?.termo
+
+    if (liga) return
+
+    // Regra 2: se a próxima linha já abre OUTRO painel, não existe cauda — a
+    // troca acontece no início dela e a tela nunca fica vazia no meio.
+    if (proxima && this.proximaAbreOutro(proxima, v.nome ?? '', agora)) {
+      v.trocaNaProxima = true
+      v.motivo = 'troca'
+      return
+    }
+
+    this.agendar(v, 'assunto', agora)
+  }
+
+  /**
+   * Marca a hora de encerrar, respeitando o piso e o teto.
+   *
+   * O piso é o que impede o painel de piscar: se o assunto durou uma linha
+   * curta, ele ainda assim fica os 4 s. O teto continua mandando acima de
+   * tudo — um painel nunca passa dos 20 s por causa de uma cauda.
+   */
+  private agendar(v: Vigencia, motivo: MotivoFecho, agora: number) {
+    const desejado = Math.max(agora + CAUDA_ASSUNTO_MS, v.abertoEm + MINIMO_PAINEL_MS)
+    v.encerrandoEm = Math.min(desejado, v.expiraEm)
+    v.motivo = motivo
+  }
+
+  /** Começa a despedida: o log avisa, o sonar se despede, e aí o painel sai. */
+  private despedir(v: Vigencia, motivo: MotivoFecho, agora: number) {
+    v.encerrandoEm = undefined
+    v.motivo = motivo
+    this.saida.despedida(v.nome ?? '', motivo)
+    // Só o sonar ganha um intervalo: é o único com algo na tela (o contato)
+    // que precisa de um instante pra se apagar antes de o painel ir embora.
+    v.saiEm = agora + (v.nome === 'sonar' ? MS_DESPEDIDA_SONAR : 0)
+  }
+
+  /** Encerramento imediato: despedida agora, saída na sequência. */
+  private encerrar(v: Vigencia, motivo: MotivoFecho, agora: number) {
+    this.despedir(v, motivo, agora)
+    if (v.saiEm !== undefined && v.saiEm <= agora) this.pedirPainel(null, null)
+  }
+
+  /**
+   * A próxima linha abre outro painel?
+   *
+   * Ação escrita no roteiro é certeza. Gatilho é PREVISÃO: as folgas são todas
+   * do tipo "já passou tempo bastante", então o que passa agora também passa
+   * daqui a pouco — um "sim" aqui é sempre verdade. Um "não" pode virar sim,
+   * e aí o pior que acontece é a cauda de 0,8 s ter rodado antes da troca.
+   */
+  private proximaAbreOutro(proxima: Linha, nomeAtual: string, agora: number): boolean {
+    for (const acao of acoesDaLinha(proxima)) {
+      if (quandoDa(acao) !== 'inicio') continue
+      if (acao.tipo === 'painel' && acao.nome !== nomeAtual) return true
+      if (acao.tipo === 'mapa' && nomeAtual !== 'mapa') return true
+      if (acao.tipo === 'camera' && nomeAtual !== 'camera') return true
+    }
+    if (!this.gatilhosLigados) return false
+    const temPainelExplicito = acoesDaLinha(proxima).some(
+      (a) => a.tipo === 'painel' || a.tipo === 'mapa' || a.tipo === 'camera',
+    )
+    if (temPainelExplicito) return false
+    const pedido = painelDe(gatilhosDe(textoDaLinha(proxima)))
+    if (!pedido || pedido.nome === nomeAtual) return false
+    // A previsão ignora o painel aberto agora: ele é justamente o que vai sair.
+    return this.podeAbrirIgnorandoOAtual(pedido.nome, agora)
+  }
+
   private venceramNaLinha(indice: number) {
     const agora = performance.now()
 
-    if (this.painel && venceuNaLinha(this.painel, indice)) {
-      this.pedirPainel(null, null)
-    }
     if (this.forma && venceuNaLinha(this.forma, indice)) {
       if (this.forma.origem === 'gatilho') {
         // Sobrevida curta: a palavra acabou de ser dita e o olho ainda está
@@ -344,7 +592,10 @@ export class Diretor {
   private pedirPainel(pedido: PainelPedido | null, vigencia: Vigencia | null) {
     const nome = pedido ? `${pedido.nome}:${pedido.args ?? ''}` : null
     if (nome === this.nomePainel && pedido) {
-      // Mesmo painel, prazo novo: só estende.
+      // Mesmo painel, prazo novo: só estende. O `abertoEm` é o da abertura de
+      // verdade, não o deste pedido — senão o piso de 4 s reiniciaria a cada
+      // renovação e o painel ficaria preso na tela renovando a si mesmo.
+      if (vigencia && this.painel) vigencia.abertoEm = this.painel.abertoEm
       this.painel = vigencia
       return
     }

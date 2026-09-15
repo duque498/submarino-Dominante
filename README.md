@@ -421,10 +421,14 @@ Dois campos valem pra quase todas:
 
 | prazo | vence |
 |---|---|
-| `"fimLinha"` | quando a linha acabar |
+| `"fimLinha"` | quando a linha acabar, **mais 0,8 s de cauda** |
 | `"fimCena"` | quando a cena acabar |
 | `{ "linha": 4 }` | quando a linha de índice 4 terminar |
 | `{ "segundos": 12 }` | 12 s depois de abrir |
+
+**O `ate` escrito no roteiro vale sempre**, e nenhuma regra de gatilho encosta
+nele: quem escreveu disse até quando. A única concessão é a cauda do
+`"fimLinha"`, que é o mesmo problema de não cortar no meio da frase seguinte.
 
 O disparo usa os offsets reais de `tempos.json`, então ele acompanha a fala
 mesmo que a professora troque uma palavra e o mp3 mude de duração. Era isso que
@@ -464,6 +468,52 @@ O que segura o excesso são as folgas, todas no topo de `src/diretor/diretor.ts`
 Um painel aberto por gatilho não ocupa a tela inteira: ele entra na **faixa de
 cima** (`.painel--faixa`, 54% da altura), porque a legenda mora embaixo e
 **legenda nunca é coberta**. Painel aberto pelo operador continua grande.
+
+### Quanto tempo o painel automático fica
+
+Não é por contagem de linhas — é enquanto **o assunto durar**.
+
+Ao fim de cada linha o Diretor lê a **próxima**. Se ela toca qualquer palavra do
+mesmo grupo do dicionário, o painel fica. O mapa é o único com duas fontes: o
+grupo `mapa` e **qualquer marcador** — dizer "Abrolhos" é continuar falando do
+mapa mesmo sem a palavra "mapa" aparecer.
+
+| regra | valor | por quê |
+|---|---|---|
+| cauda | 0,8 s | a IA fecha antes de mudar de assunto, não no meio da frase seguinte |
+| piso | 4 s | painel que aparece e some em 2 s a plateia lê como defeito |
+| teto | 20 s | continua valendo acima de tudo, mesmo com o assunto vivo |
+
+**Exceção: se a próxima linha já abre outro painel, não há cauda** — a troca
+acontece no início dela e a tela nunca fica vazia no meio. (A previsão do
+gatilho é conservadora: as folgas são todas do tipo "já passou tempo bastante",
+então o que passa agora também passa daqui a pouco. Um "vai trocar" aqui é
+sempre verdade; um "não vai" pode errar, e aí o pior que acontece é a cauda ter
+rodado antes da troca.)
+
+Fechar por fim de assunto **não é sumir**. O painel se despede: o log de bordo
+escreve `Encerrando <painel>` e a moldura sai com a animação inteira (520 ms,
+mais que o dobro de um painel trocado por outro). A diferença entre "acabou" e
+"quebrou" é essa. O **sonar**, se tiver um contato marcado, ainda dá o **ping
+final** e apaga o contato antes de sair — sumir com o contato junto jogaria
+fora a única coisa que aquele mostrador tinha a dizer.
+
+### Ver a decisão ao vivo
+
+```
+file:///.../index.html?turma=2A&debugDiretor=1
+```
+
+Põe uma faixa no rodapé com a decisão do Diretor a 8 Hz:
+
+```
+diretor  entrada  mapa costa-sudeste · aberto pelo roteiro na linha 2 · prazo do roteiro: fim da linha 4
+diretor  entrada  status · aberto por gatilho "sistemas de bordo" na linha 0 ·
+                  próxima linha relaciona: não · fim de assunto: fecha em 0.8s
+```
+
+É ferramenta de ensaio e é feia de propósito: se alguém esquecer a flag ligada
+na feira, tem que ficar óbvio na hora. Sem a flag, nada disso existe na página.
 
 ### Desligar tudo
 

@@ -13,7 +13,8 @@ import {
 import { Feed } from '../mundo/Feed'
 import { motor } from '../mundo/motor'
 import { Painel, painelCapturaTeclado, type PainelAberto } from '../paineis'
-import { Diretor, type PainelPedido } from '../diretor/diretor'
+import { Diretor, type MotivoFecho, type PainelPedido } from '../diretor/diretor'
+import { DepuracaoDiretor } from '../diretor/DepuracaoDiretor'
 import { ColunaDagua } from '../diretor/ColunaDagua'
 import {
   logDaFase,
@@ -53,6 +54,22 @@ const MS_PROCESSANDO = [600, 1200] as const
 const MS_REACAO = 600
 /** Intervalo entre um subsistema cair (ou voltar) e o próximo. */
 const MS_ENTRE_SUBSISTEMAS = 400
+
+/**
+ * Como cada painel aparece no LOG quando o Diretor o encerra.
+ *
+ * Caixa alta e vocabulário de instrumento, igual ao resto do log: quem lê a
+ * coluna da direita tem que sentir que foi o sistema que decidiu, não que
+ * alguém fechou uma janela.
+ */
+const TITULOS_LOG: Record<string, string> = {
+  sonar: 'VARREDURA DE SONAR',
+  status: 'PAINEL DE SUBSISTEMAS',
+  mapa: 'CARTA DE ROTA',
+  camera: 'CÂMERA EXTERNA',
+  espectro: 'LEITURA DE ESPECTRO',
+  ficha: 'FICHA DE CATÁLOGO',
+}
 
 const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const sorteio = (min: number, max: number) => min + Math.random() * (max - min)
@@ -175,6 +192,10 @@ export function Player({ roteiro, engine }: Props) {
    * requestAnimationFrame, que é o mesmo padrão do nível de áudio no orbe.
    */
   const refProfMergulho = useRef(0)
+  /** `?debugDiretor=1`: rodapé com a decisão do Diretor ao vivo. */
+  const depurarDiretor = useRef(
+    /(^|[?&])debugdiretor=(1|on|true)(&|$)/i.test(window.location.search),
+  ).current
   /** `?gatilhos=off` na URL, ou o comando `gatilhos off` no console. */
   const [gatilhosLigados, setGatilhosLigados] = useState(
     () => !/(^|[?&])gatilhos=off(&|$)/i.test(window.location.search),
@@ -507,6 +528,22 @@ export function Player({ roteiro, engine }: Props) {
         }
       })
     },
+    /**
+     * O Diretor vai encerrar este painel. Ele ainda está na tela.
+     *
+     * Duas coisas acontecem aqui e nenhuma delas é fechar: o log de bordo
+     * escreve `Encerrando <painel>`, pra a plateia ler a saída como decisão e
+     * não como falha, e o painel entra em modo despedida — o sonar usa isso
+     * pra dar o ping final e apagar o contato antes de sair.
+     */
+    despedida: (nome: string, motivo: MotivoFecho) => {
+      setPainel((atual) =>
+        atual?.origem === 'diretor' && atual.nome === nome
+          ? { ...atual, despedindo: true }
+          : atual,
+      )
+      setRajadaLog([`Encerrando ${TITULOS_LOG[nome] ?? nome}${motivo === 'teto' ? ' (tempo)' : ''}`])
+    },
     forma: (nome: string | null) => {
       if (!nome) {
         setFormaForcada(null)
@@ -531,6 +568,7 @@ export function Player({ roteiro, engine }: Props) {
   if (!refDiretor.current) {
     refDiretor.current = new Diretor({
       painel: (p) => refSaidas.current.painel(p),
+      despedida: (n, m) => refSaidas.current.despedida(n, m),
       forma: (f) => refSaidas.current.forma(f),
       sfx: (n) => refSaidas.current.sfx(n),
       mergulho: (m) => refSaidas.current.mergulho(m),
@@ -1219,6 +1257,7 @@ export function Player({ roteiro, engine }: Props) {
         />
       </div>
       {ajudaVisivel && <Ajuda cena={cena.id} forma={formaAtual} escala={escala} />}
+      {depurarDiretor && <DepuracaoDiretor diretor={diretor} cena={cena.id} />}
     </Hud>
   )
 }

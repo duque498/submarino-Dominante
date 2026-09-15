@@ -128,6 +128,24 @@ export function painelDe(g: Gatilhos): { nome: string; args?: string; termo: str
   return null
 }
 
+/**
+ * Esta linha ainda fala do MESMO assunto que abriu `painel`?
+ *
+ * É o que sustenta a vida do painel automático: ele não morre por contagem de
+ * linhas, morre quando a narradora muda de assunto. "Assunto" aqui é uma coisa
+ * bem concreta — qualquer termo do mesmo grupo do dicionário.
+ *
+ * O mapa é o único com duas fontes: os termos do grupo `mapa` E qualquer
+ * marcador. Dizer "Abrolhos" na linha seguinte é continuar falando do mapa,
+ * mesmo que a palavra "mapa" não apareça.
+ */
+export function assuntoDe(texto: string, painel: string): Casamento | null {
+  const ditas = palavras(texto)
+  const doGrupo = TERMOS_PAINEL.filter((t) => t.nome === painel)
+  const candidatos = painel === 'mapa' ? [...doGrupo, ...TERMOS_MARCADOR] : doGrupo
+  return primeiro(ditas, candidatos, 'painel')
+}
+
 /** Todo nome de forma citado no dicionário — a validação confere se existem. */
 export function formasCitadas(): string[] {
   return Object.keys(FORMAS ?? {})

@@ -36,6 +36,8 @@ const ROTULO_CONTATO: Record<string, string> = {
 
 /** Quanto o sonar leva pra "achar" o contato que a fala citou. */
 const MS_ATE_CONTATO = 1200
+/** Quanto o contato leva pra se apagar na despedida. */
+const MS_APAGAR_CONTATO = 380
 
 type Props = {
   /**
@@ -57,16 +59,27 @@ type Props = {
    * bicho — sem nome, o contato aparece igual, só anônimo.
    */
   daFala?: boolean
+  /**
+   * O Diretor está encerrando o sonar.
+   *
+   * O painel ainda está na tela, e é aqui que ele se despede: um ping final e
+   * o contato se apagando. Sumir com o contato junto com o painel joga fora a
+   * única coisa que aquele mostrador tinha a dizer — a plateia acabou de ouvir
+   * o nome do bicho e veria o ponto desaparecer sem fechamento.
+   */
+  despedindo?: boolean
 }
 
 /** Varredura de sonar. Puramente animada — nenhum dado real por trás. */
-export function PainelSonar({ aoPing, contato, daFala = false }: Props) {
+export function PainelSonar({ aoPing, contato, daFala = false, despedindo = false }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
   // Numa ref pra não religar a animação quando o Player recria o callback.
   const refPing = useRef(aoPing)
   refPing.current = aoPing
   const refContato = useRef(contato)
   refContato.current = contato
+  const refDespedindo = useRef(despedindo)
+  refDespedindo.current = despedindo
 
   useEffect(() => {
     const canvas = refCanvas.current
@@ -94,6 +107,7 @@ export function PainelSonar({ aoPing, contato, daFala = false }: Props) {
     let angulo = daFala ? TOPO : TOPO - 0.25
     const nascimento = performance.now()
     let contatoMarcado = false
+    let despediu = false
     let anterior = nascimento
 
     const desenhar = (agora: number) => {
@@ -166,8 +180,19 @@ export function PainelSonar({ aoPing, contato, daFala = false }: Props) {
         refPing.current?.()
       }
 
+      // Despedida: ping final e o contato nomeado se apaga. Os de cenário
+      // param de nascer — o mostrador se aquieta antes de sair.
+      if (refDespedindo.current && !despediu) {
+        despediu = true
+        refPing.current?.()
+        for (const blip of blips) {
+          if (!blip.rotulo) continue
+          blip.nascimento = agora - blip.vida + MS_APAGAR_CONTATO
+        }
+      }
+
       // contatos de cenário: nascem sob a varredura e desbotam
-      if (blips.length < MAX_BLIPS && Math.random() < 0.02) {
+      if (!despediu && blips.length < MAX_BLIPS && Math.random() < 0.02) {
         blips.push({
           angulo: angulo + (Math.random() - 0.5) * 0.2,
           distancia: 0.2 + Math.random() * 0.75,

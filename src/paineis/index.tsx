@@ -31,6 +31,14 @@ export type PainelAberto = {
   congelado?: boolean
   /** Substitui o "esc pra fechar" do cabeçalho. */
   dica?: string
+  /**
+   * O Diretor decidiu encerrar e está se despedindo.
+   *
+   * Não é o mesmo que fechar: o painel ainda está na tela. É o instante em que
+   * o log escreve "Encerrando ..." e o sonar dá o ping final. Quem tem algo a
+   * dizer na saída diz aqui; quem não tem, só sai um pouco mais devagar.
+   */
+  despedindo?: boolean
 }
 
 const TITULOS: Record<string, string> = {
@@ -45,6 +53,15 @@ const TITULOS: Record<string, string> = {
 
 /** Quanto o painel que está saindo fica na tela antes de sumir. */
 const MS_SAIDA = 200
+/**
+ * Saída de um painel que o Diretor ENCERROU de propósito.
+ *
+ * Mais que o dobro do corte normal, e é a diferença entre "acabou" e
+ * "quebrou": o painel que é substituído por outro pode sair rápido, porque o
+ * que entra explica a saída. O que encerra sozinho precisa do tempo de ser
+ * visto saindo, senão a plateia lê como falha.
+ */
+const MS_SAIDA_ENCERRANDO = 520
 
 type Props = {
   painel: PainelAberto | null
@@ -90,7 +107,10 @@ export function Painel({
     refAnterior.current = painel
     if (painel || !anterior) return
     setSaindo(anterior)
-    const timer = setTimeout(() => setSaindo(null), MS_SAIDA)
+    const timer = setTimeout(
+      () => setSaindo(null),
+      anterior.despedindo ? MS_SAIDA_ENCERRANDO : MS_SAIDA,
+    )
     return () => clearTimeout(timer)
   }, [painel])
 
@@ -101,7 +121,8 @@ export function Painel({
       className={
         `painel painel--${visivel.nome}` +
         (visivel.origem === 'diretor' ? ' painel--faixa' : '') +
-        (painel ? '' : ' painel--saindo')
+        (painel ? '' : ' painel--saindo') +
+        (visivel.despedindo ? ' painel--encerrando' : '')
       }
       key={`${visivel.nome}:${visivel.argumento ?? ''}`}
     >
@@ -118,6 +139,7 @@ export function Painel({
             travado,
             aoPing,
             contato: visivel.contato,
+            despedindo: visivel.despedindo,
             // Painel que o Diretor abriu é painel aberto pela fala.
             daFala: visivel.origem === 'diretor',
           })}
@@ -129,6 +151,7 @@ export function Painel({
 
 type Extras = {
   contato?: string
+  despedindo?: boolean
   daFala?: boolean
   aoInterpretarTraco?: (canvas: HTMLCanvasElement) => void
   aoFechar?: () => void
@@ -148,6 +171,7 @@ function corpoDoPainel(
           aoPing={extras.aoPing}
           contato={extras.contato}
           daFala={extras.daFala}
+          despedindo={extras.despedindo}
         />
       )
     case 'status':
