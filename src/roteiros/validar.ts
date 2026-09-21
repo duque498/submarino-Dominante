@@ -31,6 +31,8 @@ const SFX_VALIDOS = [
   'pulso',
   'impacto',
   'presenca',
+  'whoosh',
+  'agua',
 ]
 const VISOR_VALIDO = ['ok', 'rachado', 'parcial']
 

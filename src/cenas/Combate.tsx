@@ -23,6 +23,10 @@ export type FaseCombate =
   | 'esperando'
   | 'acerto'
   | 'erro'
+  /** Entre rodadas: a silhueta cruza a estática dos feeds. */
+  | 'passagem'
+  /** Depois do último acerto: a trilha corta e o silêncio pesa. */
+  | 'fakeout'
   | 'fim'
 
 export type EstadoCombate = {
@@ -37,6 +41,14 @@ export type EstadoCombate = {
   contato: number
   /** performance.now() de quando a espera começou, pro timer. */
   desde: number
+  /**
+   * Quantos terços da imagem acústica já foram revelados.
+   *
+   * Cada acerto compra um pedaço da silhueta no centro do mostrador: o sonar
+   * não "vê", ele acumula retornos. É a recompensa por acertar — e é ela que
+   * transforma três perguntas iguais numa sequência com progressão.
+   */
+  revelado: number
 }
 
 type Props = {
@@ -56,6 +68,59 @@ function distanciaAtual(cena: CenaCombate, estado: EstadoCombate): number {
   return base
 }
 
+/**
+ * Pontos da imagem acústica: a silhueta da criatura amostrada em pontos.
+ *
+ * Gerada uma vez, na primeira chamada, rasterizando o desenho do bestiário num
+ * canvas pequeno e sorteando pixels cheios. Pontos, e não o traço, porque é
+ * assim que um retorno de sonar se acumula — e porque um desenho nítido no
+ * mostrador diria que a IA está vendo, que é justamente o que ela não está.
+ */
+let cacheImagem: { chave: string; pontos: Array<[number, number]> } | null = null
+
+function imagemAcustica(chave: string): Array<[number, number]> {
+  if (cacheImagem?.chave === chave) return cacheImagem.pontos
+  const especie = especiePorChave(chave)
+  if (!especie) return []
+  const LADO = 128
+  const cv = document.createElement('canvas')
+  cv.width = LADO
+  cv.height = LADO
+  const c = cv.getContext('2d')
+  if (!c) return []
+  c.translate(LADO / 2, LADO / 2)
+  const comp = LADO * 0.88
+  especie.desenhar({
+    ctx: c,
+    comp,
+    alt: comp * especie.proporcao,
+    t: 0.8,
+    fase: 0.4,
+    luz: 1,
+    farol: 0,
+    alpha: 1,
+    silhueta: true,
+  })
+  const dados = c.getImageData(0, 0, LADO, LADO).data
+  const pontos: Array<[number, number]> = []
+  for (let y = 0; y < LADO; y += 2) {
+    for (let x = 0; x < LADO; x += 2) {
+      if (dados[(y * LADO + x) * 4 + 3] > 40) {
+        pontos.push([x / LADO - 0.5, y / LADO - 0.5])
+      }
+    }
+  }
+  // Embaralha: revelar um terço na ordem de varredura daria uma faixa
+  // horizontal, e o que se quer é a figura aparecendo por inteiro, mais densa
+  // a cada acerto.
+  for (let i = pontos.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[pontos[i], pontos[j]] = [pontos[j], pontos[i]]
+  }
+  cacheImagem = { chave, pontos }
+  return pontos
+}
+
 function tempoDeEco(metros: number): string {
   return ((2 * metros) / VELOCIDADE_SOM).toFixed(2).replace('.', ',')
 }
@@ -67,14 +132,16 @@ export function Combate({ cena, estado, aoResponder }: Props) {
   const respondido = estado.fase === 'acerto' || estado.fase === 'erro'
 
   return (
-    <div className="painel combate">
+    <div className="painel combate" data-fase={estado.fase}>
       <div className="painel__moldura">
         <header className="painel__cabecalho">
           <span className="painel__nome">sonar auxiliar · direção do contato</span>
           <span className="painel__fechar">
-            {respondido
-              ? 'seta direita pra seguir'
-              : `tripulação: informem o setor · 1 a ${cena.setores.length}`}
+            {estado.fase === 'fakeout'
+              ? '—'
+              : respondido
+                ? 'seta direita pra seguir'
+                : `tripulação: informem o setor · 1 a ${cena.setores.length}`}
           </span>
         </header>
         <div className="painel__corpo combate__corpo">
@@ -110,6 +177,10 @@ export function Combate({ cena, estado, aoResponder }: Props) {
             distancia={distancia}
             tempoRodada={rodada?.tempo ?? 0}
           />
+
+          {estado.fase === 'fakeout' && (
+            <p className="combate__silencio">sinal perdido</p>
+          )}
 
           <ul className="combate__setores">
             {cena.setores.map((nome, i) => (
@@ -309,6 +380,43 @@ function Mostrador({
         ctx.textAlign = 'left'
       }
 
+      // A imagem acústica acumulada, no centro do mostrador. Entra ANTES do
+      // blip: é fundo de leitura, não objeto em movimento.
+      if (e.revelado > 0) {
+        const pontos = imagemAcustica(c.criatura)
+        const completa = e.revelado >= c.rodadas.length
+        // Pulso único quando a imagem fecha: 900 ms a partir do último acerto.
+        const idadePulso = completa ? Math.min(1, (agora - e.desde) / 900) : 1
+        const pulso = completa ? 1 + (1 - idadePulso) * 0.35 : 1
+        const brilho = completa ? 0.55 + (1 - idadePulso) * 0.45 : 0.4
+        const escala = raio * 1.02 * pulso
+        const quantos = Math.floor((pontos.length * e.revelado) / c.rodadas.length)
+
+        // Disco escuro atrás: os pontos são verdes sobre um rastro de varredura
+        // que também é verde, e sem separar os dois a figura some no fundo.
+        const fundo = ctx.createRadialGradient(cx, cx, 0, cx, cx, raio * 0.78)
+        fundo.addColorStop(0, `rgba(2, 14, 12, ${0.72 * brilho})`)
+        fundo.addColorStop(1, 'rgba(2, 14, 12, 0)')
+        ctx.fillStyle = fundo
+        ctx.beginPath()
+        ctx.arc(cx, cx, raio * 0.78, 0, Math.PI * 2)
+        ctx.fill()
+
+        ctx.fillStyle = `rgba(124, 255, 196, ${brilho})`
+        const tam = Math.max(1.4, lado * 0.0075 * pulso)
+        for (let i = 0; i < quantos; i++) {
+          const [px, py] = pontos[i]
+          ctx.fillRect(cx + px * escala, cx + py * escala, tam, tam)
+        }
+        if (completa) {
+          ctx.strokeStyle = `rgba(77, 255, 166, ${(1 - idadePulso) * 0.5})`
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.arc(cx, cx, raio * (0.4 + idadePulso * 0.7), 0, Math.PI * 2)
+          ctx.stroke()
+        }
+      }
+
       // O contato. Blip grande com rastro — nada parecido com os de cenário.
       const fracao = Math.min(1, d / maxAlcance)
       const meio = inicioDe(e.setor) + abertura / 2
@@ -317,7 +425,24 @@ function Mostrador({
       const pulso = (Math.sin(agora / 180) + 1) / 2
       const cor = e.fase === 'acerto' ? '77, 255, 166' : '255, 110, 90'
 
-      if (e.fase !== 'fim') {
+      // Fake-out: ele volta pela BORDA, do outro lado, e some. Sem rastro e
+      // sem rótulo — é um retorno solto, não um contato confirmado.
+      if (e.fase === 'fakeout') {
+        const idade = Math.min(1, (agora - e.desde) / 3600)
+        if (idade > 0.5 && idade < 0.95) {
+          const f = (idade - 0.5) / 0.45
+          const vis = Math.sin(f * Math.PI)
+          const ang = inicioDe(e.setor) + abertura / 2 + Math.PI
+          const bx2 = cx + Math.cos(ang) * raio * 0.94
+          const by2 = cx + Math.sin(ang) * raio * 0.94
+          ctx.beginPath()
+          ctx.arc(bx2, by2, lado * 0.02, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(255, 110, 90, ${vis * 0.9})`
+          ctx.fill()
+        }
+      }
+
+      if (e.fase !== 'fim' && e.fase !== 'fakeout' && e.fase !== 'passagem') {
         // rastro: onde ele estava
         ctx.beginPath()
         ctx.moveTo(cx + Math.cos(meio) * raio * Math.min(1, fracao + 0.12), cy0(cx, meio, raio, fracao + 0.12))

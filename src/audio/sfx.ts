@@ -23,6 +23,8 @@ export type NomeSfx =
   | 'pulso'
   | 'impacto'
   | 'presenca'
+  | 'whoosh'
+  | 'agua'
 
 /** Solta os nós quando o som acaba, pra não acumular no grafo. */
 function limpar(fonte: AudioScheduledSourceNode, ...nos: AudioNode[]) {
@@ -374,62 +376,143 @@ function impacto(ctx: AudioContext, destino: AudioNode, t: number) {
 }
 
 /**
- * Presença: o grave contínuo que sobe enquanto o olho entra no facho.
+ * Presença: a vibração que se sente antes de ver.
  *
- * É o único efeito longo do projeto (3,4 s) e o único sem transiente nenhum —
- * ele não ACONTECE, ele se aproxima. Duas fundamentais muito graves batendo
- * entre si a ~1,5 Hz dão a pulsação de algo vivo e enorme; o filtro abrindo
- * devagar é o que faz o som "chegar" sem nunca aumentar de volume de repente.
+ * Infrassom de verdade — 28 Hz de fundamental, abaixo do que a maioria das
+ * caixas de som reproduz como NOTA. O que chega à plateia não é um tom: são os
+ * harmônicos (56, 84, 112 Hz) e a batida entre a fundamental e uma vizinha
+ * desafinada. Numa caixa de quadra isso vira pressão no peito, que é o efeito
+ * que a cena quer: o bicho é grande demais pra caber num som agudo.
  *
- * Nada aqui pode assustar sozinho: o susto é o `impacto` no fim da cena. Este
- * som é a espera, e espera que grita perde o corte.
+ * O waveshaper suave por 2 s é o que impede o infrassom de sumir: sem
+ * distorção, 28 Hz num alto-falante pequeno é silêncio. Saturando, a
+ * fundamental "vaza" pros harmônicos e o ouvido reconstrói o grave que a caixa
+ * não consegue emitir — é o mesmo truque de missing fundamental.
  */
 function presenca(ctx: AudioContext, destino: AudioNode, t: number) {
   const DUR = 3.4
-  const passa = ctx.createBiquadFilter()
-  passa.type = 'lowpass'
-  passa.frequency.setValueAtTime(90, t)
-  passa.frequency.exponentialRampToValueAtTime(420, t + DUR * 0.85)
-  passa.Q.value = 1.4
-  const mestre = ctx.createGain()
-  // Crescendo longo e sem pico: entra de quase nada e para antes de doer.
-  mestre.gain.setValueAtTime(0.0001, t)
-  mestre.gain.exponentialRampToValueAtTime(0.5, t + DUR * 0.8)
-  mestre.gain.exponentialRampToValueAtTime(0.0001, t + DUR)
-  passa.connect(mestre).connect(destino)
+  /** Janela da saturação. Depois dela o som fica limpo e some. */
+  const DUR_FORMA = 2
 
-  // Duas fundamentais desafinadas: 27 e 28,6 Hz batem a ~1,6 Hz.
-  for (const [freq, tipo, pico] of [
-    [27, 'sine', 1],
-    [28.6, 'sine', 0.9],
-    [54, 'triangle', 0.35],
-  ] as Array<[number, OscillatorType, number]>) {
+  const forma = ctx.createWaveShaper()
+  const curva = new Float32Array(2048)
+  for (let i = 0; i < curva.length; i++) {
+    const x = (i / (curva.length - 1)) * 2 - 1
+    // Saturação suave: harmônicos ímpares sem virar fuzz.
+    curva[i] = Math.tanh(x * 2.4) * 0.92
+  }
+  forma.curve = curva
+  forma.oversample = '4x'
+
+  // A saturação entra e sai: seca no começo, cheia no meio, limpa no fim.
+  const seco = ctx.createGain()
+  const molhado = ctx.createGain()
+  seco.gain.setValueAtTime(1, t)
+  seco.gain.linearRampToValueAtTime(0.35, t + DUR_FORMA * 0.6)
+  seco.gain.linearRampToValueAtTime(1, t + DUR_FORMA)
+  molhado.gain.setValueAtTime(0.0001, t)
+  molhado.gain.linearRampToValueAtTime(1, t + DUR_FORMA * 0.6)
+  molhado.gain.linearRampToValueAtTime(0.0001, t + DUR_FORMA)
+
+  const mestre = ctx.createGain()
+  mestre.gain.setValueAtTime(0.0001, t)
+  mestre.gain.exponentialRampToValueAtTime(0.6, t + DUR * 0.8)
+  mestre.gain.exponentialRampToValueAtTime(0.0001, t + DUR)
+  mestre.connect(destino)
+
+  const entrada = ctx.createGain()
+  entrada.connect(seco).connect(mestre)
+  entrada.connect(forma).connect(molhado).connect(mestre)
+
+  // 28 Hz e a vizinha a 29,1: batimento de ~1,1 Hz, a respiração do bicho.
+  // Mais os harmônicos, que são o que a caixa realmente entrega.
+  for (const [freq, pico, tipo] of [
+    [28, 1, 'sine'],
+    [29.1, 0.85, 'sine'],
+    [56, 0.42, 'sine'],
+    [84, 0.2, 'sine'],
+    [112, 0.1, 'triangle'],
+  ] as Array<[number, number, OscillatorType]>) {
     const osc = ctx.createOscillator()
     const g = ctx.createGain()
     osc.type = tipo
     osc.frequency.setValueAtTime(freq, t)
-    // Sobe meio tom ao longo da cena: o bicho está se aproximando.
+    // Sobe meio tom ao longo da cena: ele está se aproximando.
     osc.frequency.linearRampToValueAtTime(freq * 1.06, t + DUR)
     g.gain.value = pico
-    osc.connect(g).connect(passa)
+    osc.connect(g).connect(entrada)
     limpar(osc, g)
     osc.start(t)
     osc.stop(t + DUR + 0.05)
   }
 
-  // Sopro de água deslocada por baixo de tudo, subindo junto.
+  // Água deslocada por baixo de tudo, subindo junto.
   const fluxo = ctx.createBufferSource()
   fluxo.buffer = ruidoModelado(ctx, DUR, (i, n) => (i / n) ** 1.6 * 0.8)
   const banda = ctx.createBiquadFilter()
   banda.type = 'bandpass'
-  banda.frequency.setValueAtTime(140, t)
-  banda.frequency.exponentialRampToValueAtTime(600, t + DUR)
+  banda.frequency.setValueAtTime(120, t)
+  banda.frequency.exponentialRampToValueAtTime(520, t + DUR)
   banda.Q.value = 0.8
   const gFluxo = ctx.createGain()
-  gFluxo.gain.value = 0.5
+  gFluxo.gain.value = 0.42
   fluxo.connect(banda).connect(gFluxo).connect(mestre)
-  limpar(fluxo, banda, gFluxo, passa, mestre)
+  limpar(fluxo, banda, gFluxo, forma, seco, molhado, entrada, mestre)
   fluxo.start(t)
+}
+
+/**
+ * Whoosh grave: a massa de água que o bicho empurra ao cruzar um setor.
+ *
+ * Varredura de ruído filtrado, não tom: o que passa perto do casco não tem
+ * altura definida. O panorâmico fica por conta de quem chama — é ele que diz
+ * de que lado foi.
+ */
+function whoosh(ctx: AudioContext, destino: AudioNode, t: number) {
+  const DUR = 1.1
+  const fonte = ctx.createBufferSource()
+  fonte.buffer = ruidoModelado(ctx, DUR, (i, n) => {
+    const f = i / n
+    // Envelope em sino: ele chega, passa e vai.
+    return Math.sin(f * Math.PI) ** 1.6
+  })
+  const passa = ctx.createBiquadFilter()
+  passa.type = 'bandpass'
+  // Efeito Doppler barato: a banda sobe enquanto se aproxima e desce depois.
+  passa.frequency.setValueAtTime(90, t)
+  passa.frequency.exponentialRampToValueAtTime(320, t + DUR * 0.45)
+  passa.frequency.exponentialRampToValueAtTime(70, t + DUR)
+  passa.Q.value = 1.1
+  const grave = ctx.createBiquadFilter()
+  grave.type = 'lowshelf'
+  grave.frequency.value = 140
+  grave.gain.value = 9
+  const g = ctx.createGain()
+  g.gain.value = 0.72
+  fonte.connect(passa).connect(grave).connect(g).connect(destino)
+  limpar(fonte, passa, grave, g)
+  fonte.start(t)
+}
+
+/**
+ * Deslocamento de água: o borbulhar surdo que fica DEPOIS do whoosh.
+ *
+ * Separado dele de propósito — o whoosh é a passagem, isto é a esteira. Tocar
+ * os dois juntos com um atraso curto dá a sensação de volume que um só não dá.
+ */
+function agua(ctx: AudioContext, destino: AudioNode, t: number) {
+  const DUR = 1.6
+  const fonte = ctx.createBufferSource()
+  fonte.buffer = ruidoModelado(ctx, DUR, (i, n) => (1 - i / n) ** 1.8 * (0.4 + Math.random() * 0.6))
+  const passa = ctx.createBiquadFilter()
+  passa.type = 'lowpass'
+  passa.frequency.setValueAtTime(700, t)
+  passa.frequency.exponentialRampToValueAtTime(160, t + DUR)
+  const g = ctx.createGain()
+  envelope(g, t, 0.34, 0.08, DUR)
+  fonte.connect(passa).connect(g).connect(destino)
+  limpar(fonte, passa, g)
+  fonte.start(t)
 }
 
 const SINTETIZADORES: Record<
@@ -447,6 +530,8 @@ const SINTETIZADORES: Record<
   pulso,
   impacto,
   presenca,
+  whoosh,
+  agua,
 }
 
 /**
@@ -463,11 +548,28 @@ export function tocarSintetico(
   destino: AudioNode,
   nome: NomeSfx,
   altura = 1,
+  pan = 0,
 ): void {
   const sintetizador = SINTETIZADORES[nome]
   if (!sintetizador) return
+
+  // Panorâmico: o combate precisa que o som venha DO LADO do setor. Um nó só,
+  // inserido antes do destino, e todo o resto do grafo continua mono.
+  let saida = destino
+  let panner: StereoPannerNode | null = null
+  if (pan !== 0 && typeof ctx.createStereoPanner === 'function') {
+    panner = ctx.createStereoPanner()
+    panner.pan.value = Math.max(-1, Math.min(1, pan))
+    panner.connect(destino)
+    saida = panner
+  }
+  const soltar = () => {
+    if (panner) window.setTimeout(() => panner?.disconnect(), 4000)
+  }
+
   if (altura === 1) {
-    sintetizador(ctx, destino, ctx.currentTime + 0.01)
+    sintetizador(ctx, saida, ctx.currentTime + 0.01)
+    soltar()
     return
   }
   // Renderiza o efeito num buffer e toca esse buffer mais devagar. É o jeito
@@ -480,8 +582,11 @@ export function tocarSintetico(
     const fonte = ctx.createBufferSource()
     fonte.buffer = buffer
     fonte.playbackRate.value = Math.max(0.25, altura)
-    fonte.connect(destino)
-    fonte.onended = () => fonte.disconnect()
+    fonte.connect(saida)
+    fonte.onended = () => {
+      fonte.disconnect()
+      soltar()
+    }
     fonte.start()
   })
 }
@@ -498,6 +603,7 @@ export const SEQUENCIA_TESTE: NomeSfx[] = [
   'vidro',
   'impacto',
   'pulso',
+  'whoosh',
   'presenca',
 ]
 

@@ -2592,3 +2592,189 @@ body {
     gap: 14px;
   }
 }
+
+/* Dossiê com imagem: a foto em cima, a silhueta nadando embaixo. Sem imagem,
+   a silhueta ocupa a coluna inteira e nada muda de lugar. */
+.dossie__visual {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+.dossie--com-imagem .dossie__visual {
+  /* A foto leva a maior parte; a silhueta vira a faixa de baixo. */
+  display: grid;
+  grid-template-rows: 1fr minmax(64px, 34%);
+}
+
+.dossie__foto {
+  position: relative;
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(27, 106, 120, 0.8);
+  background: #041014;
+}
+
+.dossie__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Puxa pro ciano do resto do HUD: uma foto em cores naturais no meio de um
+     painel monocromático parece colada de outro programa. */
+  filter: saturate(0.55) contrast(1.08) sepia(0.18) hue-rotate(155deg) brightness(0.92);
+}
+
+.dossie__rotulo-foto {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 8px;
+  background: linear-gradient(rgba(2, 10, 12, 0), rgba(2, 10, 12, 0.88));
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.8);
+}
+
+.dossie__credito {
+  margin: 14px 0 0;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  line-height: 1.5;
+  color: rgba(189, 255, 240, 0.45);
+  max-width: 62ch;
+}
+
+/* --------------------------------------------------------------------------
+   Apagão do combate
+   -------------------------------------------------------------------------- */
+
+/* A tela CAI. Preto por cima de tudo, inclusive do painel de combate, e a luz
+   de emergência piscando três vezes por trás — o casco levou uma pancada e a
+   energia foi junto. 400 ms: o suficiente pra assustar, curto o bastante pra
+   ninguém achar que o projetor desligou. */
+.apagao {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+  background: #000;
+  animation: apagao-luz 400ms steps(1, end) 1;
+}
+
+@keyframes apagao-luz {
+  0%,
+  100% {
+    background: #000;
+  }
+  14%,
+  46%,
+  78% {
+    /* Os três flashes da luz de emergência. Vermelha e fraca: é a bateria, não
+       a iluminação principal. */
+    background: radial-gradient(circle at 50% 46%, rgba(120, 18, 10, 0.85), #000 62%);
+  }
+}
+
+/* A energia voltando: a moldura se firma. Dois pulos rápidos de opacidade e um
+   deslocamento de meio pixel, que é o que um sinal instável faz. */
+.hud--religando .hud__moldura {
+  animation: religando 520ms steps(2, end) 1;
+}
+
+@keyframes religando {
+  0% {
+    opacity: 0.15;
+    transform: translateX(-2px);
+    filter: brightness(2.4) saturate(0.2);
+  }
+  20% {
+    opacity: 0.9;
+    transform: translateX(2px);
+  }
+  40% {
+    opacity: 0.3;
+    transform: translateX(-1px);
+    filter: brightness(1.8);
+  }
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Fake-out: o mostrador fica sozinho com o silêncio. */
+.combate__silencio {
+  grid-column: 1 / -1;
+  margin: 0;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(255, 110, 90, 0.75);
+  animation: silencio-pulsar 2s ease-in-out infinite;
+}
+
+@keyframes silencio-pulsar {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apagao,
+  .hud--religando .hud__moldura,
+  .combate__silencio {
+    animation-duration: 1ms;
+  }
+}
+
+/* Passagem entre rodadas: o painel de combate SAI DA FRENTE por 1,5 s.
+   O efeito pedido acontece na estática dos feeds, e com a moldura por cima
+   deles ninguém veria nada. Aqui o mostrador esmaece, o escurecimento de fundo
+   some, e por um instante a tela é só as duas câmeras cegas com alguma coisa
+   passando no ruído. Volta sozinho. */
+.combate[data-fase='passagem'] {
+  background: rgba(2, 10, 12, 0.15);
+  transition: background 400ms ease-out;
+}
+
+.combate[data-fase='passagem'] .painel__moldura {
+  opacity: 0.12;
+  transform: scale(0.985);
+  transition:
+    opacity 400ms ease-out,
+    transform 400ms ease-out;
+}
+
+.combate .painel__moldura {
+  transition:
+    opacity 300ms ease-in,
+    transform 300ms ease-in;
+}
+
+/* Durante a passagem os feeds sobem acima do painel: são eles a informação. */
+.palco__cena:has(.combate[data-fase='passagem']) .feed--mini {
+  z-index: 8;
+  box-shadow: 0 0 30px rgba(120, 200, 210, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combate[data-fase='passagem'],
+  .combate[data-fase='passagem'] .painel__moldura,
+  .combate .painel__moldura {
+    transition: none;
+  }
+}

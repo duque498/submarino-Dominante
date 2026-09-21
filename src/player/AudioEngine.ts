@@ -59,7 +59,27 @@ const CAMINHOS_SFX: Record<Sfx, string> = {
   pulso: './audio/sfx/pulso.mp3',
   impacto: './audio/sfx/impacto.mp3',
   presenca: './audio/sfx/presenca.mp3',
+  whoosh: './audio/sfx/whoosh.mp3',
+  agua: './audio/sfx/agua.mp3',
 }
+
+/**
+ * Trilha de fundo do combate do 3A.
+ *
+ * Fora do `CAMINHOS_SFX` de propósito: os SFX exigem estar EMBUTIDOS no
+ * audios.js, e a trilha tem 2,4 MB — em base64 viraria 3,2 MB dentro de um
+ * arquivo que já pesa. Ela toca num `<audio>` comum com caminho relativo, que
+ * por `file://` funciona (o que não funciona por lá é `fetch`, e a trilha não
+ * precisa de análise de nível).
+ */
+const CAMINHO_TRILHA = './audio/sfx/Theme battle.mp3'
+
+/** Volume de repouso da trilha. Ela é fundo, não é a cena. */
+const TRILHA_VOLUME = 0.42
+/** Ducking: -9 dB enquanto a IA fala. 10^(-9/20) = 0,355. */
+const TRILHA_DUCK = 0.355
+/** Fade de entrada e de saída. */
+const MS_FADE_TRILHA = 1500
 
 /** Efeitos moram em audio/sfx/ e seguem regra própria — ver preload(). */
 const ehSfx = (url: string): boolean => url.includes('/sfx/')
@@ -127,6 +147,13 @@ export class AudioEngine {
 
   private desbloqueado = false
   private ausentes = new Set<string>()
+
+  /** Trilha: elemento, estado e o laço do fade. */
+  private trilha: HTMLAudioElement | null = null
+  private trilhaOk: boolean | null = null
+  private trilhaAbafada = false
+  private trilhaAlvo = 0
+  private fadeTrilha = 0
 
   // --- ciclo de vida --------------------------------------------------------
 
@@ -415,10 +442,13 @@ export class AudioEngine {
    * `altura` desafina o efeito: 1 = original, 0,5 = uma oitava abaixo. Serve
    * pro ping do sonar ficar mais grave conforme o contato se aproxima.
    */
-  tocarSfx(sfx: Sfx, altura = 1): void {
+  tocarSfx(sfx: Sfx, altura = 1, pan = 0): void {
     const url = CAMINHOS_SFX[sfx]
-    if (this.ausentes.has(url) || !this.embutido(url)) {
-      return this.tocarSfxSintetico(sfx, altura)
+    // Com panorâmico não dá pra usar o `<audio>`: ele não tem para onde
+    // apontar. Quem precisa de lado vai pelo caminho sintético, que passa por
+    // um StereoPannerNode.
+    if (pan !== 0 || this.ausentes.has(url) || !this.embutido(url)) {
+      return this.tocarSfxSintetico(sfx, altura, pan)
     }
 
     const elemento = this.obterElemento(url)
@@ -431,14 +461,14 @@ export class AudioEngine {
     elemento.playbackRate = Math.max(0.25, altura)
     elemento.play().catch(() => {
       this.ausentes.add(url)
-      this.tocarSfxSintetico(sfx, altura)
+      this.tocarSfxSintetico(sfx, altura, pan)
     })
   }
 
-  private tocarSfxSintetico(sfx: Sfx, altura = 1): void {
+  private tocarSfxSintetico(sfx: Sfx, altura = 1, pan = 0): void {
     const contexto = this.obterContexto()
     if (!contexto || !this.saidaSfx) return
-    tocarSintetico(contexto, this.saidaSfx, sfx as NomeSfx, altura)
+    tocarSintetico(contexto, this.saidaSfx, sfx as NomeSfx, altura, pan)
   }
 
   /**
@@ -517,6 +547,121 @@ export class AudioEngine {
     this.ambiente?.abafar(sim)
   }
 
+  // --- trilha ---------------------------------------------------------------
+
+  /**
+   * Prepara a trilha e diz se o arquivo existe.
+   *
+   * Não há trilha sintética de reserva, por decisão: um sintetizador imitando
+   * música de suspense soaria pior que silêncio, e a cena se sustenta sem ela.
+   * O que não pode acontecer é ninguém descobrir a falta antes da feira — daí
+   * a resposta entrar no log de ativação.
+   */
+  async prepararTrilha(): Promise<boolean> {
+    if (this.trilhaOk !== null) return this.trilhaOk
+    const elemento = new Audio(CAMINHO_TRILHA)
+    elemento.loop = true
+    elemento.preload = 'auto'
+    elemento.volume = 0
+    // No DOM, escondido. Um `<audio>` solto toca igual, mas fica invisível pra
+    // quem precisar conferir o que está acontecendo com o som — e o operador
+    // que abre o inspetor no dia da feira merece encontrar o elemento.
+    elemento.hidden = true
+    elemento.dataset.papel = 'trilha'
+    document.body.appendChild(elemento)
+    this.trilhaOk = await new Promise<boolean>((resolve) => {
+      let respondido = false
+      const responder = (ok: boolean) => {
+        if (respondido) return
+        respondido = true
+        resolve(ok)
+      }
+      elemento.addEventListener('canplaythrough', () => responder(true), { once: true })
+      elemento.addEventListener('loadeddata', () => responder(true), { once: true })
+      elemento.addEventListener('error', () => responder(false), { once: true })
+      // Rede de segurança: por file:// o Chrome às vezes não dispara nenhum dos
+      // dois. Sem o teto, a tela de ativação ficaria esperando pra sempre.
+      window.setTimeout(() => responder(elemento.readyState > 0), 4000)
+      elemento.load()
+    })
+    this.trilha = this.trilhaOk ? elemento : null
+    return this.trilhaOk
+  }
+
+  temTrilha(): boolean {
+    return this.trilhaOk === true
+  }
+
+  /** Entra com fade de 1,5 s. Chamar de novo enquanto toca não reinicia. */
+  iniciarTrilha(): void {
+    const trilha = this.trilha
+    if (!trilha) return
+    this.trilhaAlvo = TRILHA_VOLUME
+    if (trilha.paused) {
+      trilha.currentTime = 0
+      void trilha.play().catch(() => {
+        this.trilhaOk = false
+        this.trilha = null
+      })
+    }
+    this.rodarFadeTrilha()
+  }
+
+  /** Sai com fade de 1,5 s, ou de corte quando a cena pede silêncio seco. */
+  pararTrilha(corte = false): void {
+    if (!this.trilha) return
+    this.trilhaAlvo = 0
+    if (corte) {
+      this.trilha.volume = 0
+      this.trilha.pause()
+      if (this.fadeTrilha) {
+        window.clearInterval(this.fadeTrilha)
+        this.fadeTrilha = 0
+      }
+      return
+    }
+    this.rodarFadeTrilha()
+  }
+
+  /** A voz da IA tem prioridade: a trilha recua 9 dB enquanto ela fala. */
+  abafarTrilha(sim: boolean): void {
+    if (this.trilhaAbafada === sim) return
+    this.trilhaAbafada = sim
+    if (this.trilha && !this.trilha.paused) this.rodarFadeTrilha()
+  }
+
+  /**
+   * Um único intervalo cuida do fade e do ducking.
+   *
+   * Os dois mexem no mesmo volume, e com dois laços separados eles brigariam:
+   * o ducking puxaria pra baixo enquanto o fade puxa pra cima, e o resultado
+   * dependeria de qual rodasse por último. Aqui existe um alvo só.
+   */
+  private rodarFadeTrilha(): void {
+    if (this.fadeTrilha) return
+    const passo = 40
+    this.fadeTrilha = window.setInterval(() => {
+      const trilha = this.trilha
+      if (!trilha) {
+        window.clearInterval(this.fadeTrilha)
+        this.fadeTrilha = 0
+        return
+      }
+      const alvo = this.trilhaAlvo * (this.trilhaAbafada ? TRILHA_DUCK : 1)
+      const delta = (TRILHA_VOLUME * passo) / MS_FADE_TRILHA
+      const resta = alvo - trilha.volume
+      trilha.volume = Math.max(
+        0,
+        Math.min(1, Math.abs(resta) <= delta ? alvo : trilha.volume + Math.sign(resta) * delta),
+      )
+      if (trilha.volume === alvo) {
+        if (alvo === 0) trilha.pause()
+        window.clearInterval(this.fadeTrilha)
+        this.fadeTrilha = 0
+      }
+    }, passo)
+  }
+
   /** Estado do AudioContext, pro diagnóstico do operador. */
   estadoDoContexto(): string {
     return this.contexto?.state ?? 'não criado'
@@ -553,6 +698,11 @@ export class AudioEngine {
   }
 
   /** Interrompe voz e efeitos. */
+  /** Encerra a trilha junto com tudo o mais. */
+  pararTudoDeFundo(): void {
+    this.pararTrilha(true)
+  }
+
   stop(): void {
     this.pararVoz()
     if (this.sfxAtual) {

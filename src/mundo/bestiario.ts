@@ -923,77 +923,157 @@ function lulaGigante(p: Pincel) {
  * Nada disto aparece sozinho na câmera: ele só entra por roteiro. Trocar de
  * criatura é trocar a chave no JSON e escrever outra função aqui.
  */
+/** Batida do megalodonte, em Hz. Bicho grande não vibra: 0,4 é uma a cada 2,5 s. */
+const BATIDA_MEGALODONTE = 0.4
+
+/**
+ * Espinha articulada.
+ *
+ * O corpo deixa de ser uma curva fixa com a cauda balançando e passa a ser uma
+ * CADEIA: uma onda viajante que percorre o bicho da cabeça pra cauda, como nos
+ * peixes. É a diferença entre um desenho que abana o rabo e um que nada.
+ *
+ * Duas coisas fazem isso funcionar:
+ *
+ *  - **A onda viaja pra trás** (o `-x * K_ONDA` na fase). A cabeça inicia o
+ *    movimento e a cauda chega depois; invertido, o bicho parece puxado pelo
+ *    rabo.
+ *  - **A amplitude cresce do focinho pra cauda.** Tubarão grande quase não mexe
+ *    a cabeça — o que varre é o terço traseiro. Com amplitude constante, ele
+ *    nada como uma enguia.
+ *
+ * `x` vai de -0,5 (ponta da cauda) a +0,5 (focinho), em frações do comprimento.
+ */
+function espinha(x: number, alt: number, t: number, fase: number): number {
+  const K_ONDA = 7.5
+  const amplitude = Math.max(0, 0.42 - x) ** 1.6 * 2.1
+  return Math.sin(t * Math.PI * 2 * BATIDA_MEGALODONTE + fase - x * K_ONDA) * alt * amplitude
+}
+
+/** Inclinação local da espinha, pra as barbatanas acompanharem o corpo. */
+function anguloDaEspinha(x: number, alt: number, comp: number, t: number, fase: number): number {
+  const d = 0.02
+  const dy = espinha(x + d, alt, t, fase) - espinha(x - d, alt, t, fase)
+  return Math.atan2(dy, d * 2 * comp)
+}
+
+/**
+ * Megalodonte.
+ *
+ * É o tubarão com tudo aumentado, e de propósito: a plateia precisa reconhecer
+ * a forma em meio segundo, num blip de sonar ou numa sombra. Inventar uma
+ * silhueta nova só faria o contorno ficar ilegível.
+ *
+ * O que muda em relação ao tubarão é a PROPORÇÃO, que é onde o tamanho mora: a
+ * cabeça é muito mais larga que o corpo, a dorsal é alta e reta em vez de
+ * curva, e a cauda é assimétrica de tubarão grande — lóbulo de cima bem maior
+ * que o de baixo. Um tubarão desenhado 1,6× maior continua parecendo um
+ * tubarão; um tubarão com a cabeça de um terço do corpo é outro bicho.
+ *
+ * Nada disto aparece sozinho na câmera: ele só entra por roteiro. Trocar de
+ * criatura é trocar a chave no JSON e escrever outra função aqui.
+ */
 function megalodonte(p: Pincel) {
   const { ctx, comp, alt, t, fase } = p
-  // Batida lenta: bicho grande não vibra. Metade da frequência do tubarão.
-  const varre = Math.sin(t * 1.05 + fase)
+
+  /** Ponto na espinha, em px. */
+  const ex = (x: number) => x * comp
+  const ey = (x: number) => espinha(x, alt, t, fase)
+  /** Ponto deslocado perpendicularmente à espinha — é o que dá volume ao corpo. */
+  const lado = (x: number, offset: number): [number, number] => {
+    const ang = anguloDaEspinha(x, alt, comp, t, fase)
+    return [ex(x) - Math.sin(ang) * offset, ey(x) + Math.cos(ang) * offset]
+  }
 
   // cauda assimétrica: o lóbulo superior é quase o dobro do inferior
+  const xCauda = -0.42
+  const yCauda = ey(xCauda)
+  const angCauda = anguloDaEspinha(xCauda, alt, comp, t, fase)
+  ctx.save()
+  ctx.translate(ex(xCauda), yCauda)
+  ctx.rotate(angCauda)
   ctx.beginPath()
-  ctx.moveTo(-comp * 0.3, varre * alt * 0.14)
-  ctx.lineTo(-comp * 0.52 + varre * comp * 0.05, -alt * 2.4)
-  ctx.lineTo(-comp * 0.44 + varre * comp * 0.035, -alt * 0.15)
-  ctx.lineTo(-comp * 0.56 + varre * comp * 0.05, alt * 1.3)
+  ctx.moveTo(comp * 0.12, 0)
+  ctx.lineTo(-comp * 0.1, -alt * 2.4)
+  ctx.lineTo(-comp * 0.02, -alt * 0.15)
+  ctx.lineTo(-comp * 0.14, alt * 1.3)
   ctx.closePath()
   encorpar(p, 0.8)
+  ctx.restore()
 
   // quilha caudal: a aresta lateral que os tubarões grandes têm antes da cauda
   ctx.beginPath()
-  ctx.moveTo(-comp * 0.2, alt * 0.18)
-  ctx.lineTo(-comp * 0.33, alt * 0.38)
-  ctx.lineTo(-comp * 0.33, alt * 0.12)
+  ctx.moveTo(...lado(-0.2, alt * 0.18))
+  ctx.lineTo(...lado(-0.33, alt * 0.38))
+  ctx.lineTo(...lado(-0.33, alt * 0.12))
   ctx.closePath()
   encorpar(p, 0.55)
 
-  // corpo: torpedo grosso, mais alto na frente que o do tubarão comum
+  // corpo: torpedo grosso, montado em cima da espinha
+  const perfilCorpo = (x: number): number => {
+    // Altura do corpo ao longo do comprimento: fina na cauda, cheia no meio,
+    // afilando de novo no focinho.
+    if (x > 0.5 || x < -0.42) return 0
+    const f = (x + 0.42) / 0.92
+    return alt * (Math.sin(Math.PI * f ** 0.78) ** 0.85)
+  }
   ctx.beginPath()
-  ctx.moveTo(comp * 0.5, alt * 0.08)
-  ctx.bezierCurveTo(comp * 0.42, -alt * 0.72, comp * 0.16, -alt * 1.0, -comp * 0.04, -alt * 0.88)
-  ctx.bezierCurveTo(-comp * 0.2, -alt * 0.76, -comp * 0.3, varre * alt * 0.14, -comp * 0.33, varre * alt * 0.16)
-  ctx.bezierCurveTo(-comp * 0.2, alt * 0.78, comp * 0.04, alt * 0.98, comp * 0.28, alt * 0.74)
-  ctx.bezierCurveTo(comp * 0.4, alt * 0.56, comp * 0.5, alt * 0.3, comp * 0.5, alt * 0.08)
+  for (let k = 0; k <= 26; k++) {
+    const x = 0.5 - (k / 26) * 0.92
+    const ponto = lado(x, -perfilCorpo(x))
+    if (k === 0) ctx.moveTo(...ponto)
+    else ctx.lineTo(...ponto)
+  }
+  for (let k = 0; k <= 26; k++) {
+    const x = -0.42 + (k / 26) * 0.92
+    ctx.lineTo(...lado(x, perfilCorpo(x) * 0.94))
+  }
   ctx.closePath()
   encorpar(p)
 
   // dorsal alta e reta, com a ponta levemente pra trás
+  const dorsal = (x: number, y: number) => lado(x, y)
   ctx.beginPath()
-  ctx.moveTo(comp * 0.14, -alt * 0.86)
-  ctx.lineTo(comp * 0.02, -alt * 2.25)
-  ctx.lineTo(-comp * 0.04, -alt * 2.2)
-  ctx.lineTo(-comp * 0.16, -alt * 0.76)
+  ctx.moveTo(...dorsal(0.14, -alt * 0.86))
+  ctx.lineTo(...dorsal(0.02, -alt * 2.25))
+  ctx.lineTo(...dorsal(-0.04, -alt * 2.2))
+  ctx.lineTo(...dorsal(-0.16, -alt * 0.76))
   ctx.closePath()
   encorpar(p, 0.9)
 
   // segunda dorsal, pequena, perto da cauda
   ctx.beginPath()
-  ctx.moveTo(-comp * 0.24, -alt * 0.56)
-  ctx.lineTo(-comp * 0.3, -alt * 0.98)
-  ctx.lineTo(-comp * 0.35, -alt * 0.48)
+  ctx.moveTo(...dorsal(-0.24, -alt * 0.56))
+  ctx.lineTo(...dorsal(-0.3, -alt * 0.98))
+  ctx.lineTo(...dorsal(-0.35, -alt * 0.48))
   ctx.closePath()
   encorpar(p, 0.7)
 
   // peitorais enormes, em foice
   for (const escala of [1, 0.58]) {
     ctx.beginPath()
-    ctx.moveTo(comp * 0.24, alt * 0.6)
-    ctx.quadraticCurveTo(comp * 0.08, alt * 2.05 * escala, -comp * 0.06, alt * 1.95 * escala)
-    ctx.quadraticCurveTo(comp * 0.04, alt * 1.05 * escala, comp * 0.14, alt * 0.5)
+    ctx.moveTo(...lado(0.24, alt * 0.6))
+    ctx.quadraticCurveTo(...lado(0.08, alt * 2.05 * escala), ...lado(-0.06, alt * 1.95 * escala))
+    ctx.quadraticCurveTo(...lado(0.04, alt * 1.05 * escala), ...lado(0.14, alt * 0.5))
     ctx.closePath()
     encorpar(p, 0.62)
   }
 
   // anal
   ctx.beginPath()
-  ctx.moveTo(-comp * 0.2, alt * 0.56)
-  ctx.lineTo(-comp * 0.29, alt * 1.02)
-  ctx.lineTo(-comp * 0.33, alt * 0.46)
+  ctx.moveTo(...lado(-0.2, alt * 0.56))
+  ctx.lineTo(...lado(-0.29, alt * 1.02))
+  ctx.lineTo(...lado(-0.33, alt * 0.46))
   ctx.closePath()
   encorpar(p, 0.6)
 
   contraluz(p, () => {
-    ctx.moveTo(comp * 0.5, alt * 0.08)
-    ctx.bezierCurveTo(comp * 0.42, -alt * 0.72, comp * 0.16, -alt * 1.0, -comp * 0.04, -alt * 0.88)
-    ctx.bezierCurveTo(-comp * 0.2, -alt * 0.76, -comp * 0.3, varre * alt * 0.14, -comp * 0.33, varre * alt * 0.16)
+    for (let k = 0; k <= 22; k++) {
+      const x = 0.5 - (k / 22) * 0.92
+      const ponto = lado(x, -perfilCorpo(x))
+      if (k === 0) ctx.moveTo(...ponto)
+      else ctx.lineTo(...ponto)
+    }
   })
 
   if (p.silhueta) return
@@ -1002,8 +1082,8 @@ function megalodonte(p: Pincel) {
   // de dentes triangulares sugerida — não desenhada um a um, que a essa escala
   // vira serrilha.
   ctx.beginPath()
-  ctx.moveTo(comp * 0.49, -alt * 0.1)
-  ctx.quadraticCurveTo(comp * 0.34, alt * 0.62, comp * 0.06, alt * 0.56)
+  ctx.moveTo(...lado(0.49, -alt * 0.1))
+  ctx.quadraticCurveTo(...lado(0.34, alt * 0.62), ...lado(0.06, alt * 0.56))
   ctx.strokeStyle = `rgba(3, 10, 14, ${p.alpha * 0.85})`
   ctx.lineWidth = Math.max(1.2, comp * 0.014)
   ctx.stroke()
@@ -1012,12 +1092,12 @@ function megalodonte(p: Pincel) {
   const dentes = 7
   for (let i = 0; i < dentes; i++) {
     const f = i / (dentes - 1)
-    const x = comp * (0.47 - f * 0.4)
+    const x = 0.47 - f * 0.4
     const y = alt * (-0.06 + f * 0.62)
     const d = Math.max(1, alt * 0.2 * (1 - f * 0.35))
-    ctx.moveTo(x, y)
-    ctx.lineTo(x - d * 0.5, y + d)
-    ctx.lineTo(x + d * 0.5, y + d * 0.7)
+    ctx.moveTo(...lado(x, y))
+    ctx.lineTo(...lado(x - d * 0.5 / comp, y + d))
+    ctx.lineTo(...lado(x + d * 0.5 / comp, y + d * 0.7))
   }
   ctx.fillStyle = `rgba(226, 250, 252, ${p.alpha * 0.55})`
   ctx.fill()
@@ -1027,13 +1107,14 @@ function megalodonte(p: Pincel) {
   ctx.lineWidth = Math.max(0.8, comp * 0.008)
   ctx.beginPath()
   for (let i = 0; i < 5; i++) {
-    const x = comp * (0.3 - i * 0.045)
-    ctx.moveTo(x, -alt * 0.44)
-    ctx.lineTo(x - comp * 0.012, alt * 0.4)
+    const x = 0.3 - i * 0.045
+    ctx.moveTo(...lado(x, -alt * 0.44))
+    ctx.lineTo(...lado(x - 0.012, alt * 0.4))
   }
   ctx.stroke()
 
-  olho(p, comp * 0.38, -alt * 0.46, Math.max(1.2, alt * 0.12))
+  const [ox, oy] = lado(0.38, -alt * 0.46)
+  olho(p, ox, oy, Math.max(1.2, alt * 0.12))
 }
 
 // --- catálogo ---------------------------------------------------------------

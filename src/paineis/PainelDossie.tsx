@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { especiePorChave } from '../mundo/bestiario'
+import { imagemDoDossie } from '../formas/dossie'
 import fichas from '../roteiros/fichas.json'
 
 /**
@@ -16,7 +17,16 @@ import fichas from '../roteiros/fichas.json'
  * coisa errada num painel que a plateia vai ler como fonte.
  */
 
-type Ficha = { titulo: string; dados: Record<string, string> }
+type Ficha = {
+  titulo: string
+  dados: Record<string, string>
+  /**
+   * Crédito da imagem: autor, licença e fonte. Obrigatório quando existe
+   * imagem — é condição das licenças CC e, mais do que isso, é o que a gente
+   * está ensinando a fazer numa feira de ciências.
+   */
+  credito?: string
+}
 const FICHAS = fichas as Record<string, Ficha>
 
 /** Quanto a silhueta leva pra se desenhar inteira. */
@@ -81,6 +91,10 @@ export function PainelDossie({ argumento }: Props) {
     const desenhar = (agora: number) => {
       quadro = requestAnimationFrame(desenhar)
       const avanco = Math.min(1, (agora - nascimento) / MS_TRACO)
+      // Relógio vivo: a silhueta NADA, com a mesma batida de 0,4 Hz da câmera.
+      // Um desenho parado num painel que diz "reconstrução dos sensores" lê
+      // como foto de arquivo; nadando, lê como o bicho que está lá fora.
+      const relogio = (agora - nascimento) / 1000
       ctx.clearRect(0, 0, L, A)
 
       // O bicho é desenhado pela MESMA função do bestiário que a câmera usa, e
@@ -94,7 +108,7 @@ export function PainelDossie({ argumento }: Props) {
       // não a do corpo.
       const comp = Math.min(L * 0.94, A / 0.82)
       const alt = comp * especie.proporcao
-      const pose = { t: 0.8, fase: 0.4, luz: 1, farol: 0, alpha: 1, silhueta: true }
+      const pose = { t: relogio, fase: 0.4, luz: 1, farol: 0, alpha: 1, silhueta: true }
 
       // Revelação da esquerda pra direita, como plotter: é o que faz o desenho
       // "acontecer" em vez de aparecer pronto.
@@ -129,7 +143,8 @@ export function PainelDossie({ argumento }: Props) {
       ctx.restore()
 
       // A ponta do traço: uma linha vertical brilhante onde o desenho está
-      // sendo feito agora.
+      // sendo feito agora. Some quando o desenho fecha, e aí o que continua é
+      // só a natação.
       if (avanco < 1) {
         const x = L * avanco
         const g = ctx.createLinearGradient(x - 14, 0, x, 0)
@@ -137,9 +152,6 @@ export function PainelDossie({ argumento }: Props) {
         g.addColorStop(1, 'rgba(255, 220, 150, 0.85)')
         ctx.fillStyle = g
         ctx.fillRect(x - 14, 0, 14, A)
-      } else {
-        cancelAnimationFrame(quadro)
-        quadro = 0
       }
     }
 
@@ -154,11 +166,21 @@ export function PainelDossie({ argumento }: Props) {
     return <p className="painel__vazio">sem dossiê para "{nome || '—'}".</p>
   }
 
+  const imagem = imagemDoDossie(nome)
+
   return (
-    <div className="dossie">
-      <div className="dossie__silhueta">
-        <canvas ref={refCanvas} className="dossie__canvas" />
-        <span className="dossie__carimbo">estimativa dos sensores</span>
+    <div className={imagem ? 'dossie dossie--com-imagem' : 'dossie'}>
+      <div className="dossie__visual">
+        {imagem && (
+          <figure className="dossie__foto">
+            <img src={imagem} alt="" />
+            <figcaption className="dossie__rotulo-foto">reconstrução dos sensores</figcaption>
+          </figure>
+        )}
+        <div className="dossie__silhueta">
+          <canvas ref={refCanvas} className="dossie__canvas" />
+          <span className="dossie__carimbo">estimativa dos sensores</span>
+        </div>
       </div>
       <div className="dossie__dados">
         <h3 className="dossie__titulo">{ficha.titulo}</h3>
@@ -173,6 +195,7 @@ export function PainelDossie({ argumento }: Props) {
             </div>
           ))}
         </dl>
+        {imagem && ficha.credito && <p className="dossie__credito">{ficha.credito}</p>}
       </div>
     </div>
   )

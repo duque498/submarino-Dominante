@@ -280,6 +280,24 @@ mundo, porque precisa aparecer também por cima da estática — com o visor
 quebrado não há imagem, mas o vidro continua na frente da lente. Cada câmera
 tem a sua fratura, sempre a mesma (gerador com semente fixa).
 
+### A trilha
+
+Uma camada de música à parte no `AudioEngine`, só pro combate do 3A: entra com
+fade de 1,5 s na primeira rodada, **recua 9 dB enquanto a IA fala** (mesma
+regra do ambiente) e **corta seco** no fake-out — fade é despedida, e ali o que
+se quer é o silêncio chegando de repente.
+
+O arquivo fica em `public/audio/sfx/Theme battle.mp3` e **não é embutido no
+`audios.js`**: são alguns MB que em base64 crescem mais um terço, dentro de um
+arquivo que o Chromebook já carrega inteiro na memória. Ela toca num `<audio>`
+comum com caminho relativo, que por `file://` funciona — o que não funciona por
+lá é `fetch`, e a trilha não precisa de análise de nível.
+
+> **Não há trilha sintética de reserva.** Um sintetizador imitando música de
+> suspense soaria pior que silêncio. O que não pode é ninguém descobrir a falta
+> no dia: o log de ativação diz `Trilha de combate: carregada` ou
+> `WARN: trilha de combate ausente — o combate roda sem música`.
+
 ### Combate acústico
 
 Tipo de cena novo: `combate`. A plateia lê o setor no sonar de papelão e o
@@ -319,7 +337,33 @@ Mostrar o megalodonte resolveria a tensão e roubaria o trabalho deles.
 
 Teclas: `1` `2` `3` respondem, `Espaço` corta a fala, e **`→` força a rodada a
 seguir** (válvula de segurança — não pula a cena, que perderia o fim). `M`, `N`
-e `O` ficam desligados: o orbe não é o assunto ali.
+e `O` ficam desligados: o orbe não é o assunto ali. **O disparo é imediato**: o
+pulso sai no mesmo quadro da tecla, sem contagem e sem carregamento — quem
+apertou precisa ouvir que apertou, ou a tecla parece não ter funcionado.
+
+Quatro coisas acontecem em volta das três perguntas:
+
+1. **Imagem acústica progressiva.** Cada acerto compra um terço da silhueta,
+   em pontos, no centro do mostrador — o sonar não *vê*, ele acumula retornos.
+   No terceiro a imagem fecha e pulsa uma vez. É a recompensa por acertar, e é
+   o que transforma três perguntas iguais numa sequência com progressão.
+2. **Apagão no erro.** A tela cai por 400 ms, a luz de emergência pisca três
+   vezes em vermelho e o HUD volta com glitch. É curto de propósito: o
+   suficiente pra assustar, curto o bastante pra ninguém achar que o projetor
+   desligou.
+3. **Passagem entre rodadas.** Por 1,5 s o painel de combate esmaece e a tela
+   é só as duas câmeras cegas — com a estática se organizando na forma dele e
+   voltando a ser ruído. **Nunca nítida**: nitidez seria a IA recuperando a
+   visão, e a cena inteira depende de ela não recuperar. O truque é desenhar a
+   *máscara* do bicho e, dentro dela, dar outra densidade ao ruído.
+4. **Fake-out.** Depois do terceiro acerto a trilha corta, dois segundos de
+   silêncio, um retorno solto aparece na borda oposta e some. Só então vem o
+   `neutralizado`.
+
+Os sons do combate têm **lado**: o whoosh grave de cada aparição é
+panoramizado pelo setor do contato (proa no centro, os outros abrindo pros
+lados), com a esteira de água 420 ms atrás. É o que liga o que a plateia ouve
+ao que ela lê no sonar de papelão.
 
 > **Nunca existe derrota que trave a apresentação.** Se o casco zerar antes do
 > contato, a IA diz a fala `critico` e a subida acontece do mesmo jeito. Depois
@@ -332,7 +376,18 @@ e `O` ficam desligados: o orbe não é o assunto ali.
 Painel `dossie <chave>`: a variante do `ficha` com estética de arquivo
 classificado — carimbo `ESTIMATIVA DOS SENSORES` piscando, silhueta se
 desenhando da esquerda pra direita em 600 ms (como plotter) e os dados entrando
-linha a linha, no ritmo da fala.
+linha a linha, no ritmo da fala. Depois de fechar o traço, a silhueta **continua
+nadando**, com a mesma batida da câmera.
+
+Quando existe uma imagem de reconstrução em `src/formas/dossie/<chave>.jpg`,
+ela entra acima da silhueta com o rótulo `RECONSTRUÇÃO DOS SENSORES`, e o
+**crédito é obrigatório** — vem do campo `credito` da ficha e aparece no rodapé
+do painel. É condição das licenças CC e, mais do que isso, é o que estamos
+ensinando a fazer numa feira de ciências.
+
+A pasta pode estar **vazia**: o carregamento usa `import.meta.glob`, e não um
+`import` direto, justamente pra o build não quebrar enquanto a imagem não
+chega. Sem ela, o painel mostra só a silhueta e funciona igual.
 
 **Os dados são reais e as estimativas estão marcadas como estimativas.** Um
 bicho extinto tem número incerto, e inventar precisão num painel que a plateia
@@ -373,11 +428,18 @@ declara `"ameacas": false` pra voltar à superfície limpa.
 ### Efeitos novos
 
 `vidro` (o estalo curto com cauda de caquinhos), `pulso` (varredura descendente
-saturada — a arma), `impacto` (transiente + o casco respondendo grave) e
-`presenca`: o único efeito longo do projeto, 3,4 s, e o único sem transiente
-nenhum. Ele não *acontece*, ele se aproxima — duas fundamentais a 27 e 28,6 Hz
-batendo a ~1,6 Hz, com o filtro abrindo devagar. Nada nele pode assustar
-sozinho: o susto é o `impacto` no fim da cena, e espera que grita perde o corte.
+saturada — a arma), `impacto` (transiente + o casco respondendo grave),
+`whoosh` (a massa de água que ele empurra, com Doppler barato) e `agua` (a
+esteira que fica depois).
+
+E `presenca`, o do olho: **infrassom de verdade**, 28 Hz de fundamental, abaixo
+do que a maioria das caixas reproduz como nota. O que chega à plateia não é um
+tom — são os harmônicos e a batida entre a fundamental e uma vizinha a 29,1 Hz.
+O waveshaper suave nos primeiros 2 s é o que impede o infrassom de sumir: sem
+distorção, 28 Hz num alto-falante pequeno é silêncio; saturando, a fundamental
+vaza pros harmônicos e o ouvido reconstrói o grave que a caixa não emite (é o
+mesmo princípio da *missing fundamental*). Nada nele pode assustar sozinho: o
+susto é o `impacto` no fim da cena, e espera que grita perde o corte.
 
 ### Tela final
 
@@ -901,7 +963,7 @@ Campos comuns a todas:
   (espera o operador apertar `→`).
 - `sfx` — efeito sonoro opcional: `"sonar"`, `"alarme"`, `"estatica"`, `"ok"`,
   `"pressurizacao"`, `"bipe-timer"`, `"casco"`, `"vidro"`, `"pulso"`,
-  `"impacto"` ou `"presenca"`.
+  `"impacto"`, `"presenca"`, `"whoosh"` ou `"agua"`.
 - `log` — lista opcional de linhas fictícias pro painel da direita, exibidas
   enquanto essa cena estiver no ar. Ex.: `["Carregando setor: BIOLOGIA",
   "Consultando catálogo de espécies..."]`.
@@ -1105,7 +1167,7 @@ só os nós que o próprio efeito criou, nunca `replaceChildren()`.
 ## Efeitos sonoros
 
 Os SFX (`sonar`, `alarme`, `estatica`, `ok`, `pressurizacao`, `bipe-timer`,
-`casco`, `vidro`, `pulso`, `impacto`, `presenca`)
+`casco`, `vidro`, `pulso`, `impacto`, `presenca`, `whoosh`, `agua`)
 são **sintetizados em código** com a Web Audio API, em `src/audio/sfx.ts`. Não
 dá pra depender de o professor baixar arquivos do freesound na véspera da
 feira: o projeto roda completo sem nenhum mp3 de efeito.
@@ -1123,7 +1185,7 @@ somar acima de 1 e distorcer.
 A primeira tecla (a da ativação) já dá um **bipe duplo** de confirmação. Se
 esse bipe não sai, o problema é o áudio da máquina, não o app.
 
-Pra um teste completo, `/` e depois `som`: toca os onze efeitos em sequência e
+Pra um teste completo, `/` e depois `som`: toca os efeitos em sequência e
 escreve no log o estado do `AudioContext`. `running` significa que o navegador
 liberou o áudio.
 
@@ -1141,7 +1203,7 @@ src/
   paineis/           sonar, status, ficha, mapa, traco, espectro e o registro
   diretor/           Diretor de cena, gatilhos semânticos, mergulho e coluna d'água
   mundo/             o oceano procedural: perfil, motor, bestiário, Feed e Rachadura
-  formas/            registro das silhuetas, amostragem e primitivas
+  formas/            registro das silhuetas, amostragem, primitivas e dossie/
   roteiros/          tipos.ts, validar.ts, fichas.json, gatilhos.json e os JSONs
 scripts/
   gerar_audios.py    voz da IA: kokoro/edge/espeak + ffmpeg + tempos.json

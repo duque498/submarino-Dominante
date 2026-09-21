@@ -30,6 +30,11 @@ RAIZ = Path(__file__).resolve().parent.parent
 PASTA_AUDIO = RAIZ / "public" / "audio"
 SAIDA = RAIZ / "public" / "audios.js"
 PASTAS = ("2a", "2b", "3a", "sfx", "sistema")
+# A trilha NÃO entra no audios.js. Ela tem alguns MB e em base64 cresce mais um
+# terço — dentro de um arquivo que o Chromebook já carrega inteiro na memória.
+# Ela toca num <audio> comum com caminho relativo, que por file:// funciona; o
+# que não funciona por lá é fetch, e a trilha não precisa de análise de nível.
+FORA_DO_EMBUTIDO = ("Theme battle",)
 # Acima disso o Chromebook começa a sofrer pra segurar tudo em memória.
 AVISO_TAMANHO_MB = 40
 
@@ -46,6 +51,8 @@ def main() -> int:
         if not pasta.is_dir():
             continue
         for mp3 in sorted(pasta.glob("*.mp3")):
+            if mp3.stem in FORA_DO_EMBUTIDO:
+                continue
             chave = f"{nome}/{mp3.stem}"
             dados = base64.b64encode(mp3.read_bytes()).decode("ascii")
             entradas[chave] = f"data:audio/mpeg;base64,{dados}"

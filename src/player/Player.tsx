@@ -178,6 +178,16 @@ const MS_ENTRE_RODADAS = 1200
 const MS_LOG_ATE_PARAR = 7000
 /** Estatica depois da rachadura, antes de a IA voltar a falar. */
 const MS_ESTATICA_APOS_OLHO = 2200
+/** Apagao depois de um impacto: preto, luz de emergencia, volta com glitch. */
+const MS_APAGAO = 400
+/** A silhueta cruzando a estatica dos feeds, entre rodadas. */
+const MS_PASSAGEM = 1500
+/** Silencio depois do ultimo acerto, antes do retorno solto. */
+const MS_FAKEOUT_SILENCIO = 2000
+/** O retorno solto na borda ate a cena virar. */
+const MS_FAKEOUT_RETORNO = 1800
+/** O HUD se firmando depois que a energia volta. */
+const MS_GLITCH_VOLTA = 520
 
 type FasePane = 'caindo' | 'congelado' | 'voltando'
 type EstadoPane = { fase: FasePane; quedas: Queda[] }
@@ -252,6 +262,10 @@ export function Player({ roteiro, engine }: Props) {
   const [impacto, setImpacto] = useState(false)
   /** O olho está no facho? Falso já no quadro da rachadura. */
   const [olhoVisivel, setOlhoVisivel] = useState(false)
+  /** Apagão do combate: a tela cai e a luz de emergência pisca. */
+  const [apagao, setApagao] = useState(false)
+  /** Logo depois do apagão: o HUD reacende com glitch por um instante. */
+  const [voltandoDoApagao, setVoltandoDoApagao] = useState(false)
   /** Preenchido pelo laço da cena do olho; chamado pelo componente. */
   const refQuebrarOlho = useRef<(() => void) | null>(null)
   /**
@@ -606,6 +620,21 @@ export function Player({ roteiro, engine }: Props) {
   )
 
   /**
+   * O HUD reacendendo depois do apagão.
+   *
+   * Separado do apagão em si porque é o DEPOIS: a energia volta e a tela leva
+   * um instante pra se firmar. Sem esse rastro, o apagão termina como se
+   * alguém tivesse religado um interruptor — limpo demais pra um casco que
+   * acabou de levar uma pancada.
+   */
+  useEffect(() => {
+    if (apagao) return
+    setVoltandoDoApagao(true)
+    const id = window.setTimeout(() => setVoltandoDoApagao(false), MS_GLITCH_VOLTA)
+    return () => window.clearTimeout(id)
+  }, [apagao])
+
+  /**
    * Visor e ameaças seguem a cena — e HERDAM quando o campo não vem.
    *
    * É o que permite escrever `"visor": "rachado"` uma vez, na cena em que o
@@ -745,7 +774,19 @@ export function Player({ roteiro, engine }: Props) {
     }
     const roteiroCombate: CenaCombate = cena
     let cancelado = false
-    const fatia = 1 / roteiroCombate.rodadas.length
+    const totalRodadas = roteiroCombate.rodadas.length
+    const setores = roteiroCombate.setores.length
+    /**
+     * Panorâmico do setor.
+     *
+     * Setor 0 é a proa e fica no centro (pan 0); os outros abrem pros lados
+     * pelo ângulo em que estão no mostrador. É o que liga o que a plateia
+     * ouve ao que ela lê no sonar de papelão.
+     */
+    const panDoSetor = (i: number) => {
+      if (setores < 2) return 0
+      return Math.round(Math.sin((i / setores) * Math.PI * 2) * 100) / 100
+    }
 
     const esperarSetor = (segundos: number) =>
       new Promise<number | 'forcado' | null>((resolve) => {
@@ -769,23 +810,48 @@ export function Player({ roteiro, engine }: Props) {
 
     const correr = async () => {
       let casco = 1
-      let contato = 1
+      /**
+       * Acertos como INTEIRO, e a barra derivada dele.
+       *
+       * Era um float subtraindo 1/3 três vezes, e três terços não dão um:
+       * sobrava 2,2e-16. A barra mostrava 0% (arredondada) e o código via
+       * `contato > 0` — o fake-out nunca disparava e a cena terminava seca,
+       * sem ninguém entender por quê. Contagem de acertos não tem resto.
+       */
+      let acertos = 0
+      const contatoDe = (n: number) => Math.max(0, 1 - n / totalRodadas)
+      let revelado = 0
+      let ultimoSetor = 0
+
+      // A trilha entra aqui e não na cena `contato`: o combate é o trecho em
+      // que ela precisa estar, e começar junto com a primeira rodada é o que
+      // faz o corte do fake-out significar alguma coisa.
+      engine.iniciarTrilha()
 
       for (let i = 0; i < roteiroCombate.rodadas.length; i++) {
         if (cancelado) return
         const rodada = roteiroCombate.rodadas[i]
         const setor =
           rodada.setor ?? Math.floor(Math.random() * roteiroCombate.setores.length)
+        ultimoSetor = setor
 
-        setCombate({
+        setCombate((e) => ({
           rodada: i,
           fase: 'anunciando',
           setor,
           marcado: null,
           casco,
-          contato,
+          contato: contatoDe(acertos),
+          revelado: e?.revelado ?? 0,
           desde: performance.now(),
-        })
+        }))
+
+        // O bicho cruzando o setor: whoosh panoramizado e a esteira de água
+        // logo atrás. Os dois juntos dão o volume que um só não dá.
+        engine.tocarSfx('whoosh', 1, panDoSetor(setor))
+        window.setTimeout(() => {
+          if (!cancelado) engine.tocarSfx('agua', 1, panDoSetor(setor) * 0.6)
+        }, 420)
 
         // 1) a IA anuncia a rodada
         const naTela = await falarAvulso(
@@ -810,8 +876,12 @@ export function Player({ roteiro, engine }: Props) {
 
         const acertou = resposta === setor
         if (acertou) {
-          contato = Math.max(0, contato - fatia)
-          engine.tocarSfx('pulso')
+          acertos += 1
+          revelado += 1
+          // Disparo IMEDIATO: o som sai no mesmo quadro da tecla. Nenhuma
+          // contagem, nenhum carregamento — quem apertou precisa ouvir que
+          // apertou, ou a tecla parece não ter funcionado.
+          engine.tocarSfx('pulso', 1, panDoSetor(setor))
           reagir(true)
         } else {
           casco = Math.max(0, casco - DANO_POR_IMPACTO)
@@ -820,6 +890,12 @@ export function Player({ roteiro, engine }: Props) {
           setImpacto(true)
           window.setTimeout(() => setImpacto(false), 900)
           reagir(false)
+          // Apagão: a tela cai por 400 ms e a luz de emergência pisca três
+          // vezes. O HUD volta com glitch — foi o baque que derrubou a energia.
+          setApagao(true)
+          window.setTimeout(() => {
+            if (!cancelado) setApagao(false)
+          }, MS_APAGAO)
         }
 
         setCombate((e) =>
@@ -829,7 +905,8 @@ export function Player({ roteiro, engine }: Props) {
                 fase: acertou ? 'acerto' : 'erro',
                 marcado: typeof resposta === 'number' ? resposta : null,
                 casco,
-                contato,
+                contato: contatoDe(acertos),
+                revelado,
                 desde: performance.now(),
               }
             : e,
@@ -846,7 +923,15 @@ export function Player({ roteiro, engine }: Props) {
         await esperar(naTelaResultado + MS_ENTRE_RODADAS)
         if (cancelado) return
 
-        if (contato <= 0) break
+        if (acertos >= totalRodadas) break
+
+        // Passagem entre rodadas: a silhueta cruza a estática dos feeds. Nunca
+        // nítida — é o que ele deixa ver entre uma varredura e outra.
+        setCombate((e) => (e ? { ...e, fase: 'passagem', desde: performance.now() } : e))
+        motor.passagem(roteiroCombate.criatura)
+        engine.tocarSfx('whoosh', 0.8, -panDoSetor(setor))
+        await esperar(MS_PASSAGEM)
+        if (cancelado) return
 
         // Casco no chão: a IA sobe forçada. Isto não é derrota — é outro jeito
         // de a cena acabar. Nunca existe estado que trave a apresentação.
@@ -864,6 +949,22 @@ export function Player({ roteiro, engine }: Props) {
       }
 
       if (cancelado) return
+
+      // Fake-out. A trilha CORTA — sem fade, porque fade é despedida e aqui o
+      // que se quer é o silêncio chegando de repente. Dois segundos parados, e
+      // então um retorno solto na borda que some sozinho.
+      if (acertos >= totalRodadas) {
+        engine.pararTrilha(true)
+        setCombate((e) => (e ? { ...e, fase: 'fakeout', desde: performance.now() } : e))
+        await esperar(MS_FAKEOUT_SILENCIO)
+        if (cancelado) return
+        engine.tocarSfx('sonar', 0.6, panDoSetor((ultimoSetor + 1) % setores))
+        await esperar(MS_FAKEOUT_RETORNO)
+        if (cancelado) return
+      } else {
+        engine.pararTrilha()
+      }
+
       setCombate((e) => (e ? { ...e, fase: 'fim' } : e))
       avancar()
     }
@@ -878,6 +979,9 @@ export function Player({ roteiro, engine }: Props) {
       cancelado = true
       refRespostaCombate.current?.(null)
       refRespostaCombate.current = null
+      engine.pararTrilha(true)
+      motor.pararPassagem()
+      setApagao(false)
     }
   }, [cena, engine, falarAvulso, reagir, avancar])
 
@@ -1417,7 +1521,7 @@ export function Player({ roteiro, engine }: Props) {
       }
     })
     const carregados = urls.filter((url) => engine.camadaDe(url) === 'A').length
-    setRajadaLog([
+    const base = [
       `Voz de bordo: ${carregados}/${urls.length} arquivos carregados`,
       carregados > 0
         ? `Sincronismo de legenda: tempos reais (${engine.contarTempos(roteiro.turma)} trechos)`
@@ -1426,7 +1530,22 @@ export function Player({ roteiro, engine }: Props) {
         ? `Narração: voz do sistema — ${engine.descricaoDaVoz()}`
         : 'Narração: gravação de bordo (mp3)',
       `Saída de áudio: ${engine.estadoDoContexto()}`,
-    ])
+    ]
+    setRajadaLog(base)
+
+    // A trilha é a única coisa do áudio que não tem plano B: se o arquivo não
+    // viajou junto, a cena roda em silêncio. Por isso a resposta entra no log
+    // de ativação, que é onde o operador olha antes de a plateia sentar.
+    if (roteiro.turma === '3A') {
+      void engine.prepararTrilha().then((ok) => {
+        setRajadaLog([
+          ...base,
+          ok
+            ? 'Trilha de combate: carregada'
+            : 'WARN: trilha de combate ausente — o combate roda sem música',
+        ])
+      })
+    }
   }, [engine, roteiro])
 
   // O ambiente sonoro segue a mesma profundidade das câmeras.
@@ -1438,6 +1557,8 @@ export function Player({ roteiro, engine }: Props) {
   // A voz da IA tem prioridade sobre o mar.
   useEffect(() => {
     engine.abafarAmbiente(falando || fala !== null)
+    // A voz da IA tem prioridade sobre a trilha também: -9 dB enquanto ela fala.
+    engine.abafarTrilha(falando || fala !== null)
   }, [engine, falando, fala])
 
   // O mundo das câmeras roda enquanto o player estiver montado, mesmo que
@@ -1561,6 +1682,7 @@ export function Player({ roteiro, engine }: Props) {
       inclinado={faseMergulho === 'inclinacao'}
       mergulhando={mergulho !== null}
       impacto={impacto}
+      voltandoDoApagao={voltandoDoApagao}
       rodapeDireita={
         pane
           ? 'pane · R pra reiniciar'
@@ -1694,6 +1816,7 @@ export function Player({ roteiro, engine }: Props) {
           congelado={pane?.fase === 'congelado' || logParado}
         />
       </div>
+      {apagao && <div className="apagao" />}
       {ajudaVisivel && <Ajuda cena={cena.id} forma={formaAtual} escala={escala} />}
       {depurarDiretor && <DepuracaoDiretor diretor={diretor} cena={cena.id} />}
     </Hud>

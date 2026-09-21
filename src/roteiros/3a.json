@@ -279,7 +279,6 @@
       "id": "combate",
       "tipo": "combate",
       "avanco": "manual",
-      "cameras": false,
       "criatura": "megalodonte",
       "setores": [
         "PROA",

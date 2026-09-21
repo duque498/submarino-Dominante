@@ -39,6 +39,8 @@ const INTERVALO_FALHA = [30000, 90000] as const
 const DURACAO_FALHA = 400
 /** Quanto o visor remendado leva pra parar de chuviscar, na subida. */
 const MS_LIMPANDO_VISOR = 9000
+/** Duração da passagem da silhueta pela estática, entre rodadas do combate. */
+const MS_PASSAGEM_FEED = 1500
 
 const sorteio = (min: number, max: number) => min + Math.random() * (max - min)
 
@@ -173,6 +175,39 @@ export class MotorMundo {
    * entender o que está acontecendo. Ligada por cena, não por profundidade.
    */
   agitacao = 0
+
+  /**
+   * Passagem: a silhueta distorcendo a ESTÁTICA, entre rodadas do combate.
+   *
+   * Não é o bicho aparecendo — as câmeras estão destruídas e não há imagem
+   * nenhuma. O que acontece é que o ruído se organiza por um instante na forma
+   * dele e volta a ser ruído. É o mais perto de "ver" que a cena permite, e é
+   * de propósito que nunca fique nítido: nitidez seria a IA recuperando a
+   * visão, e a cena inteira depende de ela não recuperar.
+   */
+  private passagemCriatura: string | null = null
+  private passagemInicio = 0
+
+  passagem(chave: string) {
+    if (!especiePorChave(chave)) return
+    this.passagemCriatura = chave
+    this.passagemInicio = performance.now()
+  }
+
+  pararPassagem() {
+    this.passagemCriatura = null
+  }
+
+  /** Quanto da passagem já correu, 0 a 1. Fora dela, null. */
+  private avancoPassagem(agora: number): number | null {
+    if (!this.passagemCriatura) return null
+    const f = (agora - this.passagemInicio) / MS_PASSAGEM_FEED
+    if (f >= 1) {
+      this.passagemCriatura = null
+      return null
+    }
+    return f
+  }
 
   /**
    * Manda um vulto atravessar o facho, agora.
@@ -526,6 +561,8 @@ export class MotorMundo {
 
     if (estatica) {
       this.desenharEstatica(ctx, L, A)
+      const passagem = this.avancoPassagem(agora)
+      if (passagem !== null) this.desenharPassagem(ctx, L, A, passagem, camera)
       registro.aoDesenhar?.({ alvo: null, profundidade: this.profundidadeAtual })
       return
     }
@@ -582,6 +619,60 @@ export class MotorMundo {
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalAlpha = 1
     registro.aoDesenhar?.({ alvo, profundidade: this.profundidadeAtual })
+  }
+
+  /**
+   * A silhueta organizando o ruído.
+   *
+   * O truque é não desenhar o bicho: desenha-se a MÁSCARA dele e, dentro dela,
+   * a estática ganha outra densidade e outro brilho. O olho reconhece a forma
+   * pela diferença de textura, não por um contorno — e é isso que deixa a
+   * imagem ambígua o tempo todo, sem nunca virar um desenho.
+   */
+  private desenharPassagem(
+    ctx: CanvasRenderingContext2D,
+    L: number,
+    A: number,
+    avanco: number,
+    camera: OpcoesCamera,
+  ) {
+    const especie = especiePorChave(this.passagemCriatura ?? '')
+    if (!especie) return
+    // Entra e sai: sem o seno ela apareceria e sumiria em corte.
+    const forca = Math.sin(avanco * Math.PI) ** 0.7
+    if (forca < 0.02) return
+
+    ctx.save()
+    // Atravessa o quadro no tempo da passagem.
+    const x = L * (camera.espelhado ? 1.35 - avanco * 1.7 : -0.35 + avanco * 1.7)
+    ctx.translate(x, A * 0.52)
+    if (camera.espelhado) ctx.scale(-1, 1)
+    const comp = L * 0.95
+    ctx.beginPath()
+    especie.desenhar({
+      ctx,
+      comp,
+      alt: comp * especie.proporcao,
+      t: this.t,
+      fase: 0.4,
+      luz: 0,
+      farol: 0,
+      alpha: 1,
+      silhueta: true,
+    })
+    ctx.restore()
+
+    // A máscara acabou de ser pintada em preto por cima da estática. Agora o
+    // ruído volta SÓ ali dentro, mais denso e mais claro.
+    ctx.save()
+    ctx.globalCompositeOperation = 'source-atop'
+    const linhas = Math.round(70 * forca)
+    for (let i = 0; i < linhas; i++) {
+      const y = Math.random() * A
+      ctx.fillStyle = `rgba(150, 220, 230, ${Math.random() * 0.5 * forca})`
+      ctx.fillRect(Math.random() * L - L * 0.2, y, L * (0.2 + Math.random() * 0.8), Math.random() * 3)
+    }
+    ctx.restore()
   }
 
   /** Chuvisco por cima da imagem: interferência, não perda total de sinal. */

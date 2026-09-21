@@ -14,6 +14,8 @@ type Props = {
   mergulhando?: boolean
   /** Impacto no casco durante o combate: treme a tela e pisca a borda. */
   impacto?: boolean
+  /** A energia acabou de voltar: o HUD se firma com glitch. */
+  voltandoDoApagao?: boolean
   children: ReactNode
 }
 
@@ -26,6 +28,7 @@ export function Hud({
   inclinado = false,
   mergulhando = false,
   impacto = false,
+  voltandoDoApagao = false,
   children,
 }: Props) {
   const refMetros = useRef<HTMLElement>(null)
@@ -46,7 +49,8 @@ export function Hud({
         'hud' +
         (mergulhando ? ' hud--mergulhando' : '') +
         (inclinado ? ' hud--inclinado' : '') +
-        (impacto ? ' hud--impacto' : '')
+        (impacto ? ' hud--impacto' : '') +
+        (voltandoDoApagao ? ' hud--religando' : '')
       }
     >
       <div className="hud__moldura">

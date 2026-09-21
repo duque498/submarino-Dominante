@@ -17,6 +17,8 @@ export type Sfx =
   | 'pulso'
   | 'impacto'
   | 'presenca'
+  | 'whoosh'
+  | 'agua'
 
 /**
  * Estado do visor externo. Nasce `"ok"`, e o 3A o quebra: a pressao da zona

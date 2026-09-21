@@ -20,3 +20,10 @@ public/audios.js
 # gerado por scripts/embutir_audios.py (camada A) — pesa dezenas de MB
 public/audios.js
 scripts/__pycache__/
+
+# Trilha do combate do 3A. O arquivo fica de fora do repositório de propósito:
+# a gravação usada hoje é obra de terceiro com direitos, e commitar mp3 assim
+# transforma o repositório num ponto de distribuição. Quem apresenta copia o
+# arquivo pro Chromebook junto do index.html. Sem ele, o combate roda em
+# silêncio e o log de ativação avisa.
+public/audio/sfx/Theme battle.mp3
