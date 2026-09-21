@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { quadroSeguro } from '../ui/falhas'
 
 /**
  * Como o sonar mede distância.
@@ -89,7 +90,7 @@ export function PainelEco({ aoFechar, aoPing }: Props) {
 
     let quadro = 0
     const desenhar = (agora: number) => {
-      quadro = requestAnimationFrame(desenhar)
+      quadro = requestAnimationFrame(protegido)
       ctx.clearRect(0, 0, L, A)
 
       const margem = L * 0.1
@@ -185,7 +186,8 @@ export function PainelEco({ aoFechar, aoPing }: Props) {
       }
     }
 
-    quadro = requestAnimationFrame(desenhar)
+    const protegido = quadroSeguro('painel eco', desenhar)
+    quadro = requestAnimationFrame(protegido)
     return () => {
       cancelAnimationFrame(quadro)
       observador.disconnect()

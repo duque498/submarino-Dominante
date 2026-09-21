@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { quadroSeguro } from '../ui/falhas'
 
 /**
  * O olho.
@@ -189,7 +190,7 @@ export function Olho({ duracao, aoQuebrar }: Props) {
     let quadro = 0
 
     const desenhar = (agora: number) => {
-      quadro = requestAnimationFrame(desenhar)
+      quadro = requestAnimationFrame(protegido)
       const t = agora - nascimento
       const seg = t / 1000
 
@@ -391,7 +392,8 @@ export function Olho({ duracao, aoQuebrar }: Props) {
       ctx.fillRect(0, 0, L, A)
     }
 
-    quadro = requestAnimationFrame(desenhar)
+    const protegido = quadroSeguro('olho', desenhar)
+    quadro = requestAnimationFrame(protegido)
     return () => {
       cancelAnimationFrame(quadro)
       observador.disconnect()

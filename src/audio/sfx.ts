@@ -557,38 +557,66 @@ export function tocarSintetico(
   // inserido antes do destino, e todo o resto do grafo continua mono.
   let saida = destino
   let panner: StereoPannerNode | null = null
-  if (pan !== 0 && typeof ctx.createStereoPanner === 'function') {
-    panner = ctx.createStereoPanner()
-    panner.pan.value = Math.max(-1, Math.min(1, pan))
-    panner.connect(destino)
-    saida = panner
+  try {
+    if (pan !== 0 && typeof ctx.createStereoPanner === 'function') {
+      panner = ctx.createStereoPanner()
+      panner.pan.value = Math.max(-1, Math.min(1, pan))
+      panner.connect(destino)
+      saida = panner
+    }
+  } catch {
+    // Sem panorâmico: o som sai no centro. Perder o lado é um detalhe; perder
+    // o efeito no meio da apresentação não é.
+    panner = null
+    saida = destino
   }
   const soltar = () => {
     if (panner) window.setTimeout(() => panner?.disconnect(), 4000)
   }
 
-  if (altura === 1) {
+  const direto = () => {
     sintetizador(ctx, saida, ctx.currentTime + 0.01)
     soltar()
+  }
+
+  if (altura === 1) {
+    direto()
     return
   }
+
   // Renderiza o efeito num buffer e toca esse buffer mais devagar. É o jeito
   // de transpor um grafo inteiro sem tocar em nenhum oscilador: mais lento =
   // mais grave, exatamente como uma fita.
-  const DUR = 4
-  const offline = new OfflineAudioContext(1, Math.ceil(ctx.sampleRate * DUR), ctx.sampleRate)
-  sintetizador(offline as unknown as AudioContext, offline.destination, 0)
-  void offline.startRendering().then((buffer) => {
-    const fonte = ctx.createBufferSource()
-    fonte.buffer = buffer
-    fonte.playbackRate.value = Math.max(0.25, altura)
-    fonte.connect(saida)
-    fonte.onended = () => {
-      fonte.disconnect()
-      soltar()
-    }
-    fonte.start()
-  })
+  //
+  // TUDO aqui é `try`: o construtor do OfflineAudioContext falha quando o
+  // navegador chega no teto de contextos de áudio, e num palco isso não pode
+  // virar exceção. Sem transposição o ping sai na altura normal, que é
+  // exatamente o que acontecia antes desta fase existir.
+  try {
+    const DUR = 4
+    const offline = new OfflineAudioContext(1, Math.ceil(ctx.sampleRate * DUR), ctx.sampleRate)
+    sintetizador(offline as unknown as AudioContext, offline.destination, 0)
+    void offline
+      .startRendering()
+      .then((buffer) => {
+        try {
+          const fonte = ctx.createBufferSource()
+          fonte.buffer = buffer
+          fonte.playbackRate.value = Math.max(0.25, altura)
+          fonte.connect(saida)
+          fonte.onended = () => {
+            fonte.disconnect()
+            soltar()
+          }
+          fonte.start()
+        } catch {
+          soltar()
+        }
+      })
+      .catch(() => direto())
+  } catch {
+    direto()
+  }
 }
 
 /** Ordem do teste de som disparado pelo comando `som`. */

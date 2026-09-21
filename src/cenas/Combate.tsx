@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { especiePorChave } from '../mundo/bestiario'
 import type { CenaCombate } from '../roteiros/tipos'
+import { quadroSeguro } from '../ui/falhas'
 
 /**
  * Combate acústico: a plateia opera o sonar auxiliar.
@@ -279,7 +280,7 @@ function Mostrador({
     let quadro = 0
 
     const desenhar = (agora: number) => {
-      quadro = requestAnimationFrame(desenhar)
+      quadro = requestAnimationFrame(protegido)
       const dt = Math.min(0.05, (agora - anterior) / 1000)
       anterior = agora
       const { cena: c, estado: e, distancia: d, tempoRodada: tr } = refDados.current
@@ -512,7 +513,8 @@ function Mostrador({
       }
     }
 
-    quadro = requestAnimationFrame(desenhar)
+    const protegido = quadroSeguro('mostrador do combate', desenhar)
+    quadro = requestAnimationFrame(protegido)
     return () => {
       cancelAnimationFrame(quadro)
       observador.disconnect()

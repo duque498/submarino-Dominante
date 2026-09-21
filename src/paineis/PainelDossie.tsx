@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { especiePorChave } from '../mundo/bestiario'
 import { imagemDoDossie } from '../formas/dossie'
 import fichas from '../roteiros/fichas.json'
+import { quadroSeguro } from '../ui/falhas'
 
 /**
  * Dossiê do contato não catalogado.
@@ -89,7 +90,7 @@ export function PainelDossie({ argumento }: Props) {
     let quadro = 0
 
     const desenhar = (agora: number) => {
-      quadro = requestAnimationFrame(desenhar)
+      quadro = requestAnimationFrame(protegido)
       const avanco = Math.min(1, (agora - nascimento) / MS_TRACO)
       // Relógio vivo: a silhueta NADA, com a mesma batida de 0,4 Hz da câmera.
       // Um desenho parado num painel que diz "reconstrução dos sensores" lê
@@ -155,7 +156,8 @@ export function PainelDossie({ argumento }: Props) {
       }
     }
 
-    quadro = requestAnimationFrame(desenhar)
+    const protegido = quadroSeguro('dossiê', desenhar)
+    quadro = requestAnimationFrame(protegido)
     return () => {
       if (quadro) cancelAnimationFrame(quadro)
       observador.disconnect()

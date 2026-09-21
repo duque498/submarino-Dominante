@@ -15,6 +15,7 @@ import { motor } from '../mundo/motor'
 import { Painel, painelCapturaTeclado, type PainelAberto } from '../paineis'
 import { Diretor, type MotivoFecho, type PainelPedido } from '../diretor/diretor'
 import { DepuracaoDiretor } from '../diretor/DepuracaoDiretor'
+import { falhasAnteriores, observarFalhas } from '../ui/falhas'
 import { ColunaDagua } from '../diretor/ColunaDagua'
 import {
   logDaFase,
@@ -618,6 +619,19 @@ export function Player({ roteiro, engine }: Props) {
     },
     [cena, tracos, engine, falarAvulso],
   )
+
+  /**
+   * Falhas fora do render vão pro log de bordo.
+   *
+   * O operador não vai abrir o console do navegador no meio da feira, e eu não
+   * vou estar lá. Se alguma coisa quebrar num laço de animação, a linha
+   * aparece na coluna da direita — e é ela que permite consertar depois.
+   */
+  useEffect(() => {
+    const anteriores = falhasAnteriores()
+    if (anteriores.length > 0) setRajadaLog(anteriores)
+    return observarFalhas((linha) => setRajadaLog([linha]))
+  }, [])
 
   /**
    * O HUD reacendendo depois do apagão.

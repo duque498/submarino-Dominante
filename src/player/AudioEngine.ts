@@ -442,7 +442,24 @@ export class AudioEngine {
    * `altura` desafina o efeito: 1 = original, 0,5 = uma oitava abaixo. Serve
    * pro ping do sonar ficar mais grave conforme o contato se aproxima.
    */
+  /**
+   * Toca um efeito. NUNCA lança.
+   *
+   * Isto roda no meio de uma cena, às vezes de dentro de um `setTimeout` que
+   * não tem `catch` nenhum em volta. Web Audio falha por motivos que só
+   * aparecem em máquina de verdade — teto de contextos, dispositivo ocupado,
+   * navegador sem um nó — e nenhum deles pode derrubar a apresentação. Som é
+   * o que se perde primeiro quando alguma coisa dá errado; a cena continua.
+   */
   tocarSfx(sfx: Sfx, altura = 1, pan = 0): void {
+    try {
+      this.tocarSfxInterno(sfx, altura, pan)
+    } catch (erro) {
+      console.warn('[audio] efeito falhou e foi ignorado:', sfx, erro)
+    }
+  }
+
+  private tocarSfxInterno(sfx: Sfx, altura = 1, pan = 0): void {
     const url = CAMINHOS_SFX[sfx]
     // Com panorâmico não dá pra usar o `<audio>`: ele não tem para onde
     // apontar. Quem precisa de lado vai pelo caminho sintético, que passa por
@@ -559,6 +576,17 @@ export class AudioEngine {
    */
   async prepararTrilha(): Promise<boolean> {
     if (this.trilhaOk !== null) return this.trilhaOk
+    try {
+      return await this.carregarTrilha()
+    } catch (erro) {
+      console.warn('[audio] trilha indisponível:', erro)
+      this.trilhaOk = false
+      this.trilha = null
+      return false
+    }
+  }
+
+  private async carregarTrilha(): Promise<boolean> {
     const elemento = new Audio(CAMINHO_TRILHA)
     elemento.loop = true
     elemento.preload = 'auto'
@@ -596,15 +624,20 @@ export class AudioEngine {
   iniciarTrilha(): void {
     const trilha = this.trilha
     if (!trilha) return
-    this.trilhaAlvo = TRILHA_VOLUME
-    if (trilha.paused) {
-      trilha.currentTime = 0
-      void trilha.play().catch(() => {
-        this.trilhaOk = false
-        this.trilha = null
-      })
+    try {
+      this.trilhaAlvo = TRILHA_VOLUME
+      if (trilha.paused) {
+        trilha.currentTime = 0
+        void trilha.play().catch(() => {
+          this.trilhaOk = false
+          this.trilha = null
+        })
+      }
+      this.rodarFadeTrilha()
+    } catch (erro) {
+      console.warn('[audio] trilha não iniciou:', erro)
+      this.trilha = null
     }
-    this.rodarFadeTrilha()
   }
 
   /** Sai com fade de 1,5 s, ou de corte quando a cena pede silêncio seco. */

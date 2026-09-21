@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { perfilDe, rgba } from '../mundo/perfil'
 import { motor } from '../mundo/motor'
+import { quadroSeguro } from '../ui/falhas'
 
 /**
  * Coluna d'água em tamanho de painel: as cinco zonas do oceano.
@@ -132,7 +133,7 @@ export function PainelZonas() {
 
     let quadro = 0
     const desenhar = (agora: number) => {
-      quadro = requestAnimationFrame(desenhar)
+      quadro = requestAnimationFrame(protegido)
       if (fundoPronto !== `${L}x${A}`) {
         fundoPronto = `${L}x${A}`
         pintarFaixas()
@@ -174,7 +175,8 @@ export function PainelZonas() {
       ctx.textAlign = 'left'
     }
 
-    quadro = requestAnimationFrame(desenhar)
+    const protegido = quadroSeguro('painel de zonas', desenhar)
+    quadro = requestAnimationFrame(protegido)
     return () => {
       cancelAnimationFrame(quadro)
       observador.disconnect()
