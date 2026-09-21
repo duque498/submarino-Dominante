@@ -16,6 +16,7 @@ const TIPOS_VALIDOS = [
   'vf',
   'pane',
   'combate',
+  'olho',
   'fim',
 ]
 const SFX_VALIDOS = [
@@ -29,6 +30,7 @@ const SFX_VALIDOS = [
   'vidro',
   'pulso',
   'impacto',
+  'presenca',
 ]
 const VISOR_VALIDO = ['ok', 'rachado', 'parcial']
 
@@ -478,6 +480,26 @@ export function validarRoteiro(dado: unknown): string[] {
       }
       case 'combate': {
         conferirCombate(cena, onde, erros)
+        break
+      }
+      case 'olho': {
+        if (!ehTextoPreenchido(cena.criatura)) {
+          erros.push(`${onde}: campo "criatura" faltando (uma chave do bestiario).`)
+        } else if (!ESPECIES.some((e) => e.chave === cena.criatura)) {
+          erros.push(
+            `${onde}: a criatura "${cena.criatura}" nao esta no bestiario. ` +
+              `Disponiveis: ${ESPECIES.map((e) => e.chave).join(', ')}.`,
+          )
+        }
+        if (typeof cena.duracao !== 'number' || cena.duracao < 500) {
+          erros.push(`${onde}: "duracao" deve ser um numero de ms (minimo 500).`)
+        }
+        if (cena.avanco === 'manual') {
+          erros.push(
+            `${onde}: a cena "olho" nao pode ser manual — ela termina na ` +
+              `rachadura, e parar antes disso deixa o olho na tela pra sempre.`,
+          )
+        }
         break
       }
       case 'fim': {

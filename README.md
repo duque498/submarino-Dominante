@@ -209,13 +209,24 @@ O 3A é a última turma, e a apresentação dele fecha a expedição inteira. A 
 é simples: **a IA fica cega.**
 
 1. O submarino desce de 900 m à zona abissal.
-2. A pressão racha o visor externo. As câmeras caem. **Só o sonar sobra.**
-3. Os quatro grupos apresentam, na ordem do trabalho deles: oceanos → sonar →
-   impacto humano → ações.
-4. Um contato enorme se aproxima e a IA **não consegue vê-lo**. Ela pede à
-   tripulação — a plateia — que opere o sonar auxiliar (o de papelão que o 3A
-   construiu) e diga em qual setor o contato está, pra ela disparar o pulso.
-5. Contato neutralizado → subida de emergência → superfície → encerramento.
+2. Os quatro grupos apresentam, na ordem do trabalho deles: oceanos → sonar →
+   impacto humano → ações. **As câmeras funcionam o tempo todo**, mostrando o
+   abisso sob o farol.
+3. Um contato de grande porte se aproxima. A água vira, o farol oscila, um
+   vulto corta a luz.
+4. **O olho.** A plateia vê a criatura uma vez, por três segundos, e o que ela
+   vê é um olho no facho do farol. Então o vidro quebra.
+5. Só agora a IA fica cega: visor destruído, câmeras offline, **só o sonar
+   sobra**. Ela compila o dossiê do que os sensores captaram.
+6. Sem imagem, ela **não consegue localizá-lo**. Pede à tripulação — a plateia
+   — que opere o sonar auxiliar (o de papelão que o 3A construiu) e diga em
+   qual setor o contato está, pra ela disparar o pulso.
+7. Contato neutralizado → subida de emergência → superfície → encerramento.
+
+> **A ordem importa, e é o ponto desta revisão.** As câmeras quebrarem na
+> chegada daria à turma inteira um cenário sem janela; quebrarem no fim
+> transforma a cegueira em consequência do encontro — e é o que faz a plateia
+> precisar operar o sonar de papelão.
 
 A IA nunca fala em cima dos alunos: fala antes, cala durante, fala depois. É
 por isso que cada grupo tem uma cena `fala` curta de abertura e uma cena
@@ -225,11 +236,38 @@ A pane global (`P`/`R`) continua funcionando, mas o 3A não usa: o visor rachado
 já cumpre esse papel na narrativa, e disparar as duas coisas seria contar a
 mesma história duas vezes.
 
+### O olho
+
+Tipo de cena novo: `olho`. Sem legenda, sem avanço manual, sem fala — a IA só
+volta a falar depois que o vidro já quebrou.
+
+```json
+{ "id": "olho", "tipo": "olho", "avanco": "auto",
+  "criatura": "megalodonte", "duracao": 3000 }
+```
+
+Mostrar o bicho inteiro resolveria o mistério; mostrar **só o olho** deixa o
+tamanho por conta de quem está assistindo. O desenho é procedural e não imagem,
+e não por purismo: a cena depende de a **pupila contrair quando o farol bate**,
+e isso é animação — um PNG daria um olho morto.
+
+A linha do tempo dos três segundos: emerge do escuro (cinza, pupila dilatada) →
+o farol chega e a íris vira âmbar → a pupila fecha em fenda → deriva, porque o
+bicho está nadando. No fim: `impacto` + `vidro` no mesmo quadro, rachadura em
+todas as câmeras, estática, e só então a IA fala.
+
+> A resolução interna do canvas é **55%** do tamanho na tela, e isso é medido:
+> os desenhos do olho somam 0,04 ms por quadro — não é a pintura que custa, é
+> compositar 600 mil pixels sessenta vezes por segundo num container sem GPU.
+> A 55% a cena foi de 44,7 pra 56,7 fps sem perder nada visível. É o mesmo
+> truque que as câmeras usam desde o começo.
+
 ### O visor rachado
 
 `CenaBase.visor` vale `"ok"`, `"rachado"` ou `"parcial"`, e **uma cena sem o
-campo herda o da anterior** — por isso `"rachado"` aparece uma vez só, na cena
-em que o vidro quebra, e vale pelas quatro apresentações seguintes.
+campo herda o da anterior**. A cena `olho` quebra o visor sozinha ao terminar —
+não precisa declarar nada, e voltar uma cena com a seta esquerda reconstrói o
+estado certo.
 
 - **`rachado`** — as câmeras ficam em estática, com o rótulo `VISOR
   COMPROMETIDO`, e uma fratura procedural entra por cima.
@@ -289,6 +327,37 @@ e `O` ficam desligados: o orbe não é o assunto ali.
 > dentro do laço (um mp3 que não existe, uma promessa rejeitada) também avança
 > em vez de deixar a plateia olhando um sonar parado.
 
+### O dossiê
+
+Painel `dossie <chave>`: a variante do `ficha` com estética de arquivo
+classificado — carimbo `ESTIMATIVA DOS SENSORES` piscando, silhueta se
+desenhando da esquerda pra direita em 600 ms (como plotter) e os dados entrando
+linha a linha, no ritmo da fala.
+
+**Os dados são reais e as estimativas estão marcadas como estimativas.** Um
+bicho extinto tem número incerto, e inventar precisão num painel que a plateia
+lê como fonte seria ensinar a coisa errada. O que está lá: período
+Mioceno–Plioceno, comprimento estimado 15–20 m (*estimativas variam*), dentes
+até ~18 cm, status extinto. Nada além disso.
+
+A silhueta é desenhada pela **mesma função do bestiário** que a câmera usa, e
+não pelo amostrador de silhuetas do orbe: o amostrador devolve uns quatrocentos
+pontos de contorno, e ligá-los por reta nesse tamanho transformava o tubarão
+num amontoado. Ele existe pra virar partícula, não pra virar traço.
+
+### A aproximação
+
+A cena `contato` liga três coisas ao mesmo tempo, e nenhuma delas é fala:
+
+- **No sonar**, um contato enorme vem da borda ao centro em 6 s, com o ping
+  acelerando (1,1 s → 0,17 s entre pings) e **ficando mais grave** — a altura
+  caindo é o que a plateia lê como "está chegando" sem precisar de legenda.
+- **No mundo**, `motor.agitacao` sobe de 0 a 1: o farol oscila, o sedimento
+  entra em turbilhão e a imagem treme.
+- **Aos 3,4 s**, um vulto cruza o facho: a criatura em silhueta, rápida e
+  escura. Um relance, não uma aparição — é o que faz o olho, dois passos
+  depois, parecer perseguição e não truque.
+
 ### Ameaças no mundo
 
 `CenaBase.ameacas: true` liga três elementos procedurais, cada um na sua faixa:
@@ -300,6 +369,15 @@ Só a cena `subida` do 3A liga isso, e **não há fala explicando**: os grupos 3
 4 acabaram de falar disso, e a IA repetir seria tirar deles a fala. Como
 `visor`, o campo é herdado pela cena seguinte — por isso o `encerramento`
 declara `"ameacas": false` pra voltar à superfície limpa.
+
+### Efeitos novos
+
+`vidro` (o estalo curto com cauda de caquinhos), `pulso` (varredura descendente
+saturada — a arma), `impacto` (transiente + o casco respondendo grave) e
+`presenca`: o único efeito longo do projeto, 3,4 s, e o único sem transiente
+nenhum. Ele não *acontece*, ele se aproxima — duas fundamentais a 27 e 28,6 Hz
+batendo a ~1,6 Hz, com o filtro abrindo devagar. Nada nele pode assustar
+sozinho: o susto é o `impacto` no fim da cena, e espera que grita perde o corte.
 
 ### Tela final
 
@@ -473,6 +551,7 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 | `traco`, `desenhar` | abre a área de desenho: o aluno risca, a IA vira o risco |
 | `espectro`, `cores` | abre as faixas de cor apagando com a profundidade |
 | `zonas`, `camadas` | as cinco zonas do oceano, com o submarino na atual |
+| `dossie megalodonte` | o arquivo do contato não catalogado |
 | `eco`, `distancia` | a conta do sonar acontecendo: `t = 2d / 1500` |
 | `cena 5`, `ir bio`, `proximo`, `voltar` | navega no roteiro |
 | `pane`, `reiniciar`, `limpar`, `ajuda` | comandos de sistema |
@@ -812,7 +891,7 @@ Todo o conteúdo (textos, áudios, perguntas) vive em `src/roteiros/2a.json`,
 IA fala, mexa só no JSON.
 
 Tipos de cena disponíveis: `fala`, `apresentacao`, `transicao`, `quiz`, `vf`,
-`pane`, `combate` e `fim`.
+`pane`, `combate`, `olho` e `fim`.
 O formato de cada um está em `src/roteiros/tipos.ts`.
 
 Campos comuns a todas:
@@ -821,8 +900,8 @@ Campos comuns a todas:
 - `avanco` — `"auto"` (avança sozinha quando o áudio termina) ou `"manual"`
   (espera o operador apertar `→`).
 - `sfx` — efeito sonoro opcional: `"sonar"`, `"alarme"`, `"estatica"`, `"ok"`,
-  `"pressurizacao"`, `"bipe-timer"`, `"casco"`, `"vidro"`, `"pulso"` ou
-  `"impacto"`.
+  `"pressurizacao"`, `"bipe-timer"`, `"casco"`, `"vidro"`, `"pulso"`,
+  `"impacto"` ou `"presenca"`.
 - `log` — lista opcional de linhas fictícias pro painel da direita, exibidas
   enquanto essa cena estiver no ar. Ex.: `["Carregando setor: BIOLOGIA",
   "Consultando catálogo de espécies..."]`.
@@ -1026,7 +1105,7 @@ só os nós que o próprio efeito criou, nunca `replaceChildren()`.
 ## Efeitos sonoros
 
 Os SFX (`sonar`, `alarme`, `estatica`, `ok`, `pressurizacao`, `bipe-timer`,
-`casco`, `vidro`, `pulso`, `impacto`)
+`casco`, `vidro`, `pulso`, `impacto`, `presenca`)
 são **sintetizados em código** com a Web Audio API, em `src/audio/sfx.ts`. Não
 dá pra depender de o professor baixar arquivos do freesound na véspera da
 feira: o projeto roda completo sem nenhum mp3 de efeito.
@@ -1044,7 +1123,7 @@ somar acima de 1 e distorcer.
 A primeira tecla (a da ativação) já dá um **bipe duplo** de confirmação. Se
 esse bipe não sai, o problema é o áudio da máquina, não o app.
 
-Pra um teste completo, `/` e depois `som`: toca os dez efeitos em sequência e
+Pra um teste completo, `/` e depois `som`: toca os onze efeitos em sequência e
 escreve no log o estado do `AudioContext`. `running` significa que o navegador
 liberou o áudio.
 
@@ -1055,7 +1134,7 @@ public/audio/        mp3 fora do bundle: sfx/ e uma pasta por turma
 src/
   App.tsx            seleção de turma, tela de ativação, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
-  cenas/             um componente por tipo de cena (inclui Quiz, VF, Combate e Fim)
+  cenas/             um componente por tipo de cena (Quiz, VF, Combate, Olho, Fim)
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
   audio/             efeitos, ambiente do oceano e a voz do navegador
   console/           barra de comando, parser e as respostas fixas da IA

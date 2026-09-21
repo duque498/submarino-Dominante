@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PainelCamera } from './PainelCamera'
+import { PainelDossie } from './PainelDossie'
 import { PainelEco } from './PainelEco'
 import { PainelEspectro } from './PainelEspectro'
 import { PainelFicha } from './PainelFicha'
@@ -53,6 +54,7 @@ const TITULOS: Record<string, string> = {
   espectro: 'absorção da luz na água',
   zonas: 'zonas da coluna d\u0027água',
   eco: 'medição por eco',
+  dossie: 'dossiê · contato não catalogado',
 }
 
 /** Quanto o painel que está saindo fica na tela antes de sumir. */
@@ -78,6 +80,9 @@ type Props = {
   travado?: boolean
   /** Painel de sonar: toca o ping a cada volta da varredura. */
   aoPing?: () => void
+  aoPingGrave?: (altura: number) => void
+  /** Segundos da aproximação do contato, só na cena que a pede. */
+  aproximacao?: number
   /** Estado do visor: a câmera em painel também racha. */
   visor?: 'ok' | 'rachado' | 'parcial'
 }
@@ -104,6 +109,8 @@ export function Painel({
   profundidade,
   travado,
   aoPing,
+  aoPingGrave,
+  aproximacao,
   visor = 'ok',
 }: Props) {
   const [saindo, setSaindo] = useState<PainelAberto | null>(null)
@@ -145,6 +152,8 @@ export function Painel({
             profundidade,
             travado,
             aoPing,
+            aoPingGrave,
+            aproximacao,
             visor,
             contato: visivel.contato,
             despedindo: visivel.despedindo,
@@ -159,6 +168,8 @@ export function Painel({
 
 type Extras = {
   visor?: 'ok' | 'rachado' | 'parcial'
+  aoPingGrave?: (altura: number) => void
+  aproximacao?: number
   contato?: string
   despedindo?: boolean
   daFala?: boolean
@@ -178,6 +189,8 @@ function corpoDoPainel(
       return (
         <PainelSonar
           aoPing={extras.aoPing}
+          aoPingGrave={extras.aoPingGrave}
+          aproximacao={extras.aproximacao}
           contato={extras.contato}
           daFala={extras.daFala}
           despedindo={extras.despedindo}
@@ -187,6 +200,8 @@ function corpoDoPainel(
       return <PainelStatus quedas={quedas} congelado={congelado} />
     case 'ficha':
       return <PainelFicha argumento={argumento} />
+    case 'dossie':
+      return <PainelDossie argumento={argumento} />
     case 'mapa':
       return <PainelMapa marcador={argumento} />
     case 'camera':

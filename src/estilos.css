@@ -2417,3 +2417,178 @@ body {
 .feed--mini .rachadura--parcial {
   opacity: 0.44;
 }
+
+/* --------------------------------------------------------------------------
+   O olho (3A)
+   -------------------------------------------------------------------------- */
+
+/* Ocupa a área central inteira, como um painel de câmera em tela cheia — mas
+   sem moldura de painel: o que se vê é a câmera, não o sistema. */
+.olho {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  overflow: hidden;
+  background: #02080b;
+  border: 1px solid rgba(27, 106, 120, 0.7);
+  pointer-events: none;
+  animation: olho-entrar 420ms ease-out;
+}
+
+@keyframes olho-entrar {
+  from {
+    opacity: 0;
+  }
+}
+
+.olho__canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.olho__barra {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: linear-gradient(rgba(2, 10, 12, 0.8), rgba(2, 10, 12, 0));
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.7);
+}
+
+.olho__rec {
+  color: #ff6e5a;
+}
+
+/* --------------------------------------------------------------------------
+   Dossiê (3A)
+   -------------------------------------------------------------------------- */
+
+.dossie {
+  display: grid;
+  grid-template-columns: minmax(180px, 38%) 1fr;
+  gap: 22px;
+  align-items: center;
+  height: 100%;
+  min-height: 0;
+}
+
+.dossie__silhueta {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dossie__canvas {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+}
+
+/* Carimbo torto, como carimbo de verdade. Pisca devagar: é um aviso que
+   acompanha a leitura, não um alarme. */
+.dossie__carimbo {
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  transform: translateX(-50%) rotate(-7deg);
+  padding: 4px 12px;
+  border: 2px solid rgba(255, 110, 90, 0.8);
+  border-radius: 3px;
+  color: #ff8a70;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: carimbo-piscar 2.8s ease-in-out infinite;
+}
+
+@keyframes carimbo-piscar {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.dossie__titulo {
+  margin: 0 0 14px;
+  font-size: clamp(18px, 2.4vw, 27px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #ffc24d;
+  font-style: italic;
+}
+
+.dossie__lista {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+/* Cada dado entra sozinho, no ritmo da fala. A transição é curta: quem está
+   lendo em voz alta não pode esperar a animação. */
+.dossie__item {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr;
+  gap: 4px 14px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.45);
+  opacity: 0;
+  transform: translateX(-10px);
+  transition:
+    opacity 260ms ease-out,
+    transform 260ms ease-out;
+}
+
+.dossie__item--visivel {
+  opacity: 1;
+  transform: none;
+}
+
+.dossie__item dt {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.6);
+  align-self: center;
+}
+
+.dossie__item dd {
+  margin: 0;
+  font-size: clamp(13px, 1.5vw, 17px);
+  color: #bdfff0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dossie__carimbo,
+  .olho {
+    animation: none;
+  }
+  .dossie__item {
+    transition: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .dossie {
+    grid-template-columns: minmax(140px, 34%) 1fr;
+    gap: 14px;
+  }
+}

@@ -19,6 +19,7 @@ export const PAINEIS: Array<{
   { nome: 'sonar', aliases: ['radar', 'varredura'] },
   { nome: 'status', aliases: ['sistemas', 'diagnostico', 'subsistemas'] },
   { nome: 'ficha', aliases: ['catalogo', 'especie', 'dados'], precisaArgumento: true },
+  { nome: 'dossie', aliases: ['dossiê', 'arquivo', 'classificado'], precisaArgumento: true },
   { nome: 'mapa', aliases: ['rota', 'carta'] },
   { nome: 'camera', aliases: ['cam', 'cameras', 'externa', 'feed'] },
   { nome: 'traco', aliases: ['desenhar', 'desenho', 'rabisco'], capturaTeclado: true },

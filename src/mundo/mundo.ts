@@ -1,4 +1,4 @@
-import { especiesEm, type Especie } from './bestiario'
+import { especiePorChave, especiesEm, type Especie } from './bestiario'
 import { perfilDe, rgba, suave, type Perfil } from './perfil'
 
 /**
@@ -71,6 +71,14 @@ type Fauna = {
   fase: number
   /** 1 = presente; cai até 0 quando a expedição sai da faixa da espécie. */
   vida: number
+  /**
+   * Vulto: silhueta quase preta cortando o facho, invocada pelo roteiro.
+   *
+   * Não é um bicho da fauna normal — é um relance. Renderizado em silhueta e
+   * sem o piso de opacidade que faz a fauna comum ser vista: aqui o ponto é
+   * justamente NÃO se ver direito.
+   */
+  vulto?: boolean
 }
 type Particula = { x: number; y: number; v: number; raio: number; fase: number }
 type Biolum = { x: number; y: number; fase: number; periodo: number; raio: number }
@@ -157,6 +165,39 @@ export class MotorMundo {
   pitch = 0
   /** Fluxo de bolhas durante o mergulho, 0 a 1. */
   turbulencia = 0
+  /**
+   * Agitação: 0 a 1.
+   *
+   * A água virando antes de o bicho chegar. O farol oscila, o sedimento entra
+   * em turbilhão e a imagem treme — é o aviso que a câmera dá antes de a IA
+   * entender o que está acontecendo. Ligada por cena, não por profundidade.
+   */
+  agitacao = 0
+
+  /**
+   * Manda um vulto atravessar o facho, agora.
+   *
+   * Uma passada só, rápida e escura. É o relance que o roteiro pede antes do
+   * olho — e ele existe pra a criatura não aparecer do nada dois segundos
+   * depois, o que leria como truque em vez de perseguição.
+   */
+  invocarVulto(chave: string) {
+    const especie = especiePorChave(chave)
+    if (!especie) return
+    const paraDireita = Math.random() < 0.5
+    this.fauna.push({
+      x: paraDireita ? -0.6 : LARGURA_MUNDO + 0.6,
+      y: sorteio(0.38, 0.56),
+      // Rápido: ele CORTA a luz, não desfila nela.
+      vx: (paraDireita ? 1 : -1) * 0.95,
+      escala: especie.porte[1] * 1.15,
+      especie,
+      distancia: sorteio(8, 16),
+      fase: Math.random() * Math.PI * 2,
+      vida: 1,
+      vulto: true,
+    })
+  }
 
   constructor() {
     this.semear()
@@ -406,6 +447,13 @@ export class MotorMundo {
       f.distancia += sorteio(-0.4, 0.4)
       f.distancia = Math.max(4, Math.min(60, f.distancia))
 
+      // O vulto é invocado pelo roteiro e não obedece à faixa: ele está ali
+      // porque a cena disse que está.
+      if (f.vulto) {
+        if (f.x < -1.2 || f.x > LARGURA_MUNDO + 1.2) this.fauna.splice(i, 1)
+        continue
+      }
+
       // A expedição desce enquanto o bicho ainda atravessa o quadro. Se a nova
       // profundidade não é mais a dele, ele se apaga no escuro em vez de
       // continuar ali — um tubarão a 4500 m entrega a farsa na hora.
@@ -423,11 +471,16 @@ export class MotorMundo {
     // Durante o mergulho tudo sobe em fluxo, independente da zona: é a água
     // passando pelo casco, não a partícula de sempre.
     const subindo = this.turbulencia > 0.05 ? true : this.perfil.bolhas > this.perfil.neve
-    // A turbulência multiplica a velocidade: no mergulho a água passa rápido.
-    const corrida = 1 + this.turbulencia * 5
+    // Turbulência (mergulho) e agitação (o bicho chegando) empurram a água do
+    // mesmo jeito, então somam na mesma conta.
+    const corrida = 1 + this.turbulencia * 5 + this.agitacao * 3.5
     for (const particula of this.particulas) {
       particula.y += (subindo ? -particula.v : particula.v * 0.35) * dt * corrida
-      particula.x += Math.sin(this.t * 0.7 + particula.fase) * 0.004 * dt * 60
+      // Na agitação o sedimento roda em vez de subir reto: é turbilhão, não
+      // corrente. O seno lateral ganha amplitude e frequência.
+      const giro = 1 + this.agitacao * 6
+      particula.x +=
+        Math.sin(this.t * 0.7 * giro + particula.fase) * 0.004 * (1 + this.agitacao * 5) * dt * 60
       if (particula.y < -0.05) particula.y = 1.05
       if (particula.y > 1.05) particula.y = -0.05
     }
@@ -479,8 +532,10 @@ export class MotorMundo {
 
     ctx.globalAlpha = camera.opacidade ?? 1
 
-    // tremor de pressão no abisso
-    const tremor = perfil.tremor * (Math.sin(agora / 90) + Math.sin(agora / 37)) * 0.9
+    // Tremor de pressão no abisso, mais o da agitação quando o roteiro liga.
+    const balanco =
+      perfil.tremor + this.agitacao * 2.6 * (0.7 + Math.sin(agora / 140) * 0.3)
+    const tremor = balanco * (Math.sin(agora / 90) + Math.sin(agora / 37)) * 0.9
     ctx.translate(tremor, tremor * 0.4)
 
     // fundo — pintado ANTES da inclinação, senão sobraria faixa vazia na borda
@@ -515,7 +570,7 @@ export class MotorMundo {
     const alvo = this.desenharFauna(ctx, L, A, perfil, mundoParaTela, visivel, camera)
     this.desenharParticulas(ctx, L, A, perfil, mundoParaTela, visivel)
     this.desenharBioluminescencia(ctx, L, A, perfil, mundoParaTela, visivel, agora)
-    this.desenharFarol(ctx, L, A, perfil)
+    this.desenharFarol(ctx, L, A, perfil, agora)
     if (!camera.simples) this.desenharGrao(ctx, L, A)
     // Visor remendado: a imagem voltou suja e vai limpando sozinha. É o que
     // conta que alguém consertou às pressas, sem precisar de uma linha de fala.
@@ -875,7 +930,9 @@ export class MotorMundo {
       // baixo o bicho — que é o motivo de a câmera existir — virava um vulto
       // que nem de perto se lia. Debaixo do farol ele é o objeto mais claro do
       // quadro, que é o que acontece de verdade.
-      const alpha = Math.min(1, 0.45 + perfil.luz * 0.35 + perfil.farol * 0.35) * f.vida
+      const alpha = f.vulto
+        ? 0.9 * f.vida
+        : Math.min(1, 0.45 + perfil.luz * 0.35 + perfil.farol * 0.35) * f.vida
 
       ctx.save()
       ctx.translate(sx, sy)
@@ -886,9 +943,12 @@ export class MotorMundo {
         alt,
         t: this.t,
         fase: f.fase,
-        luz: perfil.luz,
-        farol: perfil.farol,
+        // Silhueta e sem farol: o vulto é um buraco preto passando na frente da
+        // luz, não um bicho iluminado.
+        luz: f.vulto ? 0 : perfil.luz,
+        farol: f.vulto ? 0 : perfil.farol,
         alpha,
+        silhueta: f.vulto,
       })
       ctx.restore()
 
@@ -976,12 +1036,30 @@ export class MotorMundo {
     ctx.globalCompositeOperation = 'source-over'
   }
 
+  /**
+   * Oscilação do farol durante a agitação.
+   *
+   * Ruído de duas frequências, e nunca abaixo de 0,45: um farol que apaga de
+   * vez deixa a tela preta e a plateia acha que o projetor caiu. O que se quer
+   * é a luz VACILANDO.
+   */
+  private fatorFarol(agora: number): number {
+    if (this.agitacao <= 0.01) return 1
+    const ruido = Math.sin(agora / 47) * 0.5 + Math.sin(agora / 113) * 0.5
+    return 1 - this.agitacao * 0.55 * (0.5 + ruido * 0.5)
+  }
+
   private desenharFarol(
     ctx: CanvasRenderingContext2D,
     L: number,
     A: number,
-    perfil: Perfil,
+    perfilOriginal: Perfil,
+    agora: number,
   ) {
+    // Cópia com o farol já oscilado: mexer no perfil real contaminaria todos os
+    // outros desenhos do quadro, que leem o mesmo objeto.
+    const fator = this.fatorFarol(agora)
+    const perfil = fator === 1 ? perfilOriginal : { ...perfilOriginal, farol: perfilOriginal.farol * fator }
     if (perfil.farol < 0.02) return
 
     const cx = L * 0.5

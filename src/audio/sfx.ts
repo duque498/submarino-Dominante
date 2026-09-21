@@ -22,6 +22,7 @@ export type NomeSfx =
   | 'vidro'
   | 'pulso'
   | 'impacto'
+  | 'presenca'
 
 /** Solta os nós quando o som acaba, pra não acumular no grafo. */
 function limpar(fonte: AudioScheduledSourceNode, ...nos: AudioNode[]) {
@@ -372,6 +373,65 @@ function impacto(ctx: AudioContext, destino: AudioNode, t: number) {
   metal.start(t)
 }
 
+/**
+ * Presença: o grave contínuo que sobe enquanto o olho entra no facho.
+ *
+ * É o único efeito longo do projeto (3,4 s) e o único sem transiente nenhum —
+ * ele não ACONTECE, ele se aproxima. Duas fundamentais muito graves batendo
+ * entre si a ~1,5 Hz dão a pulsação de algo vivo e enorme; o filtro abrindo
+ * devagar é o que faz o som "chegar" sem nunca aumentar de volume de repente.
+ *
+ * Nada aqui pode assustar sozinho: o susto é o `impacto` no fim da cena. Este
+ * som é a espera, e espera que grita perde o corte.
+ */
+function presenca(ctx: AudioContext, destino: AudioNode, t: number) {
+  const DUR = 3.4
+  const passa = ctx.createBiquadFilter()
+  passa.type = 'lowpass'
+  passa.frequency.setValueAtTime(90, t)
+  passa.frequency.exponentialRampToValueAtTime(420, t + DUR * 0.85)
+  passa.Q.value = 1.4
+  const mestre = ctx.createGain()
+  // Crescendo longo e sem pico: entra de quase nada e para antes de doer.
+  mestre.gain.setValueAtTime(0.0001, t)
+  mestre.gain.exponentialRampToValueAtTime(0.5, t + DUR * 0.8)
+  mestre.gain.exponentialRampToValueAtTime(0.0001, t + DUR)
+  passa.connect(mestre).connect(destino)
+
+  // Duas fundamentais desafinadas: 27 e 28,6 Hz batem a ~1,6 Hz.
+  for (const [freq, tipo, pico] of [
+    [27, 'sine', 1],
+    [28.6, 'sine', 0.9],
+    [54, 'triangle', 0.35],
+  ] as Array<[number, OscillatorType, number]>) {
+    const osc = ctx.createOscillator()
+    const g = ctx.createGain()
+    osc.type = tipo
+    osc.frequency.setValueAtTime(freq, t)
+    // Sobe meio tom ao longo da cena: o bicho está se aproximando.
+    osc.frequency.linearRampToValueAtTime(freq * 1.06, t + DUR)
+    g.gain.value = pico
+    osc.connect(g).connect(passa)
+    limpar(osc, g)
+    osc.start(t)
+    osc.stop(t + DUR + 0.05)
+  }
+
+  // Sopro de água deslocada por baixo de tudo, subindo junto.
+  const fluxo = ctx.createBufferSource()
+  fluxo.buffer = ruidoModelado(ctx, DUR, (i, n) => (i / n) ** 1.6 * 0.8)
+  const banda = ctx.createBiquadFilter()
+  banda.type = 'bandpass'
+  banda.frequency.setValueAtTime(140, t)
+  banda.frequency.exponentialRampToValueAtTime(600, t + DUR)
+  banda.Q.value = 0.8
+  const gFluxo = ctx.createGain()
+  gFluxo.gain.value = 0.5
+  fluxo.connect(banda).connect(gFluxo).connect(mestre)
+  limpar(fluxo, banda, gFluxo, passa, mestre)
+  fluxo.start(t)
+}
+
 const SINTETIZADORES: Record<
   NomeSfx,
   (ctx: AudioContext, destino: AudioNode, t: number) => void
@@ -386,13 +446,44 @@ const SINTETIZADORES: Record<
   vidro,
   pulso,
   impacto,
+  presenca,
 }
 
-/** Toca um efeito sintetizado agora. Não bloqueia nada. */
-export function tocarSintetico(ctx: AudioContext, destino: AudioNode, nome: NomeSfx): void {
+/**
+ * Toca um efeito sintetizado agora. Não bloqueia nada.
+ *
+ * `altura` desafina o efeito inteiro, 1 = original. Existe pro ping do sonar
+ * ficar mais GRAVE conforme o contato se aproxima — a altura caindo é a coisa
+ * que a plateia lê como "está chegando" sem precisar de nenhuma legenda. Em vez
+ * de reescrever cada sintetizador, ela é aplicada a todo o grafo por um
+ * detune no destino, o que vale pra qualquer efeito.
+ */
+export function tocarSintetico(
+  ctx: AudioContext,
+  destino: AudioNode,
+  nome: NomeSfx,
+  altura = 1,
+): void {
   const sintetizador = SINTETIZADORES[nome]
   if (!sintetizador) return
-  sintetizador(ctx, destino, ctx.currentTime + 0.01)
+  if (altura === 1) {
+    sintetizador(ctx, destino, ctx.currentTime + 0.01)
+    return
+  }
+  // Renderiza o efeito num buffer e toca esse buffer mais devagar. É o jeito
+  // de transpor um grafo inteiro sem tocar em nenhum oscilador: mais lento =
+  // mais grave, exatamente como uma fita.
+  const DUR = 4
+  const offline = new OfflineAudioContext(1, Math.ceil(ctx.sampleRate * DUR), ctx.sampleRate)
+  sintetizador(offline as unknown as AudioContext, offline.destination, 0)
+  void offline.startRendering().then((buffer) => {
+    const fonte = ctx.createBufferSource()
+    fonte.buffer = buffer
+    fonte.playbackRate.value = Math.max(0.25, altura)
+    fonte.connect(destino)
+    fonte.onended = () => fonte.disconnect()
+    fonte.start()
+  })
 }
 
 /** Ordem do teste de som disparado pelo comando `som`. */
@@ -407,6 +498,7 @@ export const SEQUENCIA_TESTE: NomeSfx[] = [
   'vidro',
   'impacto',
   'pulso',
+  'presenca',
 ]
 
 /**
@@ -417,7 +509,16 @@ export function tocarTesteDeSom(ctx: AudioContext, destino: AudioNode): number {
   let t = ctx.currentTime + 0.05
   for (const nome of SEQUENCIA_TESTE) {
     SINTETIZADORES[nome](ctx, destino, t)
-    t += nome === 'alarme' ? 1.5 : nome === 'pressurizacao' ? 1.8 : nome === 'pulso' ? 1.3 : 0.9
+    t +=
+      nome === 'presenca'
+        ? 3.7
+        : nome === 'alarme'
+          ? 1.5
+          : nome === 'pressurizacao'
+            ? 1.8
+            : nome === 'pulso'
+              ? 1.3
+              : 0.9
   }
   return Math.round((t - ctx.currentTime) * 1000)
 }

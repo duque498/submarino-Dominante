@@ -56,5 +56,15 @@
       "Parada de segurança": "3 min a 5 m na subida",
       "Risco principal": "doença descompressiva"
     }
+  },
+  "megalodonte": {
+    "titulo": "Otodus megalodon",
+    "dados": {
+      "Nome": "Otodus megalodon",
+      "Período": "Mioceno–Plioceno (~23 a 3,6 milhões de anos)",
+      "Comprimento estimado": "15 a 20 m (estimativas variam)",
+      "Dentes": "até ~18 cm",
+      "Status": "extinto"
+    }
   }
 }

@@ -1,29 +1,4 @@
 {
-  "alerta": {
-    "duracaoMs": 26352,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3192
-      },
-      {
-        "inicio": 3792,
-        "fim": 7056
-      },
-      {
-        "inicio": 7656,
-        "fim": 14736
-      },
-      {
-        "inicio": 15336,
-        "fim": 18072
-      },
-      {
-        "inicio": 18672,
-        "fim": 26160
-      }
-    ]
-  },
   "chegada": {
     "duracaoMs": 7608,
     "linhas": [
@@ -140,6 +115,19 @@
       }
     ]
   },
+  "contato": {
+    "duracaoMs": 6360,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3696
+      },
+      {
+        "inicio": 4296,
+        "fim": 6312
+      }
+    ]
+  },
   "descida": {
     "duracaoMs": 12288,
     "linhas": [
@@ -158,6 +146,31 @@
       {
         "inicio": 7152,
         "fim": 12144
+      }
+    ]
+  },
+  "dossie": {
+    "duracaoMs": 23016,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2880
+      },
+      {
+        "inicio": 3480,
+        "fim": 6288
+      },
+      {
+        "inicio": 6888,
+        "fim": 11880
+      },
+      {
+        "inicio": 12480,
+        "fim": 19560
+      },
+      {
+        "inicio": 20160,
+        "fim": 22824
       }
     ]
   },
@@ -226,6 +239,27 @@
       }
     ]
   },
+  "instrucoes": {
+    "duracaoMs": 21072,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3840
+      },
+      {
+        "inicio": 4440,
+        "fim": 11520
+      },
+      {
+        "inicio": 12120,
+        "fim": 18336
+      },
+      {
+        "inicio": 18936,
+        "fim": 20928
+      }
+    ]
+  },
   "neutralizado": {
     "duracaoMs": 7896,
     "linhas": [
@@ -253,27 +287,6 @@
       {
         "inicio": 5856,
         "fim": 8112
-      }
-    ]
-  },
-  "visor": {
-    "duracaoMs": 14952,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3192
-      },
-      {
-        "inicio": 3792,
-        "fim": 7560
-      },
-      {
-        "inicio": 8160,
-        "fim": 10488
-      },
-      {
-        "inicio": 11088,
-        "fim": 14808
       }
     ]
   }

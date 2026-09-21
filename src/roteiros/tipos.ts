@@ -16,6 +16,7 @@ export type Sfx =
   | 'vidro'
   | 'pulso'
   | 'impacto'
+  | 'presenca'
 
 /**
  * Estado do visor externo. Nasce `"ok"`, e o 3A o quebra: a pressao da zona
@@ -265,6 +266,27 @@ export type AudioCombate = {
 }
 
 /**
+ * O olho.
+ *
+ * A unica cena em que a plateia ve a criatura, e ela ve UM olho no facho do
+ * farol. Nao tem legenda, nao tem avanco manual e nao tem fala: a IA so volta a
+ * falar depois que o visor ja quebrou.
+ *
+ * O desenho e procedural, nao imagem. Nao por purismo -- e que a cena inteira
+ * depende de a pupila CONTRAIR quando a luz bate, e isso e animacao, nao PNG.
+ *
+ * Ao terminar, o visor global vira `rachado` e fica: e daqui pra frente que a
+ * IA esta cega, e e por isso que ela precisa da plateia no combate.
+ */
+export type CenaOlho = CenaBase & {
+  tipo: 'olho'
+  /** Chave do bestiario. Hoje so nomeia o dono do olho no log e no dossie. */
+  criatura: string
+  /** Quanto o olho fica no facho, em ms. Depois dele vem a rachadura. */
+  duracao: number
+}
+
+/**
  * Tela final estatica. Nao avanca sozinha e nao tem proxima cena: e onde a
  * apresentacao termina e fica, enquanto a plateia aplaude.
  */
@@ -281,6 +303,7 @@ export type Cena =
   | CenaVF
   | CenaPane
   | CenaCombate
+  | CenaOlho
   | CenaFim
 
 export type Roteiro = {

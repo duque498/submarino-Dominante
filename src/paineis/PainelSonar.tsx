@@ -68,10 +68,28 @@ type Props = {
    * o nome do bicho e veria o ponto desaparecer sem fechamento.
    */
   despedindo?: boolean
+  /**
+   * Segundos de uma APROXIMAÇÃO: um contato enorme entra pela borda e vem até
+   * o centro nesse tempo, com o ping acelerando e ficando mais grave.
+   *
+   * É o único modo em que o sonar conta uma história em vez de só varrer. Sem
+   * ele, "contato de grande porte se aproximando" era uma frase sobre uma tela
+   * onde nada mudava.
+   */
+  aproximacao?: number
+  /** Toca o ping da aproximação, com altura própria (1 = normal, <1 = grave). */
+  aoPingGrave?: (altura: number) => void
 }
 
 /** Varredura de sonar. Puramente animada — nenhum dado real por trás. */
-export function PainelSonar({ aoPing, contato, daFala = false, despedindo = false }: Props) {
+export function PainelSonar({
+  aoPing,
+  contato,
+  daFala = false,
+  despedindo = false,
+  aproximacao,
+  aoPingGrave,
+}: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
   // Numa ref pra não religar a animação quando o Player recria o callback.
   const refPing = useRef(aoPing)
@@ -80,6 +98,10 @@ export function PainelSonar({ aoPing, contato, daFala = false, despedindo = fals
   refContato.current = contato
   const refDespedindo = useRef(despedindo)
   refDespedindo.current = despedindo
+  const refAproximacao = useRef(aproximacao)
+  refAproximacao.current = aproximacao
+  const refPingGrave = useRef(aoPingGrave)
+  refPingGrave.current = aoPingGrave
 
   useEffect(() => {
     const canvas = refCanvas.current
@@ -109,6 +131,8 @@ export function PainelSonar({ aoPing, contato, daFala = false, despedindo = fals
     let contatoMarcado = false
     let despediu = false
     let anterior = nascimento
+    // Aproximação: o próximo ping sai quando o relógio passa deste instante.
+    let proximoPing = nascimento
 
     const desenhar = (agora: number) => {
       quadro = requestAnimationFrame(desenhar)
@@ -165,8 +189,54 @@ export function PainelSonar({ aoPing, contato, daFala = false, despedindo = fals
       ctx.lineWidth = 1.5
       ctx.stroke()
 
+      // --- aproximação -----------------------------------------------------
+      const segundos = refAproximacao.current
+      if (segundos) {
+        const avanco = Math.min(1, (agora - nascimento) / (segundos * 1000))
+        // Ping acelerando: de 1,1 s no começo a 0,17 s no fim. A curva é
+        // quadrática porque linear não LÊ como aceleração — lê como metrônomo
+        // ficando mais rápido.
+        const intervalo = 1100 - 930 * avanco * avanco
+        if (agora >= proximoPing) {
+          proximoPing = agora + intervalo
+          // E mais grave: o que se aproxima soa mais baixo.
+          refPingGrave.current?.(1 - avanco * 0.55)
+        }
+
+        // O blip vem da borda ao centro. Enorme, com rastro.
+        const dist = 1 - avanco * 0.86
+        const bx = c + Math.cos(TOPO) * raio * dist
+        const by = c + Math.sin(TOPO) * raio * dist
+        const tam = raio * (0.05 + avanco * 0.16)
+        const pisca = (Math.sin(agora / (120 - avanco * 70)) + 1) / 2
+
+        ctx.beginPath()
+        ctx.moveTo(c + Math.cos(TOPO) * raio * Math.min(1, dist + 0.2), c + Math.sin(TOPO) * raio * Math.min(1, dist + 0.2))
+        ctx.lineTo(bx, by)
+        ctx.strokeStyle = `rgba(255, 110, 90, 0.3)`
+        ctx.lineWidth = tam * 0.9
+        ctx.lineCap = 'round'
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.arc(bx, by, tam, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255, 110, 90, ${0.7 + pisca * 0.3})`
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(bx, by, tam * (1.9 + pisca * 0.8), 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(255, 110, 90, ${0.5 - pisca * 0.3})`
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+
+        ctx.textAlign = 'center'
+        ctx.font = `${Math.max(9, lado * 0.035)}px ui-monospace, monospace`
+        ctx.fillStyle = 'rgba(255, 110, 90, 0.95)'
+        ctx.fillText('CONTATO', bx, by - tam - lado * 0.03)
+        ctx.textAlign = 'left'
+      }
+
       // O contato nomeado: aparece de frente, no tempo certo, com o ping.
-      if (!contatoMarcado && daFala && agora - nascimento >= MS_ATE_CONTATO) {
+      if (!refAproximacao.current && !contatoMarcado && daFala && agora - nascimento >= MS_ATE_CONTATO) {
         contatoMarcado = true
         blips.push({
           angulo: TOPO + (Math.random() - 0.5) * 0.16,

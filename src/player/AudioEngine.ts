@@ -58,6 +58,7 @@ const CAMINHOS_SFX: Record<Sfx, string> = {
   vidro: './audio/sfx/vidro.mp3',
   pulso: './audio/sfx/pulso.mp3',
   impacto: './audio/sfx/impacto.mp3',
+  presenca: './audio/sfx/presenca.mp3',
 }
 
 /** Efeitos moram em audio/sfx/ e seguem regra própria — ver preload(). */
@@ -410,25 +411,34 @@ export class AudioEngine {
    * Dispara um efeito sonoro. O mp3 tem prioridade; sem ele, o efeito é
    * sintetizado na hora — assim o projeto roda completo sem nenhum arquivo.
    */
-  tocarSfx(sfx: Sfx): void {
+  /**
+   * `altura` desafina o efeito: 1 = original, 0,5 = uma oitava abaixo. Serve
+   * pro ping do sonar ficar mais grave conforme o contato se aproxima.
+   */
+  tocarSfx(sfx: Sfx, altura = 1): void {
     const url = CAMINHOS_SFX[sfx]
     if (this.ausentes.has(url) || !this.embutido(url)) {
-      return this.tocarSfxSintetico(sfx)
+      return this.tocarSfxSintetico(sfx, altura)
     }
 
     const elemento = this.obterElemento(url)
     this.sfxAtual = elemento
     elemento.currentTime = 0
+    // `preservesPitch` é true por padrão, e com ele a taxa muda a duração sem
+    // mudar a altura — o contrário do que se quer aqui.
+    const comTom = elemento as HTMLAudioElement & { preservesPitch?: boolean }
+    comTom.preservesPitch = false
+    elemento.playbackRate = Math.max(0.25, altura)
     elemento.play().catch(() => {
       this.ausentes.add(url)
-      this.tocarSfxSintetico(sfx)
+      this.tocarSfxSintetico(sfx, altura)
     })
   }
 
-  private tocarSfxSintetico(sfx: Sfx): void {
+  private tocarSfxSintetico(sfx: Sfx, altura = 1): void {
     const contexto = this.obterContexto()
     if (!contexto || !this.saidaSfx) return
-    tocarSintetico(contexto, this.saidaSfx, sfx as NomeSfx)
+    tocarSintetico(contexto, this.saidaSfx, sfx as NomeSfx, altura)
   }
 
   /**

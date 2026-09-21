@@ -423,6 +423,7 @@ export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   raia: doBestiario('raia'),
   tubarao: doBestiario('tubarao'),
   lula: doBestiario('lula-gigante'),
+  megalodonte: doBestiario('megalodonte'),
   'letra-d': () => glifo('D'),
 }
 

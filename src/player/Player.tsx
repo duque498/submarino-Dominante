@@ -38,6 +38,7 @@ import { Apresentacao } from '../cenas/Apresentacao'
 import { Combate, type EstadoCombate } from '../cenas/Combate'
 import { Fala } from '../cenas/Fala'
 import { Fim } from '../cenas/Fim'
+import { Olho } from '../cenas/Olho'
 import { Quiz, type FaseDinamica } from '../cenas/Quiz'
 import { Transicao } from '../cenas/Transicao'
 import { VF } from '../cenas/VF'
@@ -101,6 +102,9 @@ export function audioDaCena(cena: Cena): string | null {
     // A tela final nao fala nada — o encerramento ja falou.
     case 'combate':
     case 'fim':
+    // A cena do olho é muda de propósito: a IA só volta a falar depois que o
+    // visor já quebrou.
+    case 'olho':
       return null
   }
 }
@@ -130,6 +134,8 @@ function linhasDeReferencia(cena: Cena): string[] {
       return cena.falas.rodada[0] ?? [cena.criatura]
     case 'fim':
       return [cena.tela.titulo]
+    case 'olho':
+      return [cena.criatura]
   }
 }
 
@@ -139,6 +145,8 @@ function rotaDaCena(cena: Cena): string {
       return cena.destino.toUpperCase()
     case 'combate':
       return 'CONTATO HOSTIL'
+    case 'olho':
+      return 'CONTATO VISUAL'
     case 'fim':
       return cena.tela.subtitulo.toUpperCase()
     case 'fala':
@@ -155,7 +163,9 @@ function layoutDaCena(cena: Cena): Layout {
   // No combate o orbe fica pequeno no canto: a tela e do mostrador de sonar, e
   // um orbe grande no meio competiria justamente com o que a plateia precisa
   // ler pra responder.
-  if (cena.tipo === 'combate') return 'canto'
+  // No olho a tela é do bicho: o orbe some pro canto e a área central fica
+  // inteira pra a câmera.
+  if (cena.tipo === 'combate' || cena.tipo === 'olho') return 'canto'
   if (cena.tipo !== 'apresentacao') return 'central'
   return cena.orbe === 'palco' ? 'palco' : 'canto'
 }
@@ -166,6 +176,8 @@ const DANO_POR_IMPACTO = 0.25
 const MS_ENTRE_RODADAS = 1200
 /** Na tela final, quanto o log ainda escreve antes de se calar de vez. */
 const MS_LOG_ATE_PARAR = 7000
+/** Estatica depois da rachadura, antes de a IA voltar a falar. */
+const MS_ESTATICA_APOS_OLHO = 2200
 
 type FasePane = 'caindo' | 'congelado' | 'voltando'
 type EstadoPane = { fase: FasePane; quedas: Queda[] }
@@ -236,8 +248,12 @@ export function Player({ roteiro, engine }: Props) {
    */
   const [visor, setVisor] = useState<Visor>('ok')
   const [combate, setCombate] = useState<EstadoCombate | null>(null)
-  /** Tremor da tela inteira: só o impacto do combate liga isto. */
+  /** Tremor da tela inteira: o impacto do combate e a quebra do visor. */
   const [impacto, setImpacto] = useState(false)
+  /** O olho está no facho? Falso já no quadro da rachadura. */
+  const [olhoVisivel, setOlhoVisivel] = useState(false)
+  /** Preenchido pelo laço da cena do olho; chamado pelo componente. */
+  const refQuebrarOlho = useRef<(() => void) | null>(null)
   /**
    * Na tela final o log escreve mais algumas linhas e PARA.
    *
@@ -458,6 +474,11 @@ export function Player({ roteiro, engine }: Props) {
   }, [cena, faseDinamica, concluirDinamica])
 
   const aoPing = useCallback(() => engine.tocarSfx('sonar'), [engine])
+  /** Ping da aproximação: mesmo efeito, altura caindo conforme ele chega. */
+  const aoPingGrave = useCallback(
+    (altura: number) => engine.tocarSfx('sonar', altura),
+    [engine],
+  )
 
   // --- pane ----------------------------------------------------------------
 
@@ -607,11 +628,102 @@ export function Player({ roteiro, engine }: Props) {
       const c = sequencia[i]
       if (c.visor !== undefined) estadoVisor = c.visor
       if (c.ameacas !== undefined) ameacas = c.ameacas
+      // A cena do olho QUEBRA o visor, e o estado tem que sobreviver a voltar
+      // uma cena com a seta esquerda. A própria cena, porém, começa com o
+      // visor inteiro — ela só racha no fim, e é o `aoQuebrar` que avisa.
+      if (c.tipo === 'olho' && i < indice) estadoVisor = 'rachado'
     }
     setVisor(estadoVisor)
     motor.definirVisor(estadoVisor)
     motor.ameacas = ameacas
   }, [indice, sequencia])
+
+  /**
+   * A água virando antes de o bicho chegar.
+   *
+   * A cena `contato` liga a agitação do mundo: o farol oscila, o sedimento
+   * entra em turbilhão e a imagem treme. No meio dela passa um VULTO cortando
+   * o facho — um relance, não uma aparição. É o que faz o olho, dois passos
+   * depois, parecer perseguição e não truque.
+   */
+  useEffect(() => {
+    if (!cena || cena.id !== 'contato') {
+      motor.agitacao = 0
+      return
+    }
+    let subindo = 0
+    const inicio = performance.now()
+    const laco = () => {
+      subindo = requestAnimationFrame(laco)
+      // Sobe ao longo de 6 s e fica no teto: é a mesma janela da aproximação
+      // do blip no sonar.
+      motor.agitacao = Math.min(1, (performance.now() - inicio) / 6000)
+    }
+    subindo = requestAnimationFrame(laco)
+    const vulto = window.setTimeout(() => motor.invocarVulto('megalodonte'), 3400)
+    return () => {
+      cancelAnimationFrame(subindo)
+      window.clearTimeout(vulto)
+      motor.agitacao = 0
+    }
+  }, [cena])
+
+  // --- o olho ---------------------------------------------------------------
+
+  /**
+   * A cena do olho, do escuro à rachadura.
+   *
+   * Laço próprio, como o combate, porque ela não é feita de falas: é uma
+   * duração, um corte e um estado de mundo que muda. A ordem importa e é toda
+   * ela dramática — o olho sai, o vidro quebra no mesmo quadro, e só então a
+   * estática entra e a IA recupera a voz.
+   */
+  useEffect(() => {
+    if (!cena || cena.tipo !== 'olho') {
+      setOlhoVisivel(false)
+      return
+    }
+    let cancelado = false
+    let saida = 0
+
+    // O Diretor não decide nada aqui, e um painel dele aberto por gatilho
+    // roubaria a tela do bicho.
+    setPainel(null)
+    setOlhoVisivel(true)
+    engine.tocarSfx('presenca')
+    setRajadaLog(['Objeto no facho do farol', 'Reconhecimento: SEM CORRESPONDÊNCIA'])
+
+    const quebrar = () => {
+      if (cancelado) return
+      // O corte. Os dois efeitos juntos: o impacto é o susto, o vidro é a
+      // informação de o que quebrou.
+      engine.tocarSfx('impacto')
+      engine.tocarSfx('vidro')
+      setImpacto(true)
+      window.setTimeout(() => setImpacto(false), 900)
+      setVisor('rachado')
+      motor.definirVisor('rachado')
+      setOlhoVisivel(false)
+      setRajadaLog([
+        'ERRO: integridade do visor externo comprometida',
+        'ERRO: câmera 01 sem sinal',
+        'ERRO: câmera 02 sem sinal',
+      ])
+      // Um respiro de estática antes de a IA voltar a falar. Sem ele a próxima
+      // cena começa por cima do estrondo e o corte não tem para onde assentar.
+      saida = window.setTimeout(() => {
+        if (!cancelado) avancar()
+      }, MS_ESTATICA_APOS_OLHO)
+    }
+    refQuebrarOlho.current = quebrar
+
+    return () => {
+      cancelado = true
+      window.clearTimeout(saida)
+      refQuebrarOlho.current = null
+      setOlhoVisivel(false)
+    }
+  }, [cena, engine, avancar])
 
   // --- combate acústico -----------------------------------------------------
 
@@ -1208,7 +1320,7 @@ export function Player({ roteiro, engine }: Props) {
     // tela final não fala nada. Nos dois casos o `executar()` de sempre não
     // serve: ele tocaria um áudio que não existe e, na tela final, avançaria
     // pra lugar nenhum.
-    if (cena.tipo === 'combate' || cena.tipo === 'fim') {
+    if (cena.tipo === 'combate' || cena.tipo === 'fim' || cena.tipo === 'olho') {
       return () => {
         diretor.cenaTerminou()
         engine.pararVoz()
@@ -1423,7 +1535,10 @@ export function Player({ roteiro, engine }: Props) {
   const modo = layoutDaCena(cena)
   // Os mini-feeds só saem do ar quando a cena pede (quiz, por exemplo). Na pane
   // eles continuam na tela, em estática — quem cuida disso é o motor.
-  const mostrarCameras = cena.cameras !== false
+  // Enquanto o olho está no facho, a câmera É o olho: os mini-feeds saem da
+  // tela. Eles voltam no quadro seguinte à rachadura, e voltam em estática —
+  // que é justamente a informação da cena.
+  const mostrarCameras = cena.cameras !== false && !olhoVisivel
   const quedasVisiveis = pane
     ? pane.quedas.filter((queda) => !restaurados.includes(queda.nome))
     : undefined
@@ -1505,6 +1620,13 @@ export function Player({ roteiro, engine }: Props) {
           {cena.tipo === 'combate' && combate && (
             <Combate cena={cena} estado={combate} aoResponder={responderCombate} />
           )}
+          {cena.tipo === 'olho' && olhoVisivel && (
+            <Olho
+              key={cena.id}
+              duracao={cena.duracao}
+              aoQuebrar={() => refQuebrarOlho.current?.()}
+            />
+          )}
           <Painel
             painel={
               painel && {
@@ -1523,6 +1645,10 @@ export function Player({ roteiro, engine }: Props) {
             profundidade={Math.round(motor.profundidade())}
             travado={tracoTravado}
             aoPing={aoPing}
+            aoPingGrave={aoPingGrave}
+            // Só nesta cena o sonar conta uma história: o contato vem da borda
+            // ao centro em 6 s, com o ping acelerando e ficando grave.
+            aproximacao={cena.id === 'contato' ? 6 : undefined}
             visor={visor}
           />
           {mostrarCameras && (
@@ -1590,6 +1716,8 @@ function estadoDoOrbe(cena: Cena, falando: boolean, fase: FaseDinamica): EstadoO
       return falando ? 'falando' : 'processando'
     case 'fim':
       return 'ocioso'
+    case 'olho':
+      return 'processando'
     default:
       return falando ? 'falando' : 'ocioso'
   }
