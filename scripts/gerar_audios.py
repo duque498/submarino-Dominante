@@ -95,15 +95,30 @@ class Fala:
         self.texto = texto.strip()
 
 
+def texto_da_linha(linha) -> str:
+    """
+    Uma linha do roteiro pode ser uma string OU um objeto com ações.
+
+    A Fase 3.5 trocou o modelo (`{ "texto": "...", "acoes": [...] }`) e este
+    script continuou lendo só strings — quebrava na primeira cena migrada. Como
+    os mp3 já estavam gerados, ninguém notou até tentar regerar. Os dois
+    formatos valem, e o roteiro escolhe o que for mais legível por linha.
+    """
+    if isinstance(linha, dict):
+        return str(linha.get("texto") or "")
+    return str(linha or "")
+
+
 def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
     falas: list[Fala] = []
 
-    def juntar(grupo: str, linhas: list[str] | None):
+    def juntar(grupo: str, linhas: list | None):
         if not linhas:
             return
         for i, linha in enumerate(linhas):
-            if linha and linha.strip():
-                falas.append(Fala(turma, grupo, i, linha))
+            texto = texto_da_linha(linha)
+            if texto.strip():
+                falas.append(Fala(turma, grupo, i, texto))
 
     for cena in roteiro.get("cenas", []):
         cid = cena.get("id", "?")
@@ -125,6 +140,15 @@ def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
         elif tipo == "pane":
             juntar(f"{cid}-entrada", cena.get("falaEntrada"))
             juntar(f"{cid}-retorno", cena.get("falaRetorno"))
+        elif tipo == "combate":
+            # Cada fala do combate vira um mp3 próprio, porque elas não são
+            # ditas em sequência: entre uma e outra a plateia responde. Os nomes
+            # batem com o campo `audio` do JSON — se mudar aqui, muda lá.
+            falas_combate = cena.get("falas", {})
+            for chave in ("rodada", "acerto", "erro", "timeout"):
+                for n, bloco in enumerate(falas_combate.get(chave) or [], start=1):
+                    juntar(f"{cid}-{chave}-{n}", bloco)
+            juntar(f"{cid}-critico", falas_combate.get("critico"))
 
     return falas
 

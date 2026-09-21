@@ -2,44 +2,314 @@
   "turma": "3A",
   "cenas": [
     {
-      "id": "entrada",
+      "id": "chegada",
       "tipo": "fala",
       "avanco": "auto",
       "sfx": "sonar",
-      "audio": "./audio/3a/entrada.mp3",
+      "profundidade": 900,
+      "audio": "./audio/3a/chegada.mp3",
+      "log": ["Nova tripulação identificada: 3º ano A", "Recalculando plano de mergulho"],
       "tela": {
         "titulo": "SUBMARINO DOMI",
-        "status": "NOVA TRIPULAÇÃO IDENTIFICADA",
-        "linhas": ["[PENDENTE] Texto da entrada do 3º ano A — preencher na Fase 4."]
+        "status": "TERCEIRA TRIPULAÇÃO A BORDO",
+        "linhas": [
+          "3º ano identificado.",
+          "Iniciando próxima etapa da missão.",
+          "Destino: zona abissal."
+        ]
       }
     },
     {
-      "id": "bio",
-      "tipo": "apresentacao",
-      "avanco": "manual",
-      "tela": { "titulo": "SETOR: BIOLOGIA", "status": "EXPLORAÇÃO EM CURSO" }
-    },
-    {
-      "id": "arte",
-      "tipo": "apresentacao",
-      "avanco": "manual",
-      "tela": { "titulo": "SETOR: ARTE", "status": "EXPLORAÇÃO EM CURSO" }
-    },
-    {
-      "id": "ef",
-      "tipo": "apresentacao",
-      "avanco": "manual",
-      "tela": { "titulo": "SETOR: EDUCAÇÃO FÍSICA", "status": "EXPLORAÇÃO EM CURSO" }
-    },
-    {
-      "id": "final",
+      "id": "descida",
       "tipo": "fala",
-      "avanco": "manual",
-      "audio": "./audio/3a/final.mp3",
+      "avanco": "auto",
+      "profundidade": 4500,
+      "audio": "./audio/3a/descida.mp3",
+      "log": [
+        "Lastro: enchendo",
+        "Pressão externa subindo",
+        "Temperatura da água: 3 °C",
+        "Integridade do casco: nominal"
+      ],
       "tela": {
-        "titulo": "EXPEDIÇÃO CONCLUÍDA",
-        "status": "RETORNANDO À SUPERFÍCIE",
-        "linhas": ["[PENDENTE] Texto do encerramento do 3º ano A — preencher na Fase 4."]
+        "linhas": [
+          {
+            "texto": "Iniciando descida.",
+            "acoes": [{ "tipo": "mergulho", "para": 4500 }]
+          },
+          "Atravessando zona mesopelágica.",
+          "Zona batipelágica.",
+          "Zona abissal alcançada. Pressão externa: quatrocentas e cinquenta atmosferas."
+        ]
+      }
+    },
+    {
+      "id": "visor",
+      "tipo": "fala",
+      "avanco": "auto",
+      "visor": "rachado",
+      "audio": "./audio/3a/visor.mp3",
+      "log": [
+        "ALERTA: deformação no visor externo",
+        "ERRO: câmera 01 sem sinal",
+        "ERRO: câmera 02 sem sinal",
+        "Sonar assumindo como sensor primário"
+      ],
+      "tela": {
+        "linhas": [
+          "Atenção. Pressão além do limite estrutural do visor.",
+          {
+            "texto": "Visor externo comprometido. Câmeras externas: offline.",
+            "acoes": [
+              { "tipo": "sfx", "nome": "vidro" },
+              { "tipo": "sfx", "nome": "casco" }
+            ]
+          },
+          "Sistema operando apenas por sonar.",
+          {
+            "texto": "Contato de grande porte detectado em movimento. Perdido.",
+            "acoes": [{ "tipo": "painel", "nome": "sonar", "ate": "fimCena" }]
+          }
+        ]
+      }
+    },
+    {
+      "id": "grupo2-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/3a/grupo2-intro.mp3",
+      "log": ["Carregando setor: OCEANOS", "Catálogo de espécies: disponível"],
+      "tela": {
+        "linhas": ["Iniciando apresentação: beleza e importância dos oceanos."]
+      }
+    },
+    {
+      "id": "grupo2",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "cameras": false,
+      "orbe": "palco",
+      "formas": ["esfera", "baleia", "tartaruga", "peixe", "agua-viva"],
+      "log": ["Visor externo: COMPROMETIDO", "Exibindo registros de catálogo"],
+      "tela": { "titulo": "SETOR: OCEANOS", "status": "VISOR OFFLINE · SONAR ATIVO" }
+    },
+    {
+      "id": "grupo1-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/3a/grupo1-intro.mp3",
+      "log": ["Carregando setor: SONAR", "Modo demonstração: habilitado"],
+      "tela": { "linhas": ["Iniciando apresentação: sonar."] }
+    },
+    {
+      "id": "grupo1",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "cameras": false,
+      "orbe": "discreto",
+      "log": ["Emissor acústico: pronto", "Velocidade do som na água: 1500 m/s"],
+      "tela": { "titulo": "SETOR: SONAR", "status": "MODO DEMONSTRAÇÃO" }
+    },
+    {
+      "id": "grupo4-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/3a/grupo4-intro.mp3",
+      "log": ["Carregando setor: IMPACTO HUMANO", "Cruzando dados de temperatura"],
+      "tela": {
+        "linhas": ["Iniciando apresentação: aquecimento global e poluição."]
+      }
+    },
+    {
+      "id": "grupo4",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "cameras": false,
+      "orbe": "discreto",
+      "log": ["Série histórica: 1880–2024", "Acidificação: registrada"],
+      "tela": { "titulo": "SETOR: IMPACTO HUMANO", "status": "ANÁLISE EM CURSO" }
+    },
+    {
+      "id": "grupo3-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/3a/grupo3-intro.mp3",
+      "log": ["Carregando setor: AÇÕES", "Mapeando concentração de resíduos"],
+      "tela": { "linhas": ["Iniciando apresentação: ilha do lixo e ações."] }
+    },
+    {
+      "id": "grupo3",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "cameras": false,
+      "orbe": "discreto",
+      "log": ["Giro do Pacífico Norte: localizado", "Registrando propostas da tripulação"],
+      "tela": { "titulo": "SETOR: AÇÕES", "status": "REGISTRANDO PROPOSTAS" }
+    },
+    {
+      "id": "alerta",
+      "tipo": "fala",
+      "avanco": "auto",
+      "sfx": "alarme",
+      "audio": "./audio/3a/alerta.mp3",
+      "log": [
+        "ALERTA: massa não identificada",
+        "Comparando com catálogo... sem correspondência",
+        "ALERTA: aproximação em curso",
+        "Sonar auxiliar: aguardando entrada da tripulação"
+      ],
+      "tela": {
+        "linhas": [
+          "Atenção. Contato de grande porte reaproximando.",
+          "Porte incompatível com qualquer espécie catalogada.",
+          "Padrão morfológico compatível com Otodus megalodon. Registro: extinto há três milhões e seiscentos mil anos.",
+          {
+            "texto": "Sem imagem. Sonar principal degradado.",
+            "acoes": [{ "tipo": "painel", "nome": "sonar", "ate": "fimCena" }]
+          },
+          "Tripulação: ativem o sonar auxiliar. Informem o setor do contato. Vou disparar o pulso acústico na direção indicada."
+        ]
+      }
+    },
+    {
+      "id": "combate",
+      "tipo": "combate",
+      "avanco": "manual",
+      "cameras": false,
+      "criatura": "megalodonte",
+      "setores": ["PROA", "BOMBORDO", "ESTIBORDO"],
+      "log": [
+        "Sonar auxiliar: ONLINE",
+        "Emissor acústico: carregando",
+        "Aguardando setor informado pela tripulação"
+      ],
+      "rodadas": [
+        { "distancia": 900, "tempo": 10 },
+        { "distancia": 450, "tempo": 7 },
+        { "distancia": 150, "tempo": 5 }
+      ],
+      "falas": {
+        "rodada": [
+          ["Contato detectado. Qual setor?"],
+          ["Contato mais próximo. Setor?"],
+          ["Última aproximação. Setor, agora."]
+        ],
+        "acerto": [
+          ["Pulso disparado. Contato recuando."],
+          ["Direção confirmada. Contato afastando."],
+          ["Acerto. Contato perdendo velocidade."]
+        ],
+        "erro": [
+          ["Setor incorreto. Impacto no casco."],
+          ["Direção errada. O contato passou."]
+        ],
+        "timeout": [
+          ["Sem resposta. Impacto no casco."],
+          ["Tempo esgotado. Impacto no casco."]
+        ],
+        "critico": ["Casco crítico. Subida forçada."]
+      },
+      "audio": {
+        "rodada": [
+          "./audio/3a/combate-rodada-1.mp3",
+          "./audio/3a/combate-rodada-2.mp3",
+          "./audio/3a/combate-rodada-3.mp3"
+        ],
+        "acerto": [
+          "./audio/3a/combate-acerto-1.mp3",
+          "./audio/3a/combate-acerto-2.mp3",
+          "./audio/3a/combate-acerto-3.mp3"
+        ],
+        "erro": [
+          "./audio/3a/combate-erro-1.mp3",
+          "./audio/3a/combate-erro-2.mp3"
+        ],
+        "timeout": [
+          "./audio/3a/combate-timeout-1.mp3",
+          "./audio/3a/combate-timeout-2.mp3"
+        ],
+        "critico": "./audio/3a/combate-critico.mp3"
+      }
+    },
+    {
+      "id": "neutralizado",
+      "tipo": "fala",
+      "avanco": "auto",
+      "sfx": "ok",
+      "audio": "./audio/3a/neutralizado.mp3",
+      "log": [
+        "Contato: afastando",
+        "Distância: aumentando",
+        "ALERTA: integridade do casco em nível crítico"
+      ],
+      "tela": {
+        "linhas": [
+          "Contato em fuga. Ameaça neutralizada.",
+          "Integridade do casco em nível crítico. Iniciando subida de emergência."
+        ]
+      }
+    },
+    {
+      "id": "subida",
+      "tipo": "fala",
+      "avanco": "auto",
+      "profundidade": 0,
+      "visor": "parcial",
+      "ameacas": true,
+      "sfx": "pressurizacao",
+      "audio": "./audio/3a/subida.mp3",
+      "log": [
+        "Esvaziando lastro",
+        "Visor externo: reparo de emergência aplicado",
+        "Câmeras: sinal parcial",
+        "Pressão externa caindo"
+      ],
+      "tela": {
+        "linhas": [
+          {
+            "texto": "Última etapa da expedição concluída.",
+            "acoes": [{ "tipo": "mergulho", "para": 0 }]
+          },
+          "Todos os setores explorados.",
+          "Iniciando retorno à superfície."
+        ]
+      }
+    },
+    {
+      "id": "encerramento",
+      "tipo": "fala",
+      "avanco": "auto",
+      "profundidade": 0,
+      "visor": "ok",
+      "ameacas": false,
+      "audio": "./audio/3a/encerramento.mp3",
+      "log": [
+        "Profundidade: 0 m",
+        "Superfície alcançada",
+        "Expedição DOMI: concluída",
+        "Registro de bordo: encerrado"
+      ],
+      "tela": {
+        "linhas": [
+          "Durante esta jornada, conhecemos diferentes aspectos do oceano e percebemos que existem inúmeras formas de observá-lo, compreendê-lo e nos relacionarmos com ele.",
+          "Mas esta expedição também nos mostrou algo importante: quanto mais exploramos os oceanos, mais percebemos o quanto ainda temos para descobrir.",
+          "Tripulação, missão cumprida.",
+          "O Submarino DOMI está retornando à superfície.",
+          "Obrigado por embarcarem nesta expedição conosco.",
+          "Até a próxima exploração."
+        ]
+      }
+    },
+    {
+      "id": "fim",
+      "tipo": "fim",
+      "avanco": "manual",
+      "profundidade": 0,
+      "log": ["Sistemas em repouso", "Até a próxima exploração"],
+      "tela": {
+        "titulo": "SUBMARINO DOMI",
+        "subtitulo": "EXPEDIÇÃO CONCLUÍDA",
+        "nota": "Obrigado por embarcar conosco."
       }
     }
   ]

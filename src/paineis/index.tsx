@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { PainelCamera } from './PainelCamera'
+import { PainelEco } from './PainelEco'
 import { PainelEspectro } from './PainelEspectro'
 import { PainelFicha } from './PainelFicha'
 import { PainelMapa } from './PainelMapa'
 import { PainelSonar } from './PainelSonar'
 import { PainelStatus, type Queda } from './PainelStatus'
 import { PainelTraco } from './PainelTraco'
+import { PainelZonas } from './PainelZonas'
 
 export {
   fichaExiste,
@@ -49,6 +51,8 @@ const TITULOS: Record<string, string> = {
   camera: 'câmera externa',
   traco: 'leitura de traço',
   espectro: 'absorção da luz na água',
+  zonas: 'zonas da coluna d\u0027água',
+  eco: 'medição por eco',
 }
 
 /** Quanto o painel que está saindo fica na tela antes de sumir. */
@@ -74,6 +78,8 @@ type Props = {
   travado?: boolean
   /** Painel de sonar: toca o ping a cada volta da varredura. */
   aoPing?: () => void
+  /** Estado do visor: a câmera em painel também racha. */
+  visor?: 'ok' | 'rachado' | 'parcial'
 }
 
 /**
@@ -98,6 +104,7 @@ export function Painel({
   profundidade,
   travado,
   aoPing,
+  visor = 'ok',
 }: Props) {
   const [saindo, setSaindo] = useState<PainelAberto | null>(null)
   const refAnterior = useRef<PainelAberto | null>(null)
@@ -138,6 +145,7 @@ export function Painel({
             profundidade,
             travado,
             aoPing,
+            visor,
             contato: visivel.contato,
             despedindo: visivel.despedindo,
             // Painel que o Diretor abriu é painel aberto pela fala.
@@ -150,6 +158,7 @@ export function Painel({
 }
 
 type Extras = {
+  visor?: 'ok' | 'rachado' | 'parcial'
   contato?: string
   despedindo?: boolean
   daFala?: boolean
@@ -181,7 +190,11 @@ function corpoDoPainel(
     case 'mapa':
       return <PainelMapa marcador={argumento} />
     case 'camera':
-      return <PainelCamera argumento={argumento} />
+      return <PainelCamera argumento={argumento} visor={extras.visor} />
+    case 'zonas':
+      return <PainelZonas />
+    case 'eco':
+      return <PainelEco aoFechar={extras.aoFechar} aoPing={extras.aoPing} />
     case 'traco':
       return (
         <PainelTraco

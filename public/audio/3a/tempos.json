@@ -1,0 +1,280 @@
+{
+  "alerta": {
+    "duracaoMs": 26352,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3192
+      },
+      {
+        "inicio": 3792,
+        "fim": 7056
+      },
+      {
+        "inicio": 7656,
+        "fim": 14736
+      },
+      {
+        "inicio": 15336,
+        "fim": 18072
+      },
+      {
+        "inicio": 18672,
+        "fim": 26160
+      }
+    ]
+  },
+  "chegada": {
+    "duracaoMs": 7608,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2184
+      },
+      {
+        "inicio": 2784,
+        "fim": 5136
+      },
+      {
+        "inicio": 5736,
+        "fim": 7512
+      }
+    ]
+  },
+  "combate-acerto-1": {
+    "duracaoMs": 2448,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2448
+      }
+    ]
+  },
+  "combate-acerto-2": {
+    "duracaoMs": 2712,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2712
+      }
+    ]
+  },
+  "combate-acerto-3": {
+    "duracaoMs": 2760,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2760
+      }
+    ]
+  },
+  "combate-critico": {
+    "duracaoMs": 2304,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2304
+      }
+    ]
+  },
+  "combate-erro-1": {
+    "duracaoMs": 2328,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2328
+      }
+    ]
+  },
+  "combate-erro-2": {
+    "duracaoMs": 2400,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2400
+      }
+    ]
+  },
+  "combate-rodada-1": {
+    "duracaoMs": 2208,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2208
+      }
+    ]
+  },
+  "combate-rodada-2": {
+    "duracaoMs": 2160,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2160
+      }
+    ]
+  },
+  "combate-rodada-3": {
+    "duracaoMs": 2448,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2448
+      }
+    ]
+  },
+  "combate-timeout-1": {
+    "duracaoMs": 2208,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2208
+      }
+    ]
+  },
+  "combate-timeout-2": {
+    "duracaoMs": 2328,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2328
+      }
+    ]
+  },
+  "descida": {
+    "duracaoMs": 12288,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1464
+      },
+      {
+        "inicio": 2064,
+        "fim": 4392
+      },
+      {
+        "inicio": 4992,
+        "fim": 6552
+      },
+      {
+        "inicio": 7152,
+        "fim": 12144
+      }
+    ]
+  },
+  "encerramento": {
+    "duracaoMs": 31728,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 9816
+      },
+      {
+        "inicio": 10416,
+        "fim": 18984
+      },
+      {
+        "inicio": 19584,
+        "fim": 21480
+      },
+      {
+        "inicio": 22080,
+        "fim": 25176
+      },
+      {
+        "inicio": 25776,
+        "fim": 29016
+      },
+      {
+        "inicio": 29616,
+        "fim": 31488
+      }
+    ]
+  },
+  "grupo1-intro": {
+    "duracaoMs": 2040,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2040
+      }
+    ]
+  },
+  "grupo2-intro": {
+    "duracaoMs": 3792,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3792
+      }
+    ]
+  },
+  "grupo3-intro": {
+    "duracaoMs": 2928,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2928
+      }
+    ]
+  },
+  "grupo4-intro": {
+    "duracaoMs": 3360,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3360
+      }
+    ]
+  },
+  "neutralizado": {
+    "duracaoMs": 7896,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2712
+      },
+      {
+        "inicio": 3312,
+        "fim": 7848
+      }
+    ]
+  },
+  "subida": {
+    "duracaoMs": 8208,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2568
+      },
+      {
+        "inicio": 3168,
+        "fim": 5256
+      },
+      {
+        "inicio": 5856,
+        "fim": 8112
+      }
+    ]
+  },
+  "visor": {
+    "duracaoMs": 14952,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3192
+      },
+      {
+        "inicio": 3792,
+        "fim": 7560
+      },
+      {
+        "inicio": 8160,
+        "fim": 10488
+      },
+      {
+        "inicio": 11088,
+        "fim": 14808
+      }
+    ]
+  }
+}

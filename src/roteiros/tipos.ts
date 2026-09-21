@@ -5,7 +5,28 @@ export type Turma = '2A' | '2B' | '3A'
 
 export const TURMAS: Turma[] = ['2A', '2B', '3A']
 
-export type Sfx = 'sonar' | 'alarme' | 'estatica' | 'ok' | 'pressurizacao' | 'casco'
+export type Sfx =
+  | 'sonar'
+  | 'alarme'
+  | 'estatica'
+  | 'ok'
+  | 'pressurizacao'
+  | 'bipe-timer'
+  | 'casco'
+  | 'vidro'
+  | 'pulso'
+  | 'impacto'
+
+/**
+ * Estado do visor externo. Nasce `"ok"`, e o 3A o quebra: a pressao da zona
+ * abissal racha o vidro e as cameras caem.
+ *
+ * Fica no roteiro, e nao numa flag escondida no codigo, porque e narrativa:
+ * quem escreve a cena decide quando o visor racha e quando ele volta meio
+ * consertado. Uma cena sem o campo HERDA o estado da anterior — o visor rachado
+ * atravessa a apresentacao inteira, que e o ponto.
+ */
+export type Visor = 'ok' | 'rachado' | 'parcial'
 
 export type Avanco = 'auto' | 'manual'
 
@@ -41,6 +62,17 @@ export type CenaBase = {
   profundidade?: number
   /** Mini-feeds das cameras externas. Padrao true. */
   cameras?: boolean
+  /**
+   * Estado do visor a partir desta cena. Sem o campo, herda o da cena anterior.
+   */
+  visor?: Visor
+  /**
+   * Liga as ameacas no mundo: rede fantasma, plastico a deriva e coral
+   * branqueado, cada uma na sua faixa de profundidade. Usado so na subida do
+   * 3A, depois de os grupos 3 e 4 falarem de poluicao — nao ha fala explicando,
+   * porque os alunos acabaram de explicar. Sem o campo, herda da cena anterior.
+   */
+  ameacas?: boolean
 }
 
 /**
@@ -184,6 +216,63 @@ export type CenaPane = CenaBase & {
   audio: { entrada: string; retorno: string }
 }
 
+/**
+ * Combate acustico: a plateia opera o sonar auxiliar e a IA dispara o pulso.
+ *
+ * O tipo e generico de proposito. A criatura e uma chave do bestiario, os
+ * setores sao uma lista de rotulos e as falas sao dados — trocar o megalodonte
+ * por outra coisa e trocar uma string e desenhar uma silhueta, sem tocar no
+ * componente.
+ */
+export type CenaCombate = CenaBase & {
+  tipo: 'combate'
+  /** Chave do bestiario. So vira blip no sonar: a plateia nunca ve o bicho. */
+  criatura: string
+  /** Rotulos dos setores, na ordem das teclas 1, 2, 3... */
+  setores: string[]
+  rodadas: RodadaCombate[]
+  falas: FalasCombate
+  audio: AudioCombate
+}
+
+export type RodadaCombate = {
+  /** Metros ate o contato quando a rodada comeca. Manda no tempo de eco. */
+  distancia: number
+  /** Segundos que o contato fica visivel no setor antes do impacto. */
+  tempo: number
+  /** Indice do setor. Sem o campo, sorteado — nenhuma rodada e decorada. */
+  setor?: number
+}
+
+export type FalasCombate = {
+  /** Uma por rodada, na ordem. */
+  rodada: string[][]
+  /** Sorteadas. Pelo menos uma de cada. */
+  acerto: string[][]
+  erro: string[][]
+  timeout: string[][]
+  /** Casco zerado antes do contato: a IA sobe forcada, nunca trava. */
+  critico?: string[]
+}
+
+export type AudioCombate = {
+  /** Um mp3 por rodada, mesma ordem de `falas.rodada`. */
+  rodada: string[]
+  acerto: string[]
+  erro: string[]
+  timeout: string[]
+  critico?: string
+}
+
+/**
+ * Tela final estatica. Nao avanca sozinha e nao tem proxima cena: e onde a
+ * apresentacao termina e fica, enquanto a plateia aplaude.
+ */
+export type CenaFim = CenaBase & {
+  tipo: 'fim'
+  tela: { titulo: string; subtitulo: string; nota?: string }
+}
+
 export type Cena =
   | CenaFala
   | CenaApresentacao
@@ -191,6 +280,8 @@ export type Cena =
   | CenaQuiz
   | CenaVF
   | CenaPane
+  | CenaCombate
+  | CenaFim
 
 export type Roteiro = {
   turma: Turma

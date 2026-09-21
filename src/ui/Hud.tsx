@@ -12,6 +12,8 @@ type Props = {
   inclinado?: boolean
   /** Mergulho em curso: promove a camada da moldura antes do giro começar. */
   mergulhando?: boolean
+  /** Impacto no casco durante o combate: treme a tela e pisca a borda. */
+  impacto?: boolean
   children: ReactNode
 }
 
@@ -23,6 +25,7 @@ export function Hud({
   rodapeDireita,
   inclinado = false,
   mergulhando = false,
+  impacto = false,
   children,
 }: Props) {
   const refMetros = useRef<HTMLElement>(null)
@@ -40,7 +43,10 @@ export function Hud({
   return (
     <div
       className={
-        'hud' + (mergulhando ? ' hud--mergulhando' : '') + (inclinado ? ' hud--inclinado' : '')
+        'hud' +
+        (mergulhando ? ' hud--mergulhando' : '') +
+        (inclinado ? ' hud--inclinado' : '') +
+        (impacto ? ' hud--impacto' : '')
       }
     >
       <div className="hud__moldura">

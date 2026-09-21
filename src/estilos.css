@@ -1934,3 +1934,486 @@ body {
   color: rgba(189, 255, 240, 0.65);
   flex: none;
 }
+
+/* --------------------------------------------------------------------------
+   Visor rachado (3A)
+   -------------------------------------------------------------------------- */
+
+/* A fratura fica por cima do canvas e por cima da estática: o vidro continua
+   na frente da lente mesmo quando não há imagem nenhuma. Abaixo das barras de
+   rótulo, que são HUD e não estão do lado de fora. */
+.rachadura {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.rachadura--parcial {
+  opacity: 0.72;
+}
+
+/* Rótulo do visor quebrado. Fica no lugar do "sinal fraco", em âmbar de alerta
+   em vez do ciano de sempre: não é interferência, é avaria. */
+.feed__comprometido {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 110, 90, 0.75);
+  background: rgba(2, 10, 12, 0.8);
+  color: #ff8a70;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: comprometido-piscar 2.4s steps(1, end) infinite;
+}
+
+@keyframes comprometido-piscar {
+  0%,
+  72% {
+    opacity: 1;
+  }
+  76%,
+  84% {
+    opacity: 0.25;
+  }
+  88%,
+  100% {
+    opacity: 1;
+  }
+}
+
+.feed--grande .feed__comprometido {
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed__comprometido {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Combate acústico (3A)
+   -------------------------------------------------------------------------- */
+
+/* O combate ocupa a área central inteira: o mostrador é o que a plateia lê
+   pra responder, e os 780px do painel comum deixavam a roda do tamanho de um
+   ícone. A legenda continua embaixo, fora da moldura, como sempre. */
+.combate .painel__moldura {
+  width: min(100%, 1180px);
+  height: min(100%, 560px);
+}
+
+.combate__corpo {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) 1fr minmax(150px, 210px);
+  gap: 18px;
+  align-items: center;
+  height: 100%;
+  min-height: 0;
+}
+
+.combate__barras {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.combate__barra {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+}
+
+.combate__barra-rotulo {
+  grid-column: 1;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.7);
+}
+
+.combate__barra-valor {
+  grid-column: 2;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: #bdfff0;
+}
+
+.combate__barra-trilho {
+  grid-column: 1 / -1;
+  height: 9px;
+  background: rgba(8, 26, 32, 0.9);
+  border: 1px solid rgba(27, 106, 120, 0.7);
+  overflow: hidden;
+}
+
+.combate__barra-nivel {
+  display: block;
+  height: 100%;
+  /* Transição, não corte: a barra caindo é a informação. */
+  transition: width 420ms cubic-bezier(0.3, 0, 0.2, 1);
+  background: #4dffa6;
+}
+
+.combate__barra--alerta .combate__barra-nivel {
+  background: #ffc24d;
+}
+
+.combate__barra--critico .combate__barra-nivel {
+  background: #ff6e5a;
+  animation: barra-critica 900ms ease-in-out infinite;
+}
+
+.combate__barra--contato .combate__barra-nivel {
+  background: #ff6e5a;
+}
+
+@keyframes barra-critica {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.combate__leitura {
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-family: ui-monospace, monospace;
+}
+
+.combate__leitura div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.4);
+  padding-bottom: 4px;
+}
+
+.combate__leitura dt {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.55);
+}
+
+.combate__leitura dd {
+  margin: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #38e8ff;
+  text-align: right;
+}
+
+.combate__rodadas {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.5);
+}
+
+.combate__mostrador {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.combate__canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+}
+
+.combate__setores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.combate__setor {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(8, 26, 32, 0.8);
+  border: 1px solid rgba(27, 106, 120, 0.8);
+  color: #bdfff0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.combate__tecla {
+  font-family: ui-monospace, monospace;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: #38e8ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.combate__setor-nome {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.combate__setor--certo {
+  border-color: #4dffa6;
+  background: rgba(16, 60, 44, 0.85);
+}
+
+.combate__setor--certo .combate__tecla {
+  color: #4dffa6;
+}
+
+.combate__setor--errado {
+  border-color: #ff6e5a;
+  background: rgba(60, 20, 18, 0.85);
+}
+
+.combate__setor--errado .combate__tecla {
+  color: #ff6e5a;
+}
+
+.combate__setor--apagado {
+  opacity: 0.35;
+}
+
+/* Impacto: a tela inteira treme e as bordas piscam vermelho. É a única vez em
+   que o HUD sai do lugar — por isso são poucos pixels e pouco tempo. */
+.hud--impacto {
+  animation: hud-impacto 400ms steps(2, end) 2;
+}
+
+@keyframes hud-impacto {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-4px, 3px);
+  }
+  50% {
+    transform: translate(3px, -3px);
+  }
+  75% {
+    transform: translate(-2px, -2px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.hud--impacto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  box-shadow: inset 0 0 90px 22px rgba(255, 60, 40, 0.55);
+  animation: impacto-borda 800ms ease-out forwards;
+}
+
+@keyframes impacto-borda {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud--impacto,
+  .hud--impacto::after {
+    animation-duration: 1ms;
+  }
+  .combate__barra--critico .combate__barra-nivel {
+    animation: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .combate__corpo {
+    grid-template-columns: minmax(150px, 190px) 1fr minmax(120px, 160px);
+    gap: 12px;
+  }
+  .combate__tecla {
+    font-size: 24px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tela final
+   -------------------------------------------------------------------------- */
+
+.fim {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  height: 100%;
+  text-align: center;
+  padding: 0 24px;
+}
+
+.fim__titulo {
+  margin: 0;
+  font-size: clamp(38px, 6vw, 74px);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #bdfff0;
+  text-shadow: 0 0 34px rgba(77, 255, 166, 0.45);
+  /* Uma entrada longa e só uma: a tela vai ficar minutos na frente da plateia. */
+  animation: fim-entrar 1600ms cubic-bezier(0.2, 0, 0.1, 1) both;
+}
+
+.fim__subtitulo {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: clamp(14px, 1.8vw, 20px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #38e8ff;
+  animation: fim-entrar 1600ms cubic-bezier(0.2, 0, 0.1, 1) 450ms both;
+}
+
+.fim__nota {
+  margin: 12px 0 0;
+  font-size: clamp(14px, 1.7vw, 19px);
+  color: rgba(214, 240, 245, 0.8);
+  animation: fim-entrar 1600ms cubic-bezier(0.2, 0, 0.1, 1) 1000ms both;
+}
+
+@keyframes fim-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fim__titulo,
+  .fim__subtitulo,
+  .fim__nota {
+    animation-duration: 1ms;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Painéis novos: zonas e eco
+   -------------------------------------------------------------------------- */
+
+.painel__zonas,
+.painel__eco {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+.painel__zonas-canvas,
+.painel__eco-canvas {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+}
+
+.eco__conta {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.eco__formula {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ui-monospace, monospace;
+  font-size: clamp(14px, 1.7vw, 20px);
+  color: #bdfff0;
+}
+
+.eco__var {
+  font-style: italic;
+  color: #38e8ff;
+}
+
+.eco__igual {
+  opacity: 0.6;
+}
+
+.eco__fracao {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.35;
+}
+
+.eco__cima {
+  border-bottom: 1px solid rgba(189, 255, 240, 0.7);
+  padding: 0 8px 2px;
+}
+
+.eco__baixo {
+  padding: 2px 8px 0;
+}
+
+.eco__valor {
+  color: #4dffa6;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.eco__cronometro {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  color: rgba(189, 255, 240, 0.65);
+  font-variant-numeric: tabular-nums;
+}
+
+.eco__rodape strong {
+  color: #38e8ff;
+  font-weight: 600;
+}
+
+/* Mini-feed: a fratura entra mais discreta. O desenho é o mesmo, mas num
+   quadro de 258 px ela chega a cobrir a imagem — e na subida o que importa é
+   ver a câmera voltando POR TRÁS do vidro rachado. */
+.feed--mini .rachadura {
+  opacity: 0.6;
+}
+
+.feed--mini .rachadura--parcial {
+  opacity: 0.44;
+}

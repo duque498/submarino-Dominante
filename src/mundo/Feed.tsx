@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { motor } from './motor'
 import { MotorMundo, type Alvo, type OpcoesCamera } from './mundo'
 import { zonaDe } from './perfil'
+import { Rachadura } from './Rachadura'
 
 type Props = {
   rotulo: string
@@ -12,6 +13,14 @@ type Props = {
   /** Mini-feeds têm moldura; o fundo do palco não. */
   moldura?: boolean
   className?: string
+  /**
+   * Estado do visor. Com ele rachado ou parcial, entra a rachadura por cima —
+   * inclusive por cima da estática, porque o vidro continua na frente da lente
+   * mesmo quando não há imagem nenhuma.
+   */
+  visor?: 'ok' | 'rachado' | 'parcial'
+  /** Semente da rachadura: cada câmera tem a sua, e sempre a mesma. */
+  semente?: number
 }
 
 /**
@@ -25,6 +34,8 @@ export function Feed({
   altura = 144,
   moldura = true,
   className,
+  visor = 'ok',
+  semente = 1,
 }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
   const refHora = useRef<HTMLSpanElement>(null)
@@ -117,14 +128,22 @@ export function Feed({
   }
 
   return (
-    <div className={className ? `feed ${className}` : 'feed'} aria-hidden="true">
+    <div
+      className={
+        (className ? `feed ${className}` : 'feed') +
+        (visor !== 'ok' ? ` feed--visor-${visor}` : '')
+      }
+      aria-hidden="true"
+    >
       <canvas className="feed__canvas" ref={refCanvas} />
+      {visor !== 'ok' && <Rachadura semente={semente} estado={visor} />}
       <div className="feed__reticulo" ref={refReticulo}>
         <span className="feed__alvo" ref={refAlvoTexto} />
       </div>
       <div className="feed__perdido" ref={refPerdido}>
         sinal fraco
       </div>
+      {visor === 'rachado' && <div className="feed__comprometido">visor comprometido</div>}
       <div className="feed__cruz" />
       <div className="feed__barra feed__barra--topo">
         <span className="feed__rotulo">{rotulo}</span>

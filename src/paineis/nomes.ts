@@ -23,6 +23,8 @@ export const PAINEIS: Array<{
   { nome: 'camera', aliases: ['cam', 'cameras', 'externa', 'feed'] },
   { nome: 'traco', aliases: ['desenhar', 'desenho', 'rabisco'], capturaTeclado: true },
   { nome: 'espectro', aliases: ['cores', 'cor', 'luz'], capturaTeclado: true },
+  { nome: 'zonas', aliases: ['camadas', 'zona', 'coluna', 'profundidades'] },
+  { nome: 'eco', aliases: ['ecolocalizacao', 'ecolocalização', 'distancia', 'pulso'], capturaTeclado: true },
 ]
 
 /** O painel toma conta do teclado enquanto estiver aberto? */

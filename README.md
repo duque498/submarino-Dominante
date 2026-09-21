@@ -9,15 +9,24 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 3.5 concluída.** Todos os tipos de cena funcionam: `fala`,
+**Fase 4 (3º ano) concluída.** Todos os tipos de cena funcionam: `fala`,
 `apresentacao`, `transicao`, `quiz`, `vf` e `pane`. Mais HUD, orbe que morfa em
 silhuetas, legenda sincronizada, log de sistemas, console de comandos, painéis,
 câmeras externas com o oceano procedural, profundidade real, o pipeline de voz
 e o **Diretor de cena** — a IA passou a reagir ao que ela mesma está dizendo, em
 vez de a um relógio.
 
-Falta preencher os roteiros do 2B e do 3A (Fase 4) e as dinâmicas de quiz do
-roteiro final.
+O **3A** está escrito e jogável de ponta a ponta: descida à abissal, visor
+rachando, as quatro apresentações, o combate acústico com a plateia e o
+encerramento na superfície.
+
+Falta o **2B** (ainda sem roteiro da professora) e as dinâmicas de quiz do 2A.
+
+> **O conteúdo do 3A é provisório.** A criatura, a mecânica e as falas novas da
+> IA ainda vão ser confirmadas com a turma e com a professora. O código foi
+> feito pra isso: trocar a criatura é uma chave no JSON e uma silhueta em
+> `bestiario.ts`, e trocar qualquer fala é só editar o JSON e rodar o script de
+> voz. Nada do 3A está escrito no componente.
 
 ## Stack
 
@@ -72,7 +81,7 @@ Sem `?turma=`, o app mostra uma tela pedindo pra escolher a turma (teclas 1, 2, 
 | `→` / `Enter` | avança pra próxima cena |
 | `←` | volta uma cena |
 | `Espaço` | interrompe o áudio atual e avança |
-| `1` `2` `3` `4` | marca a resposta no quiz |
+| `1` `2` `3` `4` | marca a resposta no quiz; **no combate, o setor do contato** |
 | `V` / `F` | marca resposta no verdadeiro/falso |
 | `P` | dispara a pane a qualquer momento |
 | `R` | durante a pane: reinicia e volta pra cena onde estava |
@@ -193,6 +202,109 @@ data URI e entra no bundle. Uma imagem carregada por caminho de arquivo via
 > — `circulo`, `quadrado`, `triangulo`, `estrela`, `coracao`, `onda`, `gota`,
 > `anel`, `espiral`, `seta`, `letra-d` — usadas provisoriamente no `2a.json` e
 > disponíveis no console a qualquer momento.
+
+## O arco do 3º ano
+
+O 3A é a última turma, e a apresentação dele fecha a expedição inteira. A ideia
+é simples: **a IA fica cega.**
+
+1. O submarino desce de 900 m à zona abissal.
+2. A pressão racha o visor externo. As câmeras caem. **Só o sonar sobra.**
+3. Os quatro grupos apresentam, na ordem do trabalho deles: oceanos → sonar →
+   impacto humano → ações.
+4. Um contato enorme se aproxima e a IA **não consegue vê-lo**. Ela pede à
+   tripulação — a plateia — que opere o sonar auxiliar (o de papelão que o 3A
+   construiu) e diga em qual setor o contato está, pra ela disparar o pulso.
+5. Contato neutralizado → subida de emergência → superfície → encerramento.
+
+A IA nunca fala em cima dos alunos: fala antes, cala durante, fala depois. É
+por isso que cada grupo tem uma cena `fala` curta de abertura e uma cena
+`apresentacao` de `avanco: "manual"` logo depois, que espera a seta.
+
+A pane global (`P`/`R`) continua funcionando, mas o 3A não usa: o visor rachado
+já cumpre esse papel na narrativa, e disparar as duas coisas seria contar a
+mesma história duas vezes.
+
+### O visor rachado
+
+`CenaBase.visor` vale `"ok"`, `"rachado"` ou `"parcial"`, e **uma cena sem o
+campo herda o da anterior** — por isso `"rachado"` aparece uma vez só, na cena
+em que o vidro quebra, e vale pelas quatro apresentações seguintes.
+
+- **`rachado`** — as câmeras ficam em estática, com o rótulo `VISOR
+  COMPROMETIDO`, e uma fratura procedural entra por cima.
+- **`parcial`** — o conserto de emergência da subida: a imagem volta, suja, e a
+  sujeira vai sumindo sozinha em ~9 s. A fratura continua lá.
+
+A fratura é desenhada **uma vez**, no quadro em que aparece: vidro não racha
+devagar. Ela fica num canvas por cima do feed, e não dentro do desenho do
+mundo, porque precisa aparecer também por cima da estática — com o visor
+quebrado não há imagem, mas o vidro continua na frente da lente. Cada câmera
+tem a sua fratura, sempre a mesma (gerador com semente fixa).
+
+### Combate acústico
+
+Tipo de cena novo: `combate`. A plateia lê o setor no sonar de papelão e o
+operador aperta `1`, `2` ou `3`.
+
+```json
+{ "id": "combate", "tipo": "combate", "avanco": "manual", "cameras": false,
+  "criatura": "megalodonte",
+  "setores": ["PROA", "BOMBORDO", "ESTIBORDO"],
+  "rodadas": [
+    { "distancia": 900, "tempo": 10 },
+    { "distancia": 450, "tempo": 7 },
+    { "distancia": 150, "tempo": 5 }
+  ],
+  "falas": { "rodada": [["..."]], "acerto": [["..."]], "erro": [["..."]],
+             "timeout": [["..."]], "critico": ["..."] },
+  "audio": { "rodada": ["./audio/3a/combate-rodada-1.mp3"], "...": [] } }
+```
+
+| campo | o que faz |
+|---|---|
+| `criatura` | chave do bestiário. **Só vira blip**: a plateia nunca vê o bicho |
+| `setores` | rótulos, na ordem das teclas `1`…`9` |
+| `rodadas[].distancia` | metros do contato. Manda no tempo de eco mostrado |
+| `rodadas[].tempo` | segundos até o impacto |
+| `rodadas[].setor` | fixo; **sem o campo, sorteado** — nenhuma rodada é decorada |
+| `falas.*` | listas de falas; `rodada` tem uma por rodada, o resto é sorteado |
+
+Cada acerto derruba o `CONTATO` em `1/nº de rodadas`; cada erro ou timeout tira
+25% da `INTEGRIDADE` do casco. O tempo de eco mostrado é `2d / 1500 m/s` — o
+mesmo número que o grupo 1 explica no painel `eco`, de propósito: se a conta na
+tela não batesse com a aula deles, a cena desmentiria a apresentação.
+
+**O bicho nunca aparece desenhado.** É o ponto da cena: a plateia vê um blip e
+ouve um número, e quem traduz isso em direção é o objeto que eles construíram.
+Mostrar o megalodonte resolveria a tensão e roubaria o trabalho deles.
+
+Teclas: `1` `2` `3` respondem, `Espaço` corta a fala, e **`→` força a rodada a
+seguir** (válvula de segurança — não pula a cena, que perderia o fim). `M`, `N`
+e `O` ficam desligados: o orbe não é o assunto ali.
+
+> **Nunca existe derrota que trave a apresentação.** Se o casco zerar antes do
+> contato, a IA diz a fala `critico` e a subida acontece do mesmo jeito. Depois
+> da última rodada a cena avança aconteça o que acontecer, e qualquer erro
+> dentro do laço (um mp3 que não existe, uma promessa rejeitada) também avança
+> em vez de deixar a plateia olhando um sonar parado.
+
+### Ameaças no mundo
+
+`CenaBase.ameacas: true` liga três elementos procedurais, cada um na sua faixa:
+**rede fantasma** (1000–3000 m), **plástico à deriva** (200–1000 m) e **coral
+branqueado** (0–200 m — são os mesmos corais de sempre, repintados de branco:
+não morreram nem sumiram, perderam a alga que lhes dava cor).
+
+Só a cena `subida` do 3A liga isso, e **não há fala explicando**: os grupos 3 e
+4 acabaram de falar disso, e a IA repetir seria tirar deles a fala. Como
+`visor`, o campo é herdado pela cena seguinte — por isso o `encerramento`
+declara `"ameacas": false` pra voltar à superfície limpa.
+
+### Tela final
+
+Tipo `fim`: título, subtítulo e uma nota, sem avanço automático e sem próxima
+cena. É onde a apresentação termina e **fica**, enquanto a plateia aplaude.
 
 ## Dinâmicas: quiz e verdadeiro/falso
 
@@ -315,6 +427,7 @@ volume. Nada de elipse com triângulo atrás: aquilo vira recorte voando.
 | 200–2200 m | lula, peixe-machado, água-viva grande |
 | 700–4200 m | peixe-pescador (com a isca acesa), peixe-víbora, cachalote |
 | 2200 m ⬇ | peixe-pelicano, lula-gigante |
+| (nunca sozinho) | megalodonte — **só por roteiro**, ver abaixo |
 
 Descer troca o elenco, e o elenco de baixo é **maior**: o cachalote e a
 lula-gigante têm quase o dobro do porte de uma tartaruga. Quando a expedição
@@ -326,6 +439,12 @@ quase a única coisa que se lê. Lá embaixo o bicho também deixa de ser silhue
 contra a luz de cima (não existe luz de cima) e passa a ser objeto iluminado
 pelo farol do submarino — por isso as cores do corpo clareiam junto com
 `perfil.farol`.
+
+Uma espécie pode ficar **fora do sorteio**: `ESPECIES_ESPONTANEAS` exclui quem
+só entra por roteiro. É o caso do megalodonte — uma aparição aleatória dele na
+câmera do 2A estragaria a surpresa do 3A e a verossimilhança ao mesmo tempo.
+Criatura nova de roteiro entra em `ESPECIES` e **não** entra na lista de
+espontâneas.
 
 Existe **um** mundo, simulado uma vez por quadro em `src/mundo/`. Os canvases
 registrados só desenham o mesmo estado de pontos de vista diferentes — simular
@@ -353,6 +472,8 @@ A sintaxe é livre e tolerante — sem acento, sem verbo, maiúscula ou minúscu
 | `sonar`, `abrir status`, `mapa`, `ficha baleia`, `camera 1` | abre um painel |
 | `traco`, `desenhar` | abre a área de desenho: o aluno risca, a IA vira o risco |
 | `espectro`, `cores` | abre as faixas de cor apagando com a profundidade |
+| `zonas`, `camadas` | as cinco zonas do oceano, com o submarino na atual |
+| `eco`, `distancia` | a conta do sonar acontecendo: `t = 2d / 1500` |
 | `cena 5`, `ir bio`, `proximo`, `voltar` | navega no roteiro |
 | `pane`, `reiniciar`, `limpar`, `ajuda` | comandos de sistema |
 | `gatilhos`, `gatilhos off`, `gatilhos on` | liga/desliga a direção automática |
@@ -544,6 +665,13 @@ substitui, e trocar de cena fecha.
 - `mapa` — costa brasileira que se desenha na frente da plateia e fecha num
   marcador. `mapa abrolhos` já abre focado. Ver abaixo.
 - `camera 1` / `camera 2` — a câmera externa em tela cheia.
+- `zonas` (ou `camadas`) — as cinco zonas do oceano numa régua vertical, com o
+  submarino na profundidade atual. **As palavras de cada faixa são as do
+  trabalho do grupo 2** — o painel não acrescenta fato nenhum.
+- `eco` (ou `distancia`) — como o sonar mede distância: dispara um ping, a onda
+  vai, bate e volta, e a conta `t = 2d / 1500` acontece na tela. O tempo é
+  real, não acelerado: a 900 m o eco leva 1,20 s e a animação leva 1,20 s.
+  `↑` `↓` mudam a distância, `Enter` dispara.
 - `traco` (ou `desenhar`) — **o aluno desenha e a IA assume o desenho.** Ver
   abaixo.
 - `espectro` (ou `cores`) — **as cores que o oceano apaga.** Ver abaixo.
@@ -683,7 +811,8 @@ Todo o conteúdo (textos, áudios, perguntas) vive em `src/roteiros/2a.json`,
 `2b.json` e `3a.json`. O player só conhece **tipos de cena** — pra mudar o que a
 IA fala, mexa só no JSON.
 
-Tipos de cena disponíveis: `fala`, `apresentacao`, `transicao`, `quiz`, `vf`, `pane`.
+Tipos de cena disponíveis: `fala`, `apresentacao`, `transicao`, `quiz`, `vf`,
+`pane`, `combate` e `fim`.
 O formato de cada um está em `src/roteiros/tipos.ts`.
 
 Campos comuns a todas:
@@ -692,7 +821,8 @@ Campos comuns a todas:
 - `avanco` — `"auto"` (avança sozinha quando o áudio termina) ou `"manual"`
   (espera o operador apertar `→`).
 - `sfx` — efeito sonoro opcional: `"sonar"`, `"alarme"`, `"estatica"`, `"ok"`,
-  `"pressurizacao"`, `"bipe-timer"` ou `"casco"`.
+  `"pressurizacao"`, `"bipe-timer"`, `"casco"`, `"vidro"`, `"pulso"` ou
+  `"impacto"`.
 - `log` — lista opcional de linhas fictícias pro painel da direita, exibidas
   enquanto essa cena estiver no ar. Ex.: `["Carregando setor: BIOLOGIA",
   "Consultando catálogo de espécies..."]`.
@@ -896,7 +1026,7 @@ só os nós que o próprio efeito criou, nunca `replaceChildren()`.
 ## Efeitos sonoros
 
 Os SFX (`sonar`, `alarme`, `estatica`, `ok`, `pressurizacao`, `bipe-timer`,
-`casco`)
+`casco`, `vidro`, `pulso`, `impacto`)
 são **sintetizados em código** com a Web Audio API, em `src/audio/sfx.ts`. Não
 dá pra depender de o professor baixar arquivos do freesound na véspera da
 feira: o projeto roda completo sem nenhum mp3 de efeito.
@@ -914,7 +1044,7 @@ somar acima de 1 e distorcer.
 A primeira tecla (a da ativação) já dá um **bipe duplo** de confirmação. Se
 esse bipe não sai, o problema é o áudio da máquina, não o app.
 
-Pra um teste completo, `/` e depois `som`: toca os sete efeitos em sequência e
+Pra um teste completo, `/` e depois `som`: toca os dez efeitos em sequência e
 escreve no log o estado do `AudioContext`. `running` significa que o navegador
 liberou o áudio.
 
@@ -925,13 +1055,13 @@ public/audio/        mp3 fora do bundle: sfx/ e uma pasta por turma
 src/
   App.tsx            seleção de turma, tela de ativação, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
-  cenas/             um componente por tipo de cena (inclui Quiz e VF)
+  cenas/             um componente por tipo de cena (inclui Quiz, VF, Combate e Fim)
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
   audio/             efeitos, ambiente do oceano e a voz do navegador
   console/           barra de comando, parser e as respostas fixas da IA
   paineis/           sonar, status, ficha, mapa, traco, espectro e o registro
   diretor/           Diretor de cena, gatilhos semânticos, mergulho e coluna d'água
-  mundo/             o oceano procedural: perfil por profundidade, motor e Feed
+  mundo/             o oceano procedural: perfil, motor, bestiário, Feed e Rachadura
   formas/            registro das silhuetas, amostragem e primitivas
   roteiros/          tipos.ts, validar.ts, fichas.json, gatilhos.json e os JSONs
 scripts/

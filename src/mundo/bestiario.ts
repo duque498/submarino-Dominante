@@ -907,6 +907,135 @@ function lulaGigante(p: Pincel) {
   fileiraDeLuzes(p, -comp * 0.44, comp * 0.06, alt * 0.5, 4)
 }
 
+/**
+ * Megalodonte.
+ *
+ * É o tubarão com tudo aumentado, e de propósito: a plateia precisa reconhecer
+ * a forma em meio segundo, num blip de sonar ou numa sombra. Inventar uma
+ * silhueta nova só faria o contorno ficar ilegível.
+ *
+ * O que muda em relação ao tubarão é a PROPORÇÃO, que é onde o tamanho mora: a
+ * cabeça é muito mais larga que o corpo, a dorsal é alta e reta em vez de
+ * curva, e a cauda é assimétrica de tubarão grande — lóbulo de cima bem maior
+ * que o de baixo. Um tubarão desenhado 1,6× maior continua parecendo um
+ * tubarão; um tubarão com a cabeça de um terço do corpo é outro bicho.
+ *
+ * Nada disto aparece sozinho na câmera: ele só entra por roteiro. Trocar de
+ * criatura é trocar a chave no JSON e escrever outra função aqui.
+ */
+function megalodonte(p: Pincel) {
+  const { ctx, comp, alt, t, fase } = p
+  // Batida lenta: bicho grande não vibra. Metade da frequência do tubarão.
+  const varre = Math.sin(t * 1.05 + fase)
+
+  // cauda assimétrica: o lóbulo superior é quase o dobro do inferior
+  ctx.beginPath()
+  ctx.moveTo(-comp * 0.3, varre * alt * 0.14)
+  ctx.lineTo(-comp * 0.54 + varre * comp * 0.05, -alt * 2.1)
+  ctx.lineTo(-comp * 0.44 + varre * comp * 0.035, -alt * 0.15)
+  ctx.lineTo(-comp * 0.58 + varre * comp * 0.05, alt * 1.15)
+  ctx.closePath()
+  encorpar(p, 0.8)
+
+  // quilha caudal: a aresta lateral que os tubarões grandes têm antes da cauda
+  ctx.beginPath()
+  ctx.moveTo(-comp * 0.2, alt * 0.2)
+  ctx.lineTo(-comp * 0.34, alt * 0.42)
+  ctx.lineTo(-comp * 0.34, alt * 0.14)
+  ctx.closePath()
+  encorpar(p, 0.55)
+
+  // corpo: torpedo grosso, mais alto na frente que o do tubarão comum
+  ctx.beginPath()
+  ctx.moveTo(comp * 0.5, alt * 0.1)
+  ctx.bezierCurveTo(comp * 0.42, -alt * 0.86, comp * 0.18, -alt * 1.22, -comp * 0.02, -alt * 1.05)
+  ctx.bezierCurveTo(-comp * 0.18, -alt * 0.9, -comp * 0.3, varre * alt * 0.14, -comp * 0.33, varre * alt * 0.16)
+  ctx.bezierCurveTo(-comp * 0.2, alt * 0.9, comp * 0.06, alt * 1.16, comp * 0.3, alt * 0.86)
+  ctx.bezierCurveTo(comp * 0.42, alt * 0.66, comp * 0.5, alt * 0.36, comp * 0.5, alt * 0.1)
+  ctx.closePath()
+  encorpar(p)
+
+  // dorsal alta e reta, com a ponta levemente pra trás
+  ctx.beginPath()
+  ctx.moveTo(comp * 0.12, -alt * 1.0)
+  ctx.lineTo(-comp * 0.02, -alt * 3.1)
+  ctx.lineTo(-comp * 0.08, -alt * 3.0)
+  ctx.lineTo(-comp * 0.2, -alt * 0.86)
+  ctx.closePath()
+  encorpar(p, 0.9)
+
+  // segunda dorsal, pequena, perto da cauda
+  ctx.beginPath()
+  ctx.moveTo(-comp * 0.26, -alt * 0.62)
+  ctx.lineTo(-comp * 0.33, -alt * 1.12)
+  ctx.lineTo(-comp * 0.38, -alt * 0.54)
+  ctx.closePath()
+  encorpar(p, 0.7)
+
+  // peitorais enormes, em foice
+  for (const [lado, escala] of [[1, 1], [1, 0.6]] as Array<[number, number]>) {
+    ctx.beginPath()
+    ctx.moveTo(comp * 0.22, lado * alt * 0.7)
+    ctx.quadraticCurveTo(comp * 0.02, lado * alt * 2.6 * escala, -comp * 0.12, lado * alt * 2.5 * escala)
+    ctx.quadraticCurveTo(comp * 0.0, lado * alt * 1.2 * escala, comp * 0.1, lado * alt * 0.58)
+    ctx.closePath()
+    encorpar(p, 0.62)
+  }
+
+  // anal
+  ctx.beginPath()
+  ctx.moveTo(-comp * 0.22, alt * 0.62)
+  ctx.lineTo(-comp * 0.32, alt * 1.15)
+  ctx.lineTo(-comp * 0.36, alt * 0.5)
+  ctx.closePath()
+  encorpar(p, 0.6)
+
+  contraluz(p, () => {
+    ctx.moveTo(comp * 0.5, alt * 0.1)
+    ctx.bezierCurveTo(comp * 0.42, -alt * 0.86, comp * 0.18, -alt * 1.22, -comp * 0.02, -alt * 1.05)
+    ctx.bezierCurveTo(-comp * 0.18, -alt * 0.9, -comp * 0.3, varre * alt * 0.14, -comp * 0.33, varre * alt * 0.16)
+  })
+
+  if (p.silhueta) return
+
+  // a boca: a coisa pela qual o bicho é conhecido. Aberta, larga, com a fileira
+  // de dentes triangulares sugerida — não desenhada um a um, que a essa escala
+  // vira serrilha.
+  ctx.beginPath()
+  ctx.moveTo(comp * 0.49, -alt * 0.12)
+  ctx.quadraticCurveTo(comp * 0.34, alt * 0.72, comp * 0.06, alt * 0.66)
+  ctx.strokeStyle = `rgba(3, 10, 14, ${p.alpha * 0.85})`
+  ctx.lineWidth = Math.max(1.2, comp * 0.014)
+  ctx.stroke()
+
+  ctx.beginPath()
+  const dentes = 7
+  for (let i = 0; i < dentes; i++) {
+    const f = i / (dentes - 1)
+    const x = comp * (0.47 - f * 0.4)
+    const y = alt * (-0.08 + f * 0.72)
+    const d = Math.max(1, alt * 0.2 * (1 - f * 0.35))
+    ctx.moveTo(x, y)
+    ctx.lineTo(x - d * 0.5, y + d)
+    ctx.lineTo(x + d * 0.5, y + d * 0.7)
+  }
+  ctx.fillStyle = `rgba(226, 250, 252, ${p.alpha * 0.55})`
+  ctx.fill()
+
+  // cinco fendas branquiais
+  ctx.strokeStyle = `rgba(4, 14, 18, ${p.alpha * 0.6})`
+  ctx.lineWidth = Math.max(0.8, comp * 0.008)
+  ctx.beginPath()
+  for (let i = 0; i < 5; i++) {
+    const x = comp * (0.3 - i * 0.045)
+    ctx.moveTo(x, -alt * 0.5)
+    ctx.lineTo(x - comp * 0.012, alt * 0.45)
+  }
+  ctx.stroke()
+
+  olho(p, comp * 0.38, -alt * 0.52, Math.max(1.2, alt * 0.11))
+}
+
 // --- catálogo ---------------------------------------------------------------
 
 /**
@@ -927,12 +1056,32 @@ export const ESPECIES: Especie[] = [
   { chave: 'cachalote', rotulo: 'CETÁCEO', faixa: [700, 3200], porte: [1.1, 1.6], proporcao: 0.26, desenhar: cachalote },
   { chave: 'pelicano', rotulo: 'EURYPHARYNX', faixa: [2500, 7000], porte: [0.7, 1.1], proporcao: 0.22, desenhar: peixePelicano },
   { chave: 'lula-gigante', rotulo: 'ARCHITEUTHIS', faixa: [2200, 8000], porte: [1.2, 1.8], proporcao: 0.3, desenhar: lulaGigante },
+  // Fora do sorteio (ver ESPECIES_ESPONTANEAS): so entra por roteiro.
+  { chave: 'megalodonte', rotulo: 'OTODUS MEGALODON', faixa: [1000, 8000], porte: [1.8, 2.6], proporcao: 0.2, desenhar: megalodonte },
 ]
+
+/**
+ * Quem a camera pode sortear sozinha.
+ *
+ * O megalodonte fica de fora: ele e um evento de roteiro do 3A, e uma aparicao
+ * aleatoria dele na camera do 2A estragaria a surpresa e a verossimilhanca ao
+ * mesmo tempo. Criatura nova de roteiro entra no ESPECIES e NAO entra aqui.
+ */
+const SO_POR_ROTEIRO = new Set(['megalodonte'])
+
+export const ESPECIES_ESPONTANEAS = ESPECIES.filter((e) => !SO_POR_ROTEIRO.has(e.chave))
+
+/** Uma especie pelo nome, pro roteiro invocar a criatura que quiser. */
+export function especiePorChave(chave: string): Especie | null {
+  return ESPECIES.find((e) => e.chave === chave) ?? null
+}
 
 /** Espécies possíveis nesta profundidade. Nunca devolve lista vazia. */
 export function especiesEm(profundidade: number): Especie[] {
-  const cabem = ESPECIES.filter((e) => profundidade >= e.faixa[0] && profundidade <= e.faixa[1])
+  const cabem = ESPECIES_ESPONTANEAS.filter(
+    (e) => profundidade >= e.faixa[0] && profundidade <= e.faixa[1],
+  )
   if (cabem.length > 0) return cabem
   // Fora de qualquer faixa (mais fundo que tudo): fica com as mais profundas.
-  return ESPECIES.filter((e) => e.faixa[1] >= 4000)
+  return ESPECIES_ESPONTANEAS.filter((e) => e.faixa[1] >= 4000)
 }

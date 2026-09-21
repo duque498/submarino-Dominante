@@ -20,6 +20,13 @@ const QTD_PARTICULAS = 130
 const QTD_BIOLUM = 46
 const QTD_AGUAS_VIVAS = 7
 const QTD_CORAIS = 14
+/**
+ * Ameacas. Poucas de proposito: uma rede fantasma a cada quadro vira padrao
+ * decorativo, e o que os alunos acabaram de dizer e que sao encontros, nao
+ * paisagem. Aparecem so quando o roteiro liga `ameacas`.
+ */
+const QTD_REDES = 5
+const QTD_PLASTICOS = 26
 const MAX_FAUNA = 3
 /**
  * Intervalo entre aparições de fauna grande. Era [15s, 40s]: numa apresentação
@@ -30,6 +37,8 @@ const INTERVALO_FAUNA = [7000, 20000] as const
 /** Perda de sinal: a cada tanto, por tanto tempo. */
 const INTERVALO_FALHA = [30000, 90000] as const
 const DURACAO_FALHA = 400
+/** Quanto o visor remendado leva pra parar de chuviscar, na subida. */
+const MS_LIMPANDO_VISOR = 9000
 
 const sorteio = (min: number, max: number) => min + Math.random() * (max - min)
 
@@ -67,6 +76,10 @@ type Particula = { x: number; y: number; v: number; raio: number; fase: number }
 type Biolum = { x: number; y: number; fase: number; periodo: number; raio: number }
 type AguaViva = { x: number; y: number; v: number; fase: number; escala: number }
 type Coral = { x: number; ramos: Array<[number, number]>; altura: number }
+/** Rede fantasma: malha de pesca a deriva, 1000-3000 m. */
+type Rede = { x: number; y: number; v: number; fase: number; largura: number; nos: number }
+/** Fragmento de plastico a deriva, 200-1000 m. */
+type Plastico = { x: number; y: number; v: number; giro: number; tamanho: number; forma: number }
 
 type Registro = {
   canvas: HTMLCanvasElement
@@ -87,12 +100,45 @@ export class MotorMundo {
   /** Pane: todos os feeds caem pra estática. */
   estaticaGlobal = false
 
+  /**
+   * Estado do visor externo.
+   *
+   * `rachado` derruba todas as câmeras — a pressão quebrou o vidro e não há
+   * imagem, só estática. `parcial` é o conserto de emergência do 3A: a imagem
+   * volta, mas suja, e a sujeira vai diminuindo sozinha ao longo de alguns
+   * segundos. A RACHADURA em si não é desenhada aqui: ela é um overlay de DOM
+   * por cima do canvas, porque precisa ficar por cima da estática também.
+   */
+  private visor: 'ok' | 'rachado' | 'parcial' = 'ok'
+  private visorDesde = 0
+
+  definirVisor(estado: 'ok' | 'rachado' | 'parcial') {
+    if (estado === this.visor) return
+    this.visor = estado
+    this.visorDesde = performance.now()
+  }
+
+  estadoDoVisor() {
+    return this.visor
+  }
+
   private peixes: Peixe[] = []
   private fauna: Fauna[] = []
   private particulas: Particula[] = []
   private bioluminescencia: Biolum[] = []
   private aguasVivas: AguaViva[] = []
   private corais: Coral[] = []
+  private redes: Rede[] = []
+  private plasticos: Plastico[] = []
+
+  /**
+   * Ameacas visiveis: rede fantasma, plastico e coral branqueado.
+   *
+   * Desligado por padrao. O 3A liga na subida, depois de os grupos 3 e 4
+   * falarem de poluicao — e a unica cena em que aparecem. Sem fala explicando:
+   * os alunos acabaram de explicar, e a IA repetir seria tirar deles a fala.
+   */
+  ameacas = false
 
   private registros: Registro[] = []
   private quadro = 0
@@ -151,6 +197,27 @@ export class MotorMundo {
         v: sorteio(-0.02, 0.02),
         fase: Math.random() * Math.PI * 2,
         escala: sorteio(0.7, 1.6),
+      })
+    }
+    for (let i = 0; i < QTD_REDES; i++) {
+      this.redes.push({
+        x: Math.random() * LARGURA_MUNDO,
+        y: 0.18 + Math.random() * 0.6,
+        // Sobe devagar, como tudo que esta a deriva sem lastro.
+        v: sorteio(0.004, 0.012),
+        fase: Math.random() * Math.PI * 2,
+        largura: sorteio(0.1, 0.22),
+        nos: 5 + Math.floor(Math.random() * 3),
+      })
+    }
+    for (let i = 0; i < QTD_PLASTICOS; i++) {
+      this.plasticos.push({
+        x: Math.random() * LARGURA_MUNDO,
+        y: Math.random(),
+        v: sorteio(-0.012, 0.012),
+        giro: Math.random() * Math.PI * 2,
+        tamanho: sorteio(0.004, 0.016),
+        forma: Math.random(),
       })
     }
     for (let i = 0; i < QTD_CORAIS; i++) {
@@ -372,6 +439,22 @@ export class MotorMundo {
       if (agua.x < 0) agua.x += LARGURA_MUNDO
       if (agua.x > LARGURA_MUNDO) agua.x -= LARGURA_MUNDO
     }
+
+    // Ameacas: so simula quando estao ligadas. No 2A isto custa um `if`.
+    if (this.ameacas) {
+      for (const rede of this.redes) {
+        rede.y -= rede.v * dt
+        if (rede.y < -0.2) rede.y = 1.2
+      }
+      for (const p of this.plasticos) {
+        p.y -= 0.009 * dt
+        p.x += p.v * dt
+        p.giro += dt * 0.25
+        if (p.y < -0.06) p.y = 1.06
+        if (p.x < 0) p.x += LARGURA_MUNDO
+        if (p.x > LARGURA_MUNDO) p.x -= LARGURA_MUNDO
+      }
+    }
   }
 
   // --- desenho -------------------------------------------------------------
@@ -383,7 +466,7 @@ export class MotorMundo {
     if (L < 2 || A < 2) return
 
     const perfil = this.perfil
-    const estatica = camera.estatica || this.estaticaGlobal
+    const estatica = camera.estatica || this.estaticaGlobal || this.visor === 'rachado'
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalAlpha = 1
@@ -423,6 +506,10 @@ export class MotorMundo {
     this.desenharSuperficie(ctx, L, A, perfil)
     this.desenharRaios(ctx, L, A, perfil, agora)
     this.desenharCorais(ctx, L, A, perfil, mundoParaTela, visivel)
+    if (this.ameacas) {
+      this.desenharRedes(ctx, A, mundoParaTela, visivel)
+      this.desenharPlasticos(ctx, A, perfil, mundoParaTela, visivel)
+    }
     this.desenharAguasVivas(ctx, L, A, perfil, mundoParaTela, visivel)
     this.desenharCardume(ctx, L, A, perfil, mundoParaTela, visivel)
     const alvo = this.desenharFauna(ctx, L, A, perfil, mundoParaTela, visivel, camera)
@@ -430,10 +517,36 @@ export class MotorMundo {
     this.desenharBioluminescencia(ctx, L, A, perfil, mundoParaTela, visivel, agora)
     this.desenharFarol(ctx, L, A, perfil)
     if (!camera.simples) this.desenharGrao(ctx, L, A)
+    // Visor remendado: a imagem voltou suja e vai limpando sozinha. É o que
+    // conta que alguém consertou às pressas, sem precisar de uma linha de fala.
+    if (this.visor === 'parcial') {
+      const sujeira = Math.max(0, 1 - (agora - this.visorDesde) / MS_LIMPANDO_VISOR)
+      if (sujeira > 0.02) this.desenharChuvisco(ctx, L, A, sujeira)
+    }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalAlpha = 1
     registro.aoDesenhar?.({ alvo, profundidade: this.profundidadeAtual })
+  }
+
+  /** Chuvisco por cima da imagem: interferência, não perda total de sinal. */
+  private desenharChuvisco(
+    ctx: CanvasRenderingContext2D,
+    L: number,
+    A: number,
+    intensidade: number,
+  ) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.globalAlpha = 1
+    const linhas = Math.round(26 * intensidade)
+    for (let i = 0; i < linhas; i++) {
+      ctx.fillStyle = `rgba(150, 215, 225, ${Math.random() * 0.3 * intensidade})`
+      ctx.fillRect(Math.random() * L - L * 0.3, Math.random() * A, L * (0.2 + Math.random()), Math.random() * 2.5)
+    }
+    // Rolagem vertical de quadro perdido: uma faixa escura descendo devagar.
+    const y = ((performance.now() / 9) % (A + 60)) - 30
+    ctx.fillStyle = `rgba(6, 16, 20, ${0.35 * intensidade})`
+    ctx.fillRect(0, y, L, 16)
   }
 
   private desenharEstatica(ctx: CanvasRenderingContext2D, L: number, A: number) {
@@ -511,7 +624,12 @@ export class MotorMundo {
   ) {
     void L
     if (perfil.corais < 0.02) return
-    ctx.strokeStyle = `rgba(30, 120, 130, ${0.55 * perfil.corais})`
+    // Branqueamento: os MESMOS corais, sem cor. É esse o ponto — não morreram
+    // nem sumiram, perderam a alga que lhes dava cor e ficaram o esqueleto
+    // branco. Desenhar um coral diferente diria a coisa errada.
+    ctx.strokeStyle = this.ameacas
+      ? `rgba(224, 228, 226, ${0.6 * perfil.corais})`
+      : `rgba(30, 120, 130, ${0.55 * perfil.corais})`
     ctx.lineWidth = 2
     for (const coral of this.corais) {
       const sx = projetar(coral.x)
@@ -527,6 +645,140 @@ export class MotorMundo {
         ctx.lineTo(sx + inclinacao * alt * 0.7, y - alt * 0.35)
       }
       ctx.stroke()
+    }
+  }
+
+  /**
+   * Rede fantasma: malha de pesca perdida, à deriva na batipelágica.
+   *
+   * Desenhada como GRADE distorcida, não como mancha: o que a torna
+   * reconhecível — e sinistra — é a regularidade industrial no meio de um
+   * lugar onde nada mais é reto. As linhas ondulam com a corrente, e a malha
+   * some nas bordas em vez de terminar num retângulo.
+   */
+  private desenharRedes(
+    ctx: CanvasRenderingContext2D,
+    A: number,
+    projetar: (x: number) => number,
+    visivel: (sx: number, margem?: number) => boolean,
+  ) {
+    const escala = A / 144
+    for (const rede of this.redes) {
+      const sx = projetar(rede.x)
+      if (!visivel(sx, 120)) continue
+      const sy = rede.y * A
+      const larg = rede.largura * A * 2.2
+      const altura = larg * 0.75
+      const passo = larg / rede.nos
+
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.rotate(Math.sin(this.t * 0.25 + rede.fase) * 0.2)
+      ctx.strokeStyle = `rgba(206, 226, 224, 0.3)`
+      ctx.lineWidth = Math.max(0.5, 0.7 * escala)
+
+      const ondular = (i: number, j: number) =>
+        Math.sin(this.t * 0.8 + rede.fase + i * 0.7 + j * 0.4) * passo * 0.28
+
+      ctx.beginPath()
+      for (let i = 0; i <= rede.nos; i++) {
+        for (let j = 0; j <= rede.nos; j++) {
+          const x = -larg / 2 + i * passo + ondular(i, j)
+          const y = -altura / 2 + (j * altura) / rede.nos + ondular(j, i) * 0.6
+          if (j > 0) {
+            const xa = -larg / 2 + i * passo + ondular(i, j - 1)
+            const ya = -altura / 2 + ((j - 1) * altura) / rede.nos + ondular(j - 1, i) * 0.6
+            ctx.moveTo(xa, ya)
+            ctx.lineTo(x, y)
+          }
+          if (i > 0) {
+            const xa = -larg / 2 + (i - 1) * passo + ondular(i - 1, j)
+            const ya = -altura / 2 + (j * altura) / rede.nos + ondular(j, i - 1) * 0.6
+            ctx.moveTo(xa, ya)
+            ctx.lineTo(x, y)
+          }
+        }
+      }
+      ctx.stroke()
+
+      // A ponta rasgada: alguns fios soltos pendurados, que é o que uma rede
+      // arrebentada tem e uma grade desenhada não tem.
+      ctx.beginPath()
+      for (let k = 0; k < 4; k++) {
+        const x = -larg / 2 + ((k + 0.5) / 4) * larg
+        const y = altura / 2
+        ctx.moveTo(x, y)
+        ctx.quadraticCurveTo(
+          x + Math.sin(this.t * 1.1 + k) * passo * 0.5,
+          y + passo * 0.8,
+          x + Math.sin(this.t * 0.9 + k) * passo,
+          y + passo * 1.7,
+        )
+      }
+      ctx.strokeStyle = 'rgba(206, 226, 224, 0.22)'
+      ctx.stroke()
+      ctx.restore()
+    }
+  }
+
+  /**
+   * Plástico à deriva.
+   *
+   * Três formas, e a diferença entre elas importa: sacola (contorno mole que
+   * ondula), fragmento (polígono duro) e anel. O que identifica plástico na
+   * água é ele ser CLARO e não reagir à luz como o resto — não emite, não tem
+   * volume, só reflete um pouco. Por isso é desenhado quase branco e chapado,
+   * enquanto todo o resto do mundo tem gradiente.
+   */
+  private desenharPlasticos(
+    ctx: CanvasRenderingContext2D,
+    A: number,
+    perfil: Perfil,
+    projetar: (x: number) => number,
+    visivel: (sx: number, margem?: number) => boolean,
+  ) {
+    const brilho = 0.3 + perfil.luz * 0.4 + perfil.farol * 0.4
+    for (const item of this.plasticos) {
+      const sx = projetar(item.x)
+      if (!visivel(sx, 20)) continue
+      const sy = item.y * A
+      const r = item.tamanho * A * 2.4
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.rotate(item.giro + Math.sin(this.t * 0.7 + item.giro) * 0.3)
+      ctx.fillStyle = `rgba(228, 240, 238, ${0.34 * brilho})`
+      ctx.strokeStyle = `rgba(236, 248, 246, ${0.5 * brilho})`
+      ctx.lineWidth = Math.max(0.5, r * 0.12)
+
+      if (item.forma < 0.45) {
+        // sacola: contorno mole, ondulando
+        ctx.beginPath()
+        const ondula = Math.sin(this.t * 1.4 + item.giro) * r * 0.3
+        ctx.moveTo(-r, -r * 0.7)
+        ctx.quadraticCurveTo(0, -r * 1.3 + ondula, r, -r * 0.6)
+        ctx.quadraticCurveTo(r * 1.2, r * 0.6, ondula * 0.5, r)
+        ctx.quadraticCurveTo(-r * 1.1, r * 0.7, -r, -r * 0.7)
+        ctx.closePath()
+        ctx.fill()
+        ctx.stroke()
+      } else if (item.forma < 0.8) {
+        // fragmento: polígono duro, quebrado
+        ctx.beginPath()
+        ctx.moveTo(-r, -r * 0.4)
+        ctx.lineTo(r * 0.3, -r)
+        ctx.lineTo(r, r * 0.2)
+        ctx.lineTo(-r * 0.2, r * 0.9)
+        ctx.closePath()
+        ctx.fill()
+      } else {
+        // anel de seis-packs — o mais citado quando se fala em fauna presa
+        ctx.beginPath()
+        ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2)
+        ctx.moveTo(r * 0.5, 0)
+        ctx.arc(0, 0, r * 0.5, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+      ctx.restore()
     }
   }
 

@@ -26,9 +26,18 @@ import {
 } from '../diretor/mergulho'
 import { planejar } from '../ui/ritmoLegenda'
 import type { Queda } from '../paineis/PainelStatus'
-import { textoDaLinha, type Cena, type CenaPane, type Roteiro } from '../roteiros/tipos'
+import {
+  textoDaLinha,
+  type Cena,
+  type CenaCombate,
+  type CenaPane,
+  type Roteiro,
+  type Visor,
+} from '../roteiros/tipos'
 import { Apresentacao } from '../cenas/Apresentacao'
+import { Combate, type EstadoCombate } from '../cenas/Combate'
 import { Fala } from '../cenas/Fala'
+import { Fim } from '../cenas/Fim'
 import { Quiz, type FaseDinamica } from '../cenas/Quiz'
 import { Transicao } from '../cenas/Transicao'
 import { VF } from '../cenas/VF'
@@ -88,6 +97,11 @@ export function audioDaCena(cena: Cena): string | null {
       return cena.audio.afirmacao
     case 'pane':
       return cena.audio.entrada
+    // O combate nao tem UM audio: tem um por rodada, tocado pelo laco proprio.
+    // A tela final nao fala nada — o encerramento ja falou.
+    case 'combate':
+    case 'fim':
+      return null
   }
 }
 
@@ -112,6 +126,10 @@ function linhasDeReferencia(cena: Cena): string[] {
       return [cena.afirmacao]
     case 'pane':
       return cena.falaEntrada ?? cena.subsistemas
+    case 'combate':
+      return cena.falas.rodada[0] ?? [cena.criatura]
+    case 'fim':
+      return [cena.tela.titulo]
   }
 }
 
@@ -119,6 +137,10 @@ function rotaDaCena(cena: Cena): string {
   switch (cena.tipo) {
     case 'transicao':
       return cena.destino.toUpperCase()
+    case 'combate':
+      return 'CONTATO HOSTIL'
+    case 'fim':
+      return cena.tela.subtitulo.toUpperCase()
     case 'fala':
     case 'apresentacao':
       return (cena.tela.titulo ?? cena.id).toUpperCase()
@@ -130,9 +152,20 @@ function rotaDaCena(cena: Cena): string {
 type Layout = 'central' | 'palco' | 'canto'
 
 function layoutDaCena(cena: Cena): Layout {
+  // No combate o orbe fica pequeno no canto: a tela e do mostrador de sonar, e
+  // um orbe grande no meio competiria justamente com o que a plateia precisa
+  // ler pra responder.
+  if (cena.tipo === 'combate') return 'canto'
   if (cena.tipo !== 'apresentacao') return 'central'
   return cena.orbe === 'palco' ? 'palco' : 'canto'
 }
+
+/** Quanto cada impacto tira do casco. */
+const DANO_POR_IMPACTO = 0.25
+/** Quanto a fala de resultado fica na tela antes da proxima rodada. */
+const MS_ENTRE_RODADAS = 1200
+/** Na tela final, quanto o log ainda escreve antes de se calar de vez. */
+const MS_LOG_ATE_PARAR = 7000
 
 type FasePane = 'caindo' | 'congelado' | 'voltando'
 type EstadoPane = { fase: FasePane; quedas: Queda[] }
@@ -192,6 +225,35 @@ export function Player({ roteiro, engine }: Props) {
    * requestAnimationFrame, que é o mesmo padrão do nível de áudio no orbe.
    */
   const refProfMergulho = useRef(0)
+  /**
+   * Estado do visor, PERSISTENTE entre cenas.
+   *
+   * Uma cena sem o campo `visor` herda o da anterior, e é isso que faz o vidro
+   * rachado atravessar as quatro apresentações do 3A sem ter que ser repetido
+   * em cada cena do JSON. Mora aqui e não no Diretor porque quem desenha a
+   * rachadura é o React, e quem apaga a imagem é o motor do mundo — os dois
+   * precisam do valor, e o Diretor não fala com nenhum dos dois.
+   */
+  const [visor, setVisor] = useState<Visor>('ok')
+  const [combate, setCombate] = useState<EstadoCombate | null>(null)
+  /** Tremor da tela inteira: só o impacto do combate liga isto. */
+  const [impacto, setImpacto] = useState(false)
+  /**
+   * Na tela final o log escreve mais algumas linhas e PARA.
+   *
+   * Um log rolando pra sempre atrás do letreiro de encerramento transforma o
+   * fim da apresentação em tela de espera. Ele termina de dizer o que tinha a
+   * dizer e se cala, junto com a turma.
+   */
+  const [logParado, setLogParado] = useState(false)
+  /**
+   * Numa ref, e não no estado: o callback do teclado é memorizado e lê isto no
+   * momento da tecla. Como estado, cada troca de fase do combate recriaria o
+   * callback e religaria o listener.
+   */
+  const refCombateAtivo = useRef(false)
+  /** Resolve a espera da rodada quando o operador marca (ou força) o setor. */
+  const refRespostaCombate = useRef<((setor: number | 'forcado' | null) => void) | null>(null)
   /** `?debugDiretor=1`: rodapé com a decisão do Diretor ao vivo. */
   const depurarDiretor = useRef(
     /(^|[?&])debugdiretor=(1|on|true)(&|$)/i.test(window.location.search),
@@ -305,6 +367,19 @@ export function Player({ roteiro, engine }: Props) {
     },
     [engine, dizer],
   )
+
+  /**
+   * O operador (ou a plateia, por ele) marcou um setor no combate.
+   *
+   * Só resolve a espera; quem decide se foi acerto e o que acontece depois é o
+   * laço da cena. Duas fontes chamam isto: as teclas 1..9 e o clique nos cards.
+   */
+  const responderCombate = useCallback((setor: number | 'forcado') => {
+    const resolver = refRespostaCombate.current
+    if (!resolver) return
+    refRespostaCombate.current = null
+    resolver(setor)
+  }, [])
 
   const reagir = useCallback((acertou: boolean) => {
     if (acertou) setPulso(true)
@@ -508,6 +583,191 @@ export function Player({ roteiro, engine }: Props) {
     },
     [cena, tracos, engine, falarAvulso],
   )
+
+  /**
+   * Visor e ameaças seguem a cena — e HERDAM quando o campo não vem.
+   *
+   * É o que permite escrever `"visor": "rachado"` uma vez, na cena em que o
+   * vidro quebra, e não repetir em cada cena seguinte. Voltar uma cena com a
+   * seta esquerda reconstrói o estado do zero, varrendo o roteiro até aqui:
+   * sem isso, voltar da subida pro combate deixaria o visor "parcial" numa
+   * cena em que ele deveria estar rachado.
+   */
+  useEffect(() => {
+    setLogParado(false)
+    if (!cena || cena.tipo !== 'fim') return
+    const id = window.setTimeout(() => setLogParado(true), MS_LOG_ATE_PARAR)
+    return () => window.clearTimeout(id)
+  }, [cena])
+
+  useEffect(() => {
+    let estadoVisor: Visor = 'ok'
+    let ameacas = false
+    for (let i = 0; i <= indice && i < sequencia.length; i++) {
+      const c = sequencia[i]
+      if (c.visor !== undefined) estadoVisor = c.visor
+      if (c.ameacas !== undefined) ameacas = c.ameacas
+    }
+    setVisor(estadoVisor)
+    motor.definirVisor(estadoVisor)
+    motor.ameacas = ameacas
+  }, [indice, sequencia])
+
+  // --- combate acústico -----------------------------------------------------
+
+  /**
+   * O laço do combate.
+   *
+   * Roda fora do ciclo genérico de cena porque o combate não tem UM áudio: tem
+   * um por rodada, e entre eles há espera de resposta da plateia. O efeito de
+   * cena reconhece isso e não dispara o `executar()` de sempre.
+   *
+   * Duas garantias, e as duas existem porque isto acontece na frente de uma
+   * plateia: a cena SEMPRE termina (depois da última rodada, aconteça o que
+   * acontecer) e qualquer erro no meio avança em vez de travar.
+   */
+  useEffect(() => {
+    if (!cena || cena.tipo !== 'combate') {
+      setCombate(null)
+      return
+    }
+    const roteiroCombate: CenaCombate = cena
+    let cancelado = false
+    const fatia = 1 / roteiroCombate.rodadas.length
+
+    const esperarSetor = (segundos: number) =>
+      new Promise<number | 'forcado' | null>((resolve) => {
+        let pronto = false
+        const terminar = (v: number | 'forcado' | null) => {
+          if (pronto) return
+          pronto = true
+          refRespostaCombate.current = null
+          window.clearTimeout(relogio)
+          resolve(v)
+        }
+        refRespostaCombate.current = terminar
+        // null = ninguém respondeu. Vale como impacto, igual a errar.
+        const relogio = window.setTimeout(() => terminar(null), segundos * 1000)
+      })
+
+    const sortear = (falas: string[][], audios: string[]) => {
+      const i = Math.floor(Math.random() * falas.length)
+      return { linhas: falas[i], url: audios[i] ?? audios[0] }
+    }
+
+    const correr = async () => {
+      let casco = 1
+      let contato = 1
+
+      for (let i = 0; i < roteiroCombate.rodadas.length; i++) {
+        if (cancelado) return
+        const rodada = roteiroCombate.rodadas[i]
+        const setor =
+          rodada.setor ?? Math.floor(Math.random() * roteiroCombate.setores.length)
+
+        setCombate({
+          rodada: i,
+          fase: 'anunciando',
+          setor,
+          marcado: null,
+          casco,
+          contato,
+          desde: performance.now(),
+        })
+
+        // 1) a IA anuncia a rodada
+        const naTela = await falarAvulso(
+          roteiroCombate.audio.rodada[i],
+          roteiroCombate.falas.rodada[i],
+        )
+        if (cancelado) return
+        await esperar(naTela)
+        if (cancelado) return
+
+        // 2) a plateia responde
+        setCombate((e) => (e ? { ...e, fase: 'esperando', desde: performance.now() } : e))
+        engine.tocarSfx('sonar')
+        const resposta = await esperarSetor(rodada.tempo)
+        if (cancelado) return
+
+        if (resposta === 'forcado') {
+          // Válvula de escape do operador: passa a rodada sem prêmio nem
+          // castigo. Existe pra ninguém ficar preso esperando a plateia.
+          continue
+        }
+
+        const acertou = resposta === setor
+        if (acertou) {
+          contato = Math.max(0, contato - fatia)
+          engine.tocarSfx('pulso')
+          reagir(true)
+        } else {
+          casco = Math.max(0, casco - DANO_POR_IMPACTO)
+          engine.tocarSfx('impacto')
+          engine.tocarSfx('casco')
+          setImpacto(true)
+          window.setTimeout(() => setImpacto(false), 900)
+          reagir(false)
+        }
+
+        setCombate((e) =>
+          e
+            ? {
+                ...e,
+                fase: acertou ? 'acerto' : 'erro',
+                marcado: typeof resposta === 'number' ? resposta : null,
+                casco,
+                contato,
+                desde: performance.now(),
+              }
+            : e,
+        )
+
+        const grupo = acertou
+          ? sortear(roteiroCombate.falas.acerto, roteiroCombate.audio.acerto)
+          : resposta === null
+            ? sortear(roteiroCombate.falas.timeout, roteiroCombate.audio.timeout)
+            : sortear(roteiroCombate.falas.erro, roteiroCombate.audio.erro)
+
+        const naTelaResultado = await falarAvulso(grupo.url, grupo.linhas)
+        if (cancelado) return
+        await esperar(naTelaResultado + MS_ENTRE_RODADAS)
+        if (cancelado) return
+
+        if (contato <= 0) break
+
+        // Casco no chão: a IA sobe forçada. Isto não é derrota — é outro jeito
+        // de a cena acabar. Nunca existe estado que trave a apresentação.
+        if (casco <= 0) {
+          if (roteiroCombate.falas.critico && roteiroCombate.audio.critico) {
+            const ms = await falarAvulso(
+              roteiroCombate.audio.critico,
+              roteiroCombate.falas.critico,
+            )
+            if (cancelado) return
+            await esperar(ms)
+          }
+          break
+        }
+      }
+
+      if (cancelado) return
+      setCombate((e) => (e ? { ...e, fase: 'fim' } : e))
+      avancar()
+    }
+
+    void correr().catch(() => {
+      // Qualquer tropeço aqui (mp3 que não existe, promessa rejeitada) não pode
+      // deixar a plateia olhando um sonar parado: segue pra próxima cena.
+      if (!cancelado) avancar()
+    })
+
+    return () => {
+      cancelado = true
+      refRespostaCombate.current?.(null)
+      refRespostaCombate.current = null
+    }
+  }, [cena, engine, falarAvulso, reagir, avancar])
 
   // --- diretor de cena ------------------------------------------------------
 
@@ -825,6 +1085,14 @@ export function Player({ roteiro, engine }: Props) {
       (acao) => {
         switch (acao.tipo) {
           case 'avancar':
+            // Durante o combate a seta direita não pula a cena: força a rodada
+            // a seguir. É a válvula de segurança de quem está no palco quando a
+            // plateia não responde — e pular a cena inteira perderia o fim.
+            if (refCombateAtivo.current) {
+              engine.pararVoz()
+              responderCombate('forcado')
+              break
+            }
             avancar()
             break
           case 'voltar':
@@ -835,7 +1103,10 @@ export function Player({ roteiro, engine }: Props) {
             avancar()
             break
           case 'alternativa':
-            responderQuiz(acao.indice)
+            // No combate as mesmas teclas marcam o SETOR do contato. É a mesma
+            // mão do operador e o mesmo gesto, com outro significado.
+            if (refCombateAtivo.current) responderCombate(acao.indice)
+            else responderQuiz(acao.indice)
             break
           case 'vf':
             responderVF(acao.resposta)
@@ -847,6 +1118,9 @@ export function Player({ roteiro, engine }: Props) {
             void reiniciarDaPane()
             break
           case 'proximaForma':
+            // M, N e O ficam fora do combate: o orbe não é o assunto ali, e uma
+            // tecla que muda a silhueta no meio da tensão é só ruído.
+            if (refCombateAtivo.current) break
             operadorAssumiu()
             if (formasDaCena.length > 0) {
               setFormaForcada(null)
@@ -854,6 +1128,7 @@ export function Player({ roteiro, engine }: Props) {
             }
             break
           case 'formaAnterior':
+            if (refCombateAtivo.current) break
             operadorAssumiu()
             if (formasDaCena.length > 0) {
               setFormaForcada(null)
@@ -861,6 +1136,7 @@ export function Player({ roteiro, engine }: Props) {
             }
             break
           case 'esfera':
+            if (refCombateAtivo.current) break
             operadorAssumiu()
             setFormaForcada(null)
             setIndiceForma(SEM_FORMA)
@@ -894,6 +1170,7 @@ export function Player({ roteiro, engine }: Props) {
         formasDaCena,
         responderQuiz,
         responderVF,
+        responderCombate,
         dispararPane,
         reiniciarDaPane,
         operadorAssumiu,
@@ -926,6 +1203,17 @@ export function Player({ roteiro, engine }: Props) {
     if (!refPaneAtiva.current) setPainel(null)
 
     if (cena.sfx) engine.tocarSfx(cena.sfx)
+
+    // O combate tem laço próprio (uma fala por rodada, com espera no meio) e a
+    // tela final não fala nada. Nos dois casos o `executar()` de sempre não
+    // serve: ele tocaria um áudio que não existe e, na tela final, avançaria
+    // pra lugar nenhum.
+    if (cena.tipo === 'combate' || cena.tipo === 'fim') {
+      return () => {
+        diretor.cenaTerminou()
+        engine.pararVoz()
+      }
+    }
 
     const url = audioDaCena(cena)
     const legenda = linhasDaLegenda(cena)
@@ -1122,6 +1410,11 @@ export function Player({ roteiro, engine }: Props) {
     )
   }
 
+  // Lida pelo callback memorizado do teclado. Atualizar na renderização (e não
+  // num efeito) garante que a tecla apertada no mesmo quadro em que a fase
+  // muda já veja o valor certo.
+  refCombateAtivo.current = cena.tipo === 'combate' && combate?.fase === 'esperando'
+
   const estadoOrbe = pane
     ? pane.fase === 'voltando'
       ? 'falando'
@@ -1138,10 +1431,21 @@ export function Player({ roteiro, engine }: Props) {
   return (
     <Hud
       rota={pane ? 'FALHA DE SISTEMA' : rotaDaCena(cena)}
-      sonar={pane ? 'OFFLINE' : cena.tipo === 'transicao' ? 'VARRENDO' : 'ATIVO'}
+      sonar={
+        pane
+          ? 'OFFLINE'
+          : cena.tipo === 'combate'
+            ? 'AUXILIAR'
+            : visor === 'rachado'
+              ? 'ÚNICO SENSOR'
+              : cena.tipo === 'transicao'
+                ? 'VARRENDO'
+                : 'ATIVO'
+      }
       rodapeEsquerda={`turma ${roteiro.turma}`}
       inclinado={faseMergulho === 'inclinacao'}
       mergulhando={mergulho !== null}
+      impacto={impacto}
       rodapeDireita={
         pane
           ? 'pane · R pra reiniciar'
@@ -1198,6 +1502,9 @@ export function Player({ roteiro, engine }: Props) {
             aoZerarTimer,
             aoPing,
           )}
+          {cena.tipo === 'combate' && combate && (
+            <Combate cena={cena} estado={combate} aoResponder={responderCombate} />
+          )}
           <Painel
             painel={
               painel && {
@@ -1216,6 +1523,7 @@ export function Player({ roteiro, engine }: Props) {
             profundidade={Math.round(motor.profundidade())}
             travado={tracoTravado}
             aoPing={aoPing}
+            visor={visor}
           />
           {mostrarCameras && (
             <>
@@ -1223,11 +1531,15 @@ export function Player({ roteiro, engine }: Props) {
                 className="feed--mini feed--bombordo"
                 rotulo="CAM 01 · EXT BOMBORDO"
                 camera={{ x0: 0, abertura: 1 }}
+                visor={visor}
+                semente={4211}
               />
               <Feed
                 className="feed--mini feed--estibordo"
                 rotulo="CAM 02 · EXT ESTIBORDO"
                 camera={{ x0: 1.4, abertura: 1, espelhado: true }}
+                visor={visor}
+                semente={9137}
               />
             </>
           )}
@@ -1248,12 +1560,12 @@ export function Player({ roteiro, engine }: Props) {
         </div>
         <LogSistemas
           especificas={cena.log}
-          modo={pane ? 'erro' : modoDoLog(estadoOrbe)}
+          modo={pane || cena.tipo === 'combate' ? 'erro' : modoDoLog(estadoOrbe)}
           apagado={modo !== 'central' && !pane}
           lerNivel={lerNivel}
           falando={falando}
           rajada={rajadaLog}
-          congelado={pane?.fase === 'congelado'}
+          congelado={pane?.fase === 'congelado' || logParado}
         />
       </div>
       {ajudaVisivel && <Ajuda cena={cena.id} forma={formaAtual} escala={escala} />}
@@ -1271,6 +1583,12 @@ function estadoDoOrbe(cena: Cena, falando: boolean, fase: FaseDinamica): EstadoO
       // Enquanto a plateia pensa, o sistema "processa".
       return fase === 'respondendo' ? 'processando' : falando ? 'falando' : 'ocioso'
     case 'apresentacao':
+      return 'ocioso'
+    case 'combate':
+      // A IA esta cega e calculando: `processando` o tempo todo, menos quando
+      // ela propria fala.
+      return falando ? 'falando' : 'processando'
+    case 'fim':
       return 'ocioso'
     default:
       return falando ? 'falando' : 'ocioso'
@@ -1346,6 +1664,8 @@ function conteudoDaCena(
       )
     case 'apresentacao':
       return <Apresentacao key={cena.id} cena={cena} palco={layout === 'palco'} />
+    case 'fim':
+      return <Fim key={cena.id} cena={cena} />
     case 'transicao':
       return (
         <Transicao

@@ -1,14 +1,36 @@
 import { marcadorExiste, NOMES_MARCADORES } from '../paineis/mapa'
 import { formaRegistrada, NOMES_FORMAS } from '../formas'
+import { ESPECIES } from '../mundo/bestiario'
 import { NOMES_PAINEIS } from '../paineis/nomes'
-import type { Acao, Cena, Linha, Roteiro, Turma } from './tipos'
+import type { Acao, Cena, CenaCombate, Linha, Roteiro, Turma } from './tipos'
 import { TURMAS } from './tipos'
 
 // Quem edita os JSONs nao e programador: os erros precisam dizer EXATAMENTE
 // qual cena e qual campo estao errados, em portugues.
 
-const TIPOS_VALIDOS = ['fala', 'apresentacao', 'transicao', 'quiz', 'vf', 'pane']
-const SFX_VALIDOS = ['sonar', 'alarme', 'estatica', 'ok', 'pressurizacao', 'casco']
+const TIPOS_VALIDOS = [
+  'fala',
+  'apresentacao',
+  'transicao',
+  'quiz',
+  'vf',
+  'pane',
+  'combate',
+  'fim',
+]
+const SFX_VALIDOS = [
+  'sonar',
+  'alarme',
+  'estatica',
+  'ok',
+  'pressurizacao',
+  'bipe-timer',
+  'casco',
+  'vidro',
+  'pulso',
+  'impacto',
+]
+const VISOR_VALIDO = ['ok', 'rachado', 'parcial']
 
 function ehTextoPreenchido(valor: unknown): valor is string {
   return typeof valor === 'string' && valor.trim().length > 0
@@ -155,6 +177,88 @@ function conferirLinhas(linhas: unknown, onde: string, erros: string[]) {
  * Confere o roteiro inteiro e devolve a lista de problemas encontrados.
  * Lista vazia = roteiro valido.
  */
+/**
+ * Confere uma cena de combate.
+ *
+ * O contrato mais importante e o alinhamento entre `rodadas`, `falas.rodada` e
+ * `audio.rodada`: se as tres listas nao tiverem o mesmo tamanho, a terceira
+ * rodada fica muda no dia da feira e ninguem descobre antes. Melhor a tela
+ * vermelha no carregamento.
+ */
+function conferirCombate(cena: CenaCombate, onde: string, erros: string[]) {
+  if (!ehTextoPreenchido(cena.criatura)) {
+    erros.push(`${onde}: campo "criatura" faltando (uma chave do bestiario).`)
+  } else if (!ESPECIES.some((e) => e.chave === cena.criatura)) {
+    erros.push(
+      `${onde}: a criatura "${cena.criatura}" nao esta no bestiario. ` +
+        `Disponiveis: ${ESPECIES.map((e) => e.chave).join(', ')}. ` +
+        `Pra adicionar, escreva o desenho em src/mundo/bestiario.ts.`,
+    )
+  }
+
+  if (!ehListaDeTextos(cena.setores) || cena.setores.length < 2) {
+    erros.push(`${onde}: "setores" precisa ter pelo menos 2 rotulos (ex.: PROA, BOMBORDO).`)
+  } else if (cena.setores.length > 9) {
+    erros.push(`${onde}: "setores" tem ${cena.setores.length} — o maximo e 9 (teclas 1 a 9).`)
+  }
+  const quantosSetores = Array.isArray(cena.setores) ? cena.setores.length : 0
+
+  if (!Array.isArray(cena.rodadas) || cena.rodadas.length === 0) {
+    erros.push(`${onde}: "rodadas" precisa ser uma lista com pelo menos uma rodada.`)
+    return
+  }
+
+  cena.rodadas.forEach((rodada, i) => {
+    const ondeR = `${onde}, rodada ${i + 1}`
+    if (typeof rodada?.distancia !== 'number' || rodada.distancia <= 0) {
+      erros.push(`${ondeR}: "distancia" deve ser um numero de metros maior que zero.`)
+    }
+    if (typeof rodada?.tempo !== 'number' || rodada.tempo <= 0) {
+      erros.push(`${ondeR}: "tempo" deve ser um numero de segundos maior que zero.`)
+    }
+    if (rodada?.setor !== undefined) {
+      if (!Number.isInteger(rodada.setor) || rodada.setor < 0 || rodada.setor >= quantosSetores) {
+        erros.push(
+          `${ondeR}: "setor" ${rodada.setor} nao existe — ` +
+            `os setores vao de 0 a ${quantosSetores - 1}.`,
+        )
+      }
+    }
+  })
+
+  const total = cena.rodadas.length
+  for (const chave of ['rodada', 'acerto', 'erro', 'timeout'] as const) {
+    const falas = cena.falas?.[chave]
+    if (!Array.isArray(falas) || falas.length === 0) {
+      erros.push(`${onde}: "falas.${chave}" precisa ser uma lista de falas nao vazia.`)
+    } else if (!falas.every(ehListaDeTextos)) {
+      erros.push(`${onde}: "falas.${chave}" e uma lista de FALAS, e cada fala e uma lista de linhas.`)
+    } else if (chave === 'rodada' && falas.length !== total) {
+      erros.push(
+        `${onde}: "falas.rodada" tem ${falas.length} falas mas ha ${total} rodadas. ` +
+          `Uma por rodada, na ordem.`,
+      )
+    }
+
+    const audios = cena.audio?.[chave]
+    if (!ehListaDeTextos(audios)) {
+      erros.push(`${onde}: "audio.${chave}" precisa ser uma lista de caminhos de mp3.`)
+    } else if (Array.isArray(falas) && audios.length !== falas.length) {
+      erros.push(
+        `${onde}: "audio.${chave}" tem ${audios.length} caminhos e ` +
+          `"falas.${chave}" tem ${falas.length} falas. Precisam bater.`,
+      )
+    }
+  }
+
+  if (cena.falas?.critico !== undefined && !ehListaDeTextos(cena.falas.critico)) {
+    erros.push(`${onde}: "falas.critico" deve ser uma lista de linhas.`)
+  }
+  if (cena.falas?.critico && !ehTextoPreenchido(cena.audio?.critico)) {
+    erros.push(`${onde}: "falas.critico" existe mas "audio.critico" faltando.`)
+  }
+}
+
 export function validarRoteiro(dado: unknown): string[] {
   const erros: string[] = []
 
@@ -226,6 +330,14 @@ export function validarRoteiro(dado: unknown): string[] {
 
     if (cena.cameras !== undefined && typeof cena.cameras !== 'boolean') {
       erros.push(`${onde}: "cameras" deve ser true ou false.`)
+    }
+
+    if (cena.visor !== undefined && !VISOR_VALIDO.includes(cena.visor)) {
+      erros.push(`${onde}: "visor" deve ser um de: ${VISOR_VALIDO.join(', ')}.`)
+    }
+
+    if (cena.ameacas !== undefined && typeof cena.ameacas !== 'boolean') {
+      erros.push(`${onde}: "ameacas" deve ser true ou false.`)
     }
 
     if (cena.comandos !== undefined) {
@@ -361,6 +473,25 @@ export function validarRoteiro(dado: unknown): string[] {
           if (!ehTextoPreenchido(cena.audio?.[chave])) {
             erros.push(`${onde}: "audio.${chave}" faltando.`)
           }
+        }
+        break
+      }
+      case 'combate': {
+        conferirCombate(cena, onde, erros)
+        break
+      }
+      case 'fim': {
+        if (!ehTextoPreenchido(cena.tela?.titulo)) {
+          erros.push(`${onde}: "tela.titulo" faltando.`)
+        }
+        if (!ehTextoPreenchido(cena.tela?.subtitulo)) {
+          erros.push(`${onde}: "tela.subtitulo" faltando.`)
+        }
+        if (cena.avanco === 'auto') {
+          erros.push(
+            `${onde}: a cena "fim" nao pode ter "avanco": "auto" — ` +
+              `ela e a ultima tela e fica na frente da plateia.`,
+          )
         }
         break
       }

@@ -47,7 +47,9 @@ const MS_AVISO = 500
 const MS_INCLINACAO = 1000
 const MS_ESTABILIZACAO = 700
 const MS_DESCIDA_MIN = 2000
-const MS_DESCIDA_MAX = 4000
+const MS_DESCIDA_MAX = 7000
+/** Distância de referência da curva: a descida do 3A, de 900 m à abissal. */
+const DISTANCIA_REFERENCIA = 3600
 
 const limitar = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
@@ -56,9 +58,21 @@ const easeInOutCubic = (t: number) =>
 
 export function planejarMergulho(de: number, para: number): PlanoMergulho {
   const distancia = Math.abs(para - de)
-  // 300 m de descida dão ~3 s; a faixa toda cabe entre 2 e 4 s.
+  /**
+   * Curva côncava, não reta.
+   *
+   * Linear, a descida de 3600 m do 3A estourava o teto e ficava com os mesmos
+   * 4 s de um pulo de 900 m — e aí a narração passava a mentir: a IA dizia
+   * "atravessando a mesopelágica" com o submarino já a 3500 m. Com o expoente
+   * 0,6 um salto curto continua rápido (450 m dão ~3,4 s, quase o que era) e a
+   * descida longa ganha os ~7 s que ela precisa pras quatro linhas caberem.
+   *
+   * O número não é arbitrário: medido contra o `tempos.json` do 3A, cada linha
+   * da cena `descida` cai na zona que ela nomeia.
+   */
   const msDescida = limitar(
-    MS_DESCIDA_MIN + (distancia / 900) * (MS_DESCIDA_MAX - MS_DESCIDA_MIN),
+    MS_DESCIDA_MIN +
+      (distancia / DISTANCIA_REFERENCIA) ** 0.6 * (MS_DESCIDA_MAX - MS_DESCIDA_MIN),
     MS_DESCIDA_MIN,
     MS_DESCIDA_MAX,
   )
