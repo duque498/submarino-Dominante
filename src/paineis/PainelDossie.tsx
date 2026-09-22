@@ -112,7 +112,11 @@ export function PainelDossie({ argumento }: Props) {
       // O desenho não é simétrico em torno da origem: a cauda vai mais pra trás
       // do que o focinho vai pra frente. Medido na caixa real, a tinta ficava
       // 20 px à esquerda do centro e o lóbulo encostava na borda. Isto recentra.
-      const meioX = L / 2 + comp * 0.14
+      //
+      // Numa faixa LARGA (o formato que a silhueta tem quando o dossiê mostra
+      // foto) o desenho vai pra esquerda e o carimbo fica com a direita: no
+      // meio, os dois se sobrepunham.
+      const meioX = (L > A * 2.4 ? L * 0.34 : L / 2) + comp * 0.14
       const pose = { t: relogio, fase: 0.4, luz: 1, farol: 0, alpha: 1, silhueta: true }
 
       // Revelação da esquerda pra direita, como plotter: é o que faz o desenho
@@ -201,8 +205,12 @@ export function PainelDossie({ argumento }: Props) {
             </div>
           ))}
         </dl>
-        {imagem && ficha.credito && <p className="dossie__credito">{ficha.credito}</p>}
       </div>
+      {/* Fora da coluna de dados: o crédito é do PAINEL, não de um campo da
+          ficha, e ali dentro ele era o primeiro a ser cortado quando a lista
+          crescia — num painel que mostra foto de terceiro, o crédito não pode
+          ser a parte que some. */}
+      {imagem && ficha.credito && <p className="dossie__credito">{ficha.credito}</p>}
     </div>
   )
 }
