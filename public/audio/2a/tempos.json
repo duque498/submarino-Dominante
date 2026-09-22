@@ -122,7 +122,7 @@
       }
     ]
   },
-  "ident-arraia-manta-pista-1": {
+  "ident-baleia-pista-1": {
     "duracaoMs": 4392,
     "linhas": [
       {
@@ -131,48 +131,21 @@
       }
     ]
   },
-  "ident-arraia-manta-pista-2": {
-    "duracaoMs": 2208,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 2208
-      }
-    ]
-  },
-  "ident-arraia-manta-pista-3": {
-    "duracaoMs": 3192,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3192
-      }
-    ]
-  },
-  "ident-baleia-pista-1": {
-    "duracaoMs": 6144,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 6144
-      }
-    ]
-  },
   "ident-baleia-pista-2": {
-    "duracaoMs": 4104,
+    "duracaoMs": 4440,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 4104
+        "fim": 4440
       }
     ]
   },
   "ident-baleia-pista-3": {
-    "duracaoMs": 3288,
+    "duracaoMs": 2952,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3288
+        "fim": 2952
       }
     ]
   },
@@ -186,6 +159,33 @@
       {
         "inicio": 2688,
         "fim": 5352
+      }
+    ]
+  },
+  "ident-golfinho-pista-1": {
+    "duracaoMs": 4224,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4224
+      }
+    ]
+  },
+  "ident-golfinho-pista-2": {
+    "duracaoMs": 3528,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3528
+      }
+    ]
+  },
+  "ident-golfinho-pista-3": {
+    "duracaoMs": 3816,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3816
       }
     ]
   },
@@ -233,33 +233,6 @@
       }
     ]
   },
-  "ident-peixe-boi-pista-1": {
-    "duracaoMs": 4800,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 4800
-      }
-    ]
-  },
-  "ident-peixe-boi-pista-2": {
-    "duracaoMs": 3720,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3720
-      }
-    ]
-  },
-  "ident-peixe-boi-pista-3": {
-    "duracaoMs": 4008,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 4008
-      }
-    ]
-  },
   "ident-revelado-1": {
     "duracaoMs": 1992,
     "linhas": [
@@ -279,29 +252,56 @@
     ]
   },
   "ident-tartaruga-pista-1": {
-    "duracaoMs": 4320,
+    "duracaoMs": 3336,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 4320
+        "fim": 3336
       }
     ]
   },
   "ident-tartaruga-pista-2": {
-    "duracaoMs": 2544,
+    "duracaoMs": 3432,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2544
+        "fim": 3432
       }
     ]
   },
   "ident-tartaruga-pista-3": {
-    "duracaoMs": 3936,
+    "duracaoMs": 2736,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3936
+        "fim": 2736
+      }
+    ]
+  },
+  "ident-tubarao-pista-1": {
+    "duracaoMs": 3120,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3120
+      }
+    ]
+  },
+  "ident-tubarao-pista-2": {
+    "duracaoMs": 4176,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4176
+      }
+    ]
+  },
+  "ident-tubarao-pista-3": {
+    "duracaoMs": 3528,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3528
       }
     ]
   },

@@ -1414,7 +1414,12 @@ export class MotorMundo {
     const ciclo = (t % periodo) / periodo
     const indo = ciclo < 0.5
     const avanco = indo ? ciclo * 2 : 2 - ciclo * 2
-    const x = L * (0.16 + avanco * 0.68)
+    // Quanto MAIOR o bicho, menos ele passeia. Com a excursão fixa, a jubarte
+    // — que já é mais larga que o quadro — vivia com a cabeça ou a cauda fora
+    // dele, e desde que a revelação é o prêmio da dinâmica, um bicho sempre
+    // cortado no fim é o contrário do que a cena precisa.
+    const raio = Math.max(0.04, 0.34 - Math.max(0, c.largura - 0.5) * 0.4)
+    const x = L * (0.5 + (avanco - 0.5) * raio * 2)
     const y = A * c.altura + Math.sin(t * 0.55) * A * c.deriva
 
     // Afinamento da virada: 300 ms encolhendo e voltando em torno do extremo.

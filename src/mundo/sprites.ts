@@ -279,66 +279,61 @@ export type ComportamentoEspecie = RegistroSprite & {
 }
 
 export const COMPORTAMENTOS: Record<string, ComportamentoEspecie> = {
-  // Rema devagar com as quatro nadadeiras. Corpo rígido: casco não ondula.
+  // Vista de cima, remando devagar. O casco é rígido: a onda quase não existe.
   tartaruga: {
-    cabeca: 0.75,
+    cabeca: 0.7,
     onda: 0.05,
-    batida: 0.5,
-    voltas: 0.4,
-    rolagem: 5,
+    batida: 0.45,
+    voltas: 0.35,
+    rolagem: 4,
     largura: 0.42,
-    velocidade: 0.035,
+    velocidade: 0.03,
     deriva: 0.05,
     altura: 0.5,
-    nadadeiras: [
-      { x: 0.5, y: 0.0, w: 0.35, h: 0.34, amp: 2.6 },
-      { x: 0.5, y: 0.66, w: 0.35, h: 0.34, amp: 2.6, fase: Math.PI },
-      { x: 0.02, y: 0.02, w: 0.26, h: 0.32, amp: 1.7, fase: 1.1 },
-      { x: 0.02, y: 0.66, w: 0.26, h: 0.32, amp: 1.7, fase: Math.PI + 1.1 },
-    ],
   },
-  // Passa lenta e enorme. Não cabe no quadro: é esse o ponto.
+  // Rápido e nervoso: batida alta, onda curta. É o mais ágil dos quatro.
+  golfinho: {
+    cabeca: 0.42,
+    onda: 0.1,
+    batida: 0.85,
+    voltas: 0.6,
+    rolagem: 5,
+    largura: 0.5,
+    velocidade: 0.09,
+    deriva: 0.07,
+    altura: 0.5,
+  },
+  // Onda longa percorrendo o corpo, do jeito que tubarão nada.
+  tubarao: {
+    cabeca: 0.38,
+    onda: 0.1,
+    batida: 0.6,
+    voltas: 0.75,
+    rolagem: 3,
+    largura: 0.62,
+    velocidade: 0.07,
+    deriva: 0.05,
+    altura: 0.5,
+  },
+  // Lenta e enorme: passa das bordas do quadro, mas só um pouco. A 1,7 ela
+  // virava uma parede cinza e a plateia não reconhecia NADA — e desde que a
+  // revelação é o prêmio da dinâmica, um bicho irreconhecível no fim é o
+  // contrário do que a cena precisa. A 1,05 ela continua sendo de longe a
+  // maior das quatro e ainda se lê como baleia.
+  //
+  // A peitoral ganha um seno próprio de amplitude PEQUENA: a primeira versão
+  // usava 1,4 e a nadadeira arrancava o flanco junto.
   baleia: {
     cabeca: 0.3,
-    onda: 0.16,
-    batida: 0.22,
-    voltas: 0.55,
+    onda: 0.13,
+    batida: 0.2,
+    voltas: 0.5,
     rolagem: 2.5,
-    largura: 1.7,
+    largura: 1.05,
     velocidade: 0.075,
     deriva: 0.035,
     altura: 0.52,
-    nadadeiras: [{ x: 0.42, y: 0.55, w: 0.3, h: 0.45, amp: 1.4, fase: 0.8 }],
-  },
-  // Paira. Quase não anda, e sobe de vez em quando pra respirar.
-  'peixe-boi': {
-    cabeca: 0.62,
-    onda: 0.09,
-    batida: 0.3,
-    voltas: 0.45,
-    rolagem: 3,
-    largura: 0.55,
-    velocidade: 0.012,
-    deriva: 0.09,
-    altura: 0.55,
-    nadadeiras: [{ x: 0.55, y: 0.55, w: 0.28, h: 0.4, amp: 1.8, fase: 0.5 }],
-  },
-  // Plana: "voa" batendo as asas. A onda do corpo é quase nada; o que bate
-  // são as duas metades, em oposição de fase.
-  'arraia-manta': {
-    cabeca: 0.85,
-    onda: 0.04,
-    batida: 0.42,
-    voltas: 0.25,
-    rolagem: 3,
-    largura: 0.8,
-    velocidade: 0.045,
-    deriva: 0.06,
-    altura: 0.48,
-    nadadeiras: [
-      { x: 0.0, y: 0.0, w: 0.72, h: 0.42, amp: 3.2 },
-      { x: 0.0, y: 0.58, w: 0.72, h: 0.42, amp: 3.2, fase: Math.PI },
-    ],
+    nadadeiras: [{ x: 0.17, y: 0.66, w: 0.42, h: 0.34, amp: 0.5, fase: 0.7 }],
   },
 }
 

@@ -668,7 +668,12 @@ seno cuja fase atrasa da cabeça pra cauda: uma onda viajante percorrendo o
 corpo, o mesmo princípio da espinha do megalodonte aplicado a pixels. Por cima
 disso: rolagem de ±4°, respiração de ±2% e nadadeiras com seno próprio.
 
-Duas coisas custaram caro e valem estar escritas:
+> **O PNG precisa ser um contorno ÚNICO**, com as nadadeiras fazendo parte da
+> linha. As primeiras silhuetas provisórias montavam o bicho com polígonos
+> soltos, e no warp elas se separavam do corpo: a tartaruga virava um casco
+> cercado de espinhos flutuando. Nada pode se soltar porque nada é separado.
+
+Três coisas custaram caro e valem estar escritas:
 
 - **Nada de `ctx.filter`.** A primeira versão aplicava brilho por tira, e o
   canvas `filter` monta um passe de composição por desenho: medido, **14 fps**
@@ -679,11 +684,19 @@ Duas coisas custaram caro e valem estar escritas:
   região inteira em bloco, e como as regiões atravessam o corpo o bicho se
   despedaçava em faixas. Agora o deslocamento é afinado por seno nos dois eixos
   dentro da região: ela flexiona pra fora do corpo em vez de rasgá-lo.
+- **E tem que ser PEQUENA.** Mesmo afinada, uma região grande com amplitude
+  alta faz metade do bicho balançar por quadro: em dois quadros separados por
+  120 ms ele virava outro animal. Sobrou uma só, a peitoral da jubarte, com
+  amplitude modesta. O resto do movimento vem da onda do corpo, que é estável.
 
 **Escala relativa é conteúdo, não enfeite**: a tartaruga cabe no quadro com
-folga e a jubarte NÃO cabe — entra e passa. É assim que a plateia entende que
-uma é do tamanho de uma mesa e a outra de um ônibus. O comportamento também é
-por espécie: a tartaruga rema, o peixe-boi paira, a manta "voa".
+folga e a jubarte passa das bordas. É assim que a plateia entende que uma é do
+tamanho de uma mesa e a outra de um ônibus. Mas quanto maior o bicho, MENOS ele
+passeia pelo quadro — a 1,7 largura e com excursão fixa, a jubarte vivia com a
+cabeça ou a cauda de fora, e como a revelação é o prêmio da dinâmica, um bicho
+sempre cortado no fim é o contrário do que a cena precisa. O comportamento
+também é por espécie: a tartaruga rema devagar, o golfinho é nervoso, o tubarão
+tem onda longa, a jubarte é lenta.
 
 ### Água turva
 

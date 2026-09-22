@@ -242,9 +242,9 @@
             "aruana"
           ],
           "pistas": [
-            "Detectado em recife raso. Respira ar: precisa subir à superfície.",
-            "Volta à praia onde nasceu para desovar.",
-            "Réptil marinho com casco. Pode viver mais de 70 anos."
+            "Réptil que vive no mar e precisa subir para respirar.",
+            "Põe os ovos na areia da praia onde ela mesma nasceu.",
+            "Tem casco e nada com quatro nadadeiras."
           ],
           "audioPistas": [
             "./audio/2a/ident-tartaruga-pista-1.mp3",
@@ -254,7 +254,55 @@
           "intervaloPistas": 7,
           "profundidade": 20,
           "ambiente": "recife",
-          "incrementoCache": 40000
+          "incrementoCache": 50000
+        },
+        {
+          "id": "golfinho",
+          "nome": "Golfinho",
+          "aceitos": [
+            "golfinho",
+            "golfinhos",
+            "boto",
+            "delfim"
+          ],
+          "pistas": [
+            "Mamífero que vive em grupo e respira por um orifício no alto da cabeça.",
+            "Usa sons para se orientar e achar comida na água escura.",
+            "Tem focinho alongado, salta fora d’água e acompanha barcos."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-golfinho-pista-1.mp3",
+            "./audio/2a/ident-golfinho-pista-2.mp3",
+            "./audio/2a/ident-golfinho-pista-3.mp3"
+          ],
+          "intervaloPistas": 7,
+          "profundidade": 15,
+          "ambiente": "aberto",
+          "incrementoCache": 60000
+        },
+        {
+          "id": "tubarao",
+          "nome": "Tubarão",
+          "aceitos": [
+            "tubarão",
+            "tubarao",
+            "cação",
+            "cacao"
+          ],
+          "pistas": [
+            "Peixe com esqueleto de cartilagem, e não de osso.",
+            "Troca os dentes a vida inteira: atrás de cada fileira vem outra.",
+            "Barbatana triangular nas costas cortando a superfície."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-tubarao-pista-1.mp3",
+            "./audio/2a/ident-tubarao-pista-2.mp3",
+            "./audio/2a/ident-tubarao-pista-3.mp3"
+          ],
+          "intervaloPistas": 7,
+          "profundidade": 30,
+          "ambiente": "aberto",
+          "incrementoCache": 60112
         },
         {
           "id": "baleia",
@@ -265,9 +313,9 @@
             "baleia-jubarte"
           ],
           "pistas": [
-            "Contato de grande porte. Migra da Antártida até o litoral da Bahia todo inverno para se reproduzir.",
-            "Captado canto de baixa frequência. Os machos cantam por horas.",
-            "Mamífero. Saltos e batidas de cauda são sua marca."
+            "O maior animal desta expedição. Mamífero, e respira na superfície.",
+            "Vem da Antártida até a costa da Bahia todo inverno para ter filhotes.",
+            "Solta um jato ao respirar e canta embaixo d’água."
           ],
           "audioPistas": [
             "./audio/2a/ident-baleia-pista-1.mp3",
@@ -278,56 +326,6 @@
           "profundidade": 40,
           "ambiente": "aberto",
           "incrementoCache": 70000
-        },
-        {
-          "id": "peixe-boi",
-          "nome": "Peixe-boi-marinho",
-          "aceitos": [
-            "peixe-boi",
-            "peixe boi",
-            "peixe-boi-marinho",
-            "manati",
-            "manatí"
-          ],
-          "pistas": [
-            "Detectado em manguezal do litoral norte. Herbívoro: come plantas aquáticas.",
-            "Mamífero lento, dócil. Um dos mais ameaçados do Brasil.",
-            "Parente do elefante. Sobe para respirar pelas narinas do focinho."
-          ],
-          "audioPistas": [
-            "./audio/2a/ident-peixe-boi-pista-1.mp3",
-            "./audio/2a/ident-peixe-boi-pista-2.mp3",
-            "./audio/2a/ident-peixe-boi-pista-3.mp3"
-          ],
-          "intervaloPistas": 7,
-          "profundidade": 5,
-          "ambiente": "mangue",
-          "incrementoCache": 50000
-        },
-        {
-          "id": "arraia-manta",
-          "nome": "Arraia-manta",
-          "aceitos": [
-            "arraia",
-            "raia",
-            "manta",
-            "arraia-manta",
-            "jamanta"
-          ],
-          "pistas": [
-            "Contato plano, envergadura de vários metros. Filtra plâncton da água.",
-            "Não tem ferrão. Salta fora d’água.",
-            "Parente dos tubarões. Nada batendo as \"asas\"."
-          ],
-          "audioPistas": [
-            "./audio/2a/ident-arraia-manta-pista-1.mp3",
-            "./audio/2a/ident-arraia-manta-pista-2.mp3",
-            "./audio/2a/ident-arraia-manta-pista-3.mp3"
-          ],
-          "intervaloPistas": 7,
-          "profundidade": 30,
-          "ambiente": "aberto",
-          "incrementoCache": 80112
         }
       ],
       "falas": {

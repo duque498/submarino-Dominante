@@ -57,23 +57,28 @@ Sem penalidade. Sem timer visível — só a barra de calibração, suave.
 - Turvo: sprite escuro e borrado. Revelado: gradiente de contraluz do farol + brilho na borda superior.
 - Escala relativa correta: tartaruga pequena, jubarte não cabe inteira — entra e passa. Comportamento por espécie: tartaruga rema devagar; jubarte passa lenta e enorme com cauda subindo; peixe-boi paira e sobe pra respirar; manta plana "voa" batendo as asas.
 
-## Espécies provisórias (a professora confirma). Verificar cada fato antes de entrar no JSON; se não bater, trocar por outro verificável mantendo a ordem mediana→fácil. Não inventar.
-1. Tartaruga-verde · recife, 20 m · aceitos: tartaruga, tartaruga-verde, aruanã · cache +40.000
-   - "Detectado em recife raso. Respira ar, sobe à superfície a cada poucos minutos."
-   - "Volta sempre à mesma praia onde nasceu para desovar."
-   - "Réptil marinho com casco. Pode viver mais de 70 anos."
-2. Baleia-jubarte · Abrolhos, aberto, 40 m · aceitos: baleia, jubarte, baleia-jubarte · +70.000
-   - "Contato de grande porte. Migra da Antártida até o litoral da Bahia todo inverno para se reproduzir."
-   - "Captado canto de baixa frequência. Os machos cantam por horas."
-   - "Mamífero. Saltos e batidas de cauda são sua marca."
-3. Peixe-boi-marinho · mangue, 5 m, água marrom · aceitos: peixe-boi, peixe-boi-marinho, manati · +50.000
-   - "Detectado em manguezal do litoral norte. Herbívoro: come plantas aquáticas."
-   - "Mamífero lento, dócil. Um dos mais ameaçados do Brasil."
-   - "Parente do elefante. Sobe para respirar pelas narinas do focinho."
-4. Arraia-manta · aberto, 30 m · aceitos: arraia, raia, manta, arraia-manta, jamanta · +80.112
-   - "Contato plano, envergadura de vários metros. Filtra plâncton da água."
-   - "Não tem ferrão. Salta fora d'água."
-   - "Parente dos tubarões. Nada batendo as 'asas'."
+## Espécies (provisórias — a professora confirma)
+O peixe-boi e a arraia-manta saíram: espécie específica demais pra a plateia
+gritar o nome. Entraram golfinho e tubarão, que qualquer criança reconhece.
+As pistas foram refeitas mais fáceis, mantendo a ordem mediana → fácil.
+
+1. Tartaruga-verde · recife, 20 m · aceitos: tartaruga, tartaruga-verde, aruanã · cache +50.000
+   - "Réptil que vive no mar e precisa subir para respirar."
+   - "Põe os ovos na areia da praia onde ela mesma nasceu."
+   - "Tem casco e nada com quatro nadadeiras."
+2. Golfinho · aberto, 15 m · aceitos: golfinho, boto, delfim · +60.000
+   - "Mamífero que vive em grupo e respira por um orifício no alto da cabeça."
+   - "Usa sons para se orientar e achar comida na água escura."
+   - "Tem focinho alongado, salta fora d'água e acompanha barcos."
+3. Tubarão · aberto, 30 m · aceitos: tubarão, cação · +60.112
+   - "Peixe com esqueleto de cartilagem, e não de osso."
+   - "Troca os dentes a vida inteira: atrás de cada fileira vem outra."
+   - "Barbatana triangular nas costas cortando a superfície."
+4. Baleia-jubarte · aberto, 40 m · aceitos: baleia, jubarte, baleia-jubarte · +70.000
+   - "O maior animal desta expedição. Mamífero, e respira na superfície."
+   - "Vem da Antártida até a costa da Bahia todo inverno para ter filhotes."
+   - "Solta um jato ao respirar e canta embaixo d'água."
+
 Fichas correspondentes em fichas.json, mesma regra.
 
 ## Painel cache
