@@ -149,6 +149,19 @@ def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
                 for n, bloco in enumerate(falas_combate.get(chave) or [], start=1):
                     juntar(f"{cid}-{chave}-{n}", bloco)
             juntar(f"{cid}-critico", falas_combate.get("critico"))
+        elif tipo == "identificacao":
+            # As falas da identificação também não são ditas em sequência: entre
+            # uma e outra a plateia está tentando reconhecer o bicho. Cada uma
+            # vira um mp3, e os nomes batem com o `audio` do JSON.
+            falas_ident = cena.get("falas", {})
+            for chave in ("inicio", "acerto", "revelado"):
+                for n, bloco in enumerate(falas_ident.get(chave) or [], start=1):
+                    juntar(f"{cid}-{chave}-{n}", bloco)
+            # As pistas são por espécie, na ordem — e o nome traz o id dela, pra
+            # trocar uma espécie não embaralhar os arquivos das outras.
+            for especie in cena.get("especies") or []:
+                for n, pista in enumerate(especie.get("pistas") or [], start=1):
+                    juntar(f"{cid}-{especie['id']}-pista-{n}", [pista])
 
     return falas
 

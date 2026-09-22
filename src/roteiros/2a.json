@@ -146,8 +146,9 @@
         "status": "PREPARANDO NOVA EXPLORAÇÃO",
         "linhas": [
           "Setor Educação Física explorado com sucesso.",
+          "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
           {
-            "texto": "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
+            "texto": "Mas nem toda cor chega ao fundo.",
             "acoes": [
               {
                 "tipo": "painel",
@@ -157,6 +158,7 @@
               }
             ]
           },
+          "A luz vermelha se apaga nos primeiros metros. Quanto mais fundo a expedição desce, menos cores a água deixa passar.",
           "Próximo setor: Arte.",
           "Preparando nova exploração."
         ]
@@ -185,6 +187,230 @@
         "baleia",
         "agua-viva",
         "onda"
+      ]
+    },
+    {
+      "id": "ident-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/ident-intro.mp3",
+      "profundidade": 600,
+      "tela": {
+        "titulo": "BANCO DE ESPÉCIES",
+        "status": "INTEGRIDADE COMPROMETIDA",
+        "linhas": [
+          "Confirmado. Demonstração de identificação de espécies.",
+          {
+            "texto": "Banco de espécies corrompido durante a descida.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "cache",
+                "quando": "fim",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "Tripulação: vou mostrar o que as câmeras captam. Identifiquem a espécie. Digam o nome assim que souberem."
+        ]
+      },
+      "log": [
+        "ERRO: catálogo de espécies corrompido",
+        "Registros recuperáveis: 0 de 240.112",
+        "Iniciando recalibração assistida",
+        "Câmera de proa: prioridade máxima"
+      ]
+    },
+    {
+      "id": "ident",
+      "tipo": "identificacao",
+      "avanco": "manual",
+      "cameras": false,
+      "orbe": "canto",
+      "tela": {
+        "titulo": "IDENTIFICAÇÃO DE ESPÉCIES",
+        "status": "AGUARDANDO A TRIPULAÇÃO"
+      },
+      "especies": [
+        {
+          "id": "tartaruga",
+          "nome": "Tartaruga-verde",
+          "aceitos": [
+            "tartaruga",
+            "tartaruga-verde",
+            "aruanã",
+            "aruana"
+          ],
+          "pistas": [
+            "Detectado em recife raso. Respira ar: precisa subir à superfície.",
+            "Volta à praia onde nasceu para desovar.",
+            "Réptil marinho com casco. Pode viver mais de 70 anos."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-tartaruga-pista-1.mp3",
+            "./audio/2a/ident-tartaruga-pista-2.mp3",
+            "./audio/2a/ident-tartaruga-pista-3.mp3"
+          ],
+          "intervaloPistas": 7,
+          "profundidade": 20,
+          "ambiente": "recife",
+          "incrementoCache": 40000
+        },
+        {
+          "id": "baleia",
+          "nome": "Baleia-jubarte",
+          "aceitos": [
+            "baleia",
+            "jubarte",
+            "baleia-jubarte"
+          ],
+          "pistas": [
+            "Contato de grande porte. Migra da Antártida até o litoral da Bahia todo inverno para se reproduzir.",
+            "Captado canto de baixa frequência. Os machos cantam por horas.",
+            "Mamífero. Saltos e batidas de cauda são sua marca."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-baleia-pista-1.mp3",
+            "./audio/2a/ident-baleia-pista-2.mp3",
+            "./audio/2a/ident-baleia-pista-3.mp3"
+          ],
+          "intervaloPistas": 7,
+          "profundidade": 40,
+          "ambiente": "aberto",
+          "incrementoCache": 70000
+        },
+        {
+          "id": "peixe-boi",
+          "nome": "Peixe-boi-marinho",
+          "aceitos": [
+            "peixe-boi",
+            "peixe boi",
+            "peixe-boi-marinho",
+            "manati",
+            "manatí"
+          ],
+          "pistas": [
+            "Detectado em manguezal do litoral norte. Herbívoro: come plantas aquáticas.",
+            "Mamífero lento, dócil. Um dos mais ameaçados do Brasil.",
+            "Parente do elefante. Sobe para respirar pelas narinas do focinho."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-peixe-boi-pista-1.mp3",
+            "./audio/2a/ident-peixe-boi-pista-2.mp3",
+            "./audio/2a/ident-peixe-boi-pista-3.mp3"
+          ],
+          "intervaloPistas": 7,
+          "profundidade": 5,
+          "ambiente": "mangue",
+          "incrementoCache": 50000
+        },
+        {
+          "id": "arraia-manta",
+          "nome": "Arraia-manta",
+          "aceitos": [
+            "arraia",
+            "raia",
+            "manta",
+            "arraia-manta",
+            "jamanta"
+          ],
+          "pistas": [
+            "Contato plano, envergadura de vários metros. Filtra plâncton da água.",
+            "Não tem ferrão. Salta fora d’água.",
+            "Parente dos tubarões. Nada batendo as \"asas\"."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-arraia-manta-pista-1.mp3",
+            "./audio/2a/ident-arraia-manta-pista-2.mp3",
+            "./audio/2a/ident-arraia-manta-pista-3.mp3"
+          ],
+          "intervaloPistas": 7,
+          "profundidade": 30,
+          "ambiente": "aberto",
+          "incrementoCache": 80112
+        }
+      ],
+      "falas": {
+        "inicio": [
+          [
+            "Contato biológico. Câmera um."
+          ],
+          [
+            "Forma em movimento no facho. Identifiquem."
+          ],
+          [
+            "Sensores registram vida. A imagem é o que tenho."
+          ]
+        ],
+        "acerto": [
+          [
+            "Identificação confirmada."
+          ],
+          [
+            "Registro recuperado. Catálogo avançando."
+          ],
+          [
+            "Confere. Dado gravado no banco."
+          ]
+        ],
+        "revelado": [
+          [
+            "Registrado por sensores."
+          ],
+          [
+            "Sem confirmação da tripulação. Arquivando mesmo assim."
+          ]
+        ]
+      },
+      "audio": {
+        "inicio": [
+          "./audio/2a/ident-inicio-1.mp3",
+          "./audio/2a/ident-inicio-2.mp3",
+          "./audio/2a/ident-inicio-3.mp3"
+        ],
+        "acerto": [
+          "./audio/2a/ident-acerto-1.mp3",
+          "./audio/2a/ident-acerto-2.mp3",
+          "./audio/2a/ident-acerto-3.mp3"
+        ],
+        "revelado": [
+          "./audio/2a/ident-revelado-1.mp3",
+          "./audio/2a/ident-revelado-2.mp3"
+        ]
+      },
+      "log": [
+        "Câmera de proa em captação contínua",
+        "Turbidez da água acima do previsto",
+        "Cruzando silhueta com catálogo residual...",
+        "Aguardando confirmação da tripulação"
+      ]
+    },
+    {
+      "id": "ident-fim",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/ident-fim.mp3",
+      "tela": {
+        "titulo": "BANCO DE ESPÉCIES",
+        "status": "RECALIBRADO",
+        "linhas": [
+          {
+            "texto": "Banco de espécies recalibrado.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "cache",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "Sonar operando com referência completa."
+        ]
+      },
+      "log": [
+        "Catálogo de espécies restaurado",
+        "Registros: 240.112 de 240.112",
+        "Sonar com referência completa"
       ]
     },
     {

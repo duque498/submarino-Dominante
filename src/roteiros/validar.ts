@@ -2,8 +2,16 @@ import { marcadorExiste, NOMES_MARCADORES } from '../paineis/mapa'
 import { formaRegistrada, NOMES_FORMAS } from '../formas'
 import { ESPECIES } from '../mundo/bestiario'
 import { NOMES_PAINEIS } from '../paineis/nomes'
-import type { Acao, Cena, CenaCombate, Linha, Roteiro, Turma } from './tipos'
-import { TURMAS } from './tipos'
+import type {
+  Acao,
+  Cena,
+  CenaCombate,
+  CenaIdentificacao,
+  Linha,
+  Roteiro,
+  Turma,
+} from './tipos'
+import { CACHE_TOTAL, TURMAS } from './tipos'
 
 // Quem edita os JSONs nao e programador: os erros precisam dizer EXATAMENTE
 // qual cena e qual campo estao errados, em portugues.
@@ -16,6 +24,7 @@ const TIPOS_VALIDOS = [
   'vf',
   'pane',
   'combate',
+  'identificacao',
   'olho',
   'fim',
 ]
@@ -189,6 +198,61 @@ function conferirLinhas(linhas: unknown, onde: string, erros: string[]) {
  * rodada fica muda no dia da feira e ninguem descobre antes. Melhor a tela
  * vermelha no carregamento.
  */
+/**
+ * A cena de identificacao.
+ *
+ * O que ela nao pode ter, e o motivo: menos de tres pistas (a dinamica e
+ * mediana -> facil -> quase entrega, e com duas ela vira adivinhacao), lista de
+ * aceitos vazia (o operador precisa saber o que vale como acerto quando a sala
+ * gritar "raia" em vez de "arraia") e incremento que nao fecha o total do cache
+ * (o contador pararia num numero quebrado depois da ultima especie).
+ */
+function conferirIdentificacao(cena: CenaIdentificacao, onde: string, erros: string[]) {
+  if (!Array.isArray(cena.especies) || cena.especies.length === 0) {
+    erros.push(`${onde}: "especies" precisa ser uma lista com pelo menos uma especie.`)
+    return
+  }
+  let soma = 0
+  cena.especies.forEach((e, i) => {
+    const ondeE = `${onde}, especie ${i + 1} (${e?.id ?? '?'})`
+    if (!ehTextoPreenchido(e?.id)) erros.push(`${ondeE}: "id" faltando.`)
+    if (!ehTextoPreenchido(e?.nome)) erros.push(`${ondeE}: "nome" faltando.`)
+    if (!ehListaDeTextos(e?.aceitos)) {
+      erros.push(`${ondeE}: "aceitos" precisa listar os sinonimos que valem como acerto.`)
+    }
+    if (!ehListaDeTextos(e?.pistas) || e.pistas.length !== 3) {
+      erros.push(`${ondeE}: "pistas" precisa ter exatamente 3, da mediana pra facil.`)
+    }
+    if (!ehListaDeTextos(e?.audioPistas) || e.audioPistas.length !== e?.pistas?.length) {
+      erros.push(`${ondeE}: "audioPistas" precisa ter um mp3 por pista.`)
+    }
+    if (typeof e?.intervaloPistas !== 'number' || e.intervaloPistas <= 0) {
+      erros.push(`${ondeE}: "intervaloPistas" deve ser um numero de segundos.`)
+    }
+    if (typeof e?.incrementoCache !== 'number' || e.incrementoCache <= 0) {
+      erros.push(`${ondeE}: "incrementoCache" deve ser um numero maior que zero.`)
+    } else {
+      soma += e.incrementoCache
+    }
+  })
+  if (soma !== CACHE_TOTAL) {
+    erros.push(
+      `${onde}: os incrementos somam ${soma}, e o cache fecha em ${CACHE_TOTAL}. ` +
+        `Depois da ultima especie o contador pararia num numero quebrado.`,
+    )
+  }
+  for (const chave of ['inicio', 'acerto', 'revelado'] as const) {
+    const falas = cena.falas?.[chave]
+    const audio = cena.audio?.[chave]
+    if (!Array.isArray(falas) || falas.length === 0) {
+      erros.push(`${onde}: "falas.${chave}" precisa ter pelo menos uma fala.`)
+    }
+    if (!ehListaDeTextos(audio)) {
+      erros.push(`${onde}: "audio.${chave}" precisa ter um mp3 por fala.`)
+    }
+  }
+}
+
 function conferirCombate(cena: CenaCombate, onde: string, erros: string[]) {
   if (!ehTextoPreenchido(cena.criatura)) {
     erros.push(`${onde}: campo "criatura" faltando (uma chave do bestiario).`)
@@ -482,6 +546,10 @@ export function validarRoteiro(dado: unknown): string[] {
       }
       case 'combate': {
         conferirCombate(cena, onde, erros)
+        break
+      }
+      case 'identificacao': {
+        conferirIdentificacao(cena, onde, erros)
         break
       }
       case 'olho': {

@@ -272,6 +272,56 @@ export type AudioCombate = {
 }
 
 /**
+ * Expedicao de identificacao (2A).
+ *
+ * O banco de especies corrompeu na descida e a IA precisa da tripulacao pra
+ * recalibrar. A agua esta turva: so uma silhueta se movendo. A IA da pistas,
+ * da MEDIANA pra FACIL, e a plateia grita o nome. Acertou, a agua limpa.
+ *
+ * E o contrario do quiz que ela substitui: ninguem escolhe entre alternativas,
+ * ninguem erra. O que se mede e QUANDO a sala reconheceu — e a recompensa e
+ * ver o bicho.
+ */
+export type CenaIdentificacao = CenaBase & {
+  tipo: 'identificacao'
+  especies: EspecieIdentificacao[]
+  falas: {
+    /** Sorteada na aparicao de cada especie. */
+    inicio: string[][]
+    acerto: string[][]
+    /** Ninguem acertou e o operador revelou. */
+    revelado: string[][]
+  }
+  audio: {
+    inicio: string[]
+    acerto: string[]
+    revelado: string[]
+  }
+}
+
+export type EspecieIdentificacao = {
+  /** Chave do bestiario / PNG / ficha. */
+  id: string
+  /** Como a plateia vai dizer. */
+  nome: string
+  /** Sinonimos aceitos. Referencia pro operador no overlay de ajuda. */
+  aceitos: string[]
+  /** Tres pistas, da MEDIANA pra FACIL. A terceira quase entrega. */
+  pistas: string[]
+  /** Um mp3 por pista, mesma ordem. */
+  audioPistas: string[]
+  /** Segundos entre pistas. */
+  intervaloPistas: number
+  profundidade?: number
+  ambiente?: 'recife' | 'mangue' | 'aberto'
+  /** Quanto o cache sobe ao identificar. A soma das quatro fecha o total. */
+  incrementoCache: number
+}
+
+/** Quanto o cache precisa alcancar. A soma dos incrementos bate com isto. */
+export const CACHE_TOTAL = 240_112
+
+/**
  * O olho.
  *
  * A unica cena em que a plateia ve a criatura, e ela ve UM olho no facho do
@@ -303,6 +353,7 @@ export type CenaFim = CenaBase & {
 
 export type Cena =
   | CenaFala
+  | CenaIdentificacao
   | CenaApresentacao
   | CenaTransicao
   | CenaQuiz

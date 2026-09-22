@@ -5,6 +5,7 @@ import { audioDaResposta, RESPOSTAS } from '../console/respostas'
 import {
   carregarFormas,
   FORMA_PADRAO,
+  formaRegistrada,
   limparTracos,
   obterForma,
   prepararGlifo,
@@ -28,6 +29,7 @@ import {
 import { planejar } from '../ui/ritmoLegenda'
 import type { Queda } from '../paineis/PainelStatus'
 import {
+  CACHE_TOTAL,
   textoDaLinha,
   type Cena,
   type CenaCombate,
@@ -44,8 +46,14 @@ import {
   type SimulacaoCombate,
 } from '../cenas/Combate'
 import { Fala } from '../cenas/Fala'
+import {
+  Identificacao,
+  PISO_CALIBRACAO,
+  type EstadoIdent,
+} from '../cenas/Identificacao'
 import { Fim } from '../cenas/Fim'
 import { Olho } from '../cenas/Olho'
+import type { EstadoCache } from '../paineis/PainelCache'
 import { Quiz, type FaseDinamica } from '../cenas/Quiz'
 import { Transicao } from '../cenas/Transicao'
 import { VF } from '../cenas/VF'
@@ -109,6 +117,9 @@ export function audioDaCena(cena: Cena): string | null {
     // A tela final nao fala nada — o encerramento ja falou.
     case 'combate':
     case 'fim':
+    // A identificacao tambem nao: cada especie tem as falas dela, e as pistas
+    // entram no ritmo do laco, nao no da cena.
+    case 'identificacao':
     // A cena do olho é muda de propósito: a IA só volta a falar depois que o
     // visor já quebrou.
     case 'olho':
@@ -139,6 +150,8 @@ function linhasDeReferencia(cena: Cena): string[] {
       return cena.falaEntrada ?? cena.subsistemas
     case 'combate':
       return cena.falas.rodada[0] ?? [cena.criatura]
+    case 'identificacao':
+      return cena.falas.inicio[0] ?? [cena.especies[0]?.nome ?? 'identificacao']
     case 'fim':
       return [cena.tela.titulo]
     case 'olho':
@@ -152,6 +165,8 @@ function rotaDaCena(cena: Cena): string {
       return cena.destino.toUpperCase()
     case 'combate':
       return 'CONTATO HOSTIL'
+    case 'identificacao':
+      return 'RECALIBRANDO CATÁLOGO'
     case 'olho':
       return 'CONTATO VISUAL'
     case 'fim':
@@ -172,7 +187,10 @@ function layoutDaCena(cena: Cena): Layout {
   // ler pra responder.
   // No olho a tela é do bicho: o orbe some pro canto e a área central fica
   // inteira pra a câmera.
-  if (cena.tipo === 'combate' || cena.tipo === 'olho') return 'canto'
+  // Na identificação a tela também é da câmera: o orbe sai do caminho.
+  if (cena.tipo === 'combate' || cena.tipo === 'olho' || cena.tipo === 'identificacao') {
+    return 'canto'
+  }
   if (cena.tipo !== 'apresentacao') return 'central'
   return cena.orbe === 'palco' ? 'palco' : 'canto'
 }
@@ -221,6 +239,8 @@ const MS_ESTATICA_APOS_OLHO = 2200
 const MS_OLHO_CAMERA = 1500
 /** Olho, tempo 2: a silhueta cruza o facho de ponta a ponta. */
 const MS_OLHO_TRAVESSIA = 3000
+/** Identificacao: quanto o bicho nitido fica na tela antes da proxima especie. */
+const MS_CONTEMPLACAO = 4000
 /** Olho, tempo 3: escuro e silencio antes de ele aparecer. */
 const MS_OLHO_ESCURO = 800
 /** Apagao depois de um impacto: preto, luz de emergencia, volta com glitch. */
@@ -268,6 +288,18 @@ export function Player({ roteiro, engine }: Props) {
    * Derivado da estrutura, não de ids: do `olho` até a cena logo depois do
    * `combate`, que é onde a IA diz que o contato foi neutralizado.
    */
+  /**
+   * Até onde o cache continua na tela.
+   *
+   * Ele vive uma cena ALÉM da identificação: o `ident-fim` é justamente a IA
+   * dizendo que o banco fechou, e o contador precisa estar lá pra rolar até o
+   * total enquanto ela fala. Passado isso, some.
+   */
+  const janelaCache = useMemo(() => {
+    const i = sequencia.findIndex((c) => c.tipo === 'identificacao')
+    return i < 0 ? null : { de: i, ate: i + 1 }
+  }, [sequencia])
+
   const janelaTrilha = useMemo(() => {
     const combate = sequencia.findIndex((c) => c.tipo === 'combate')
     if (combate < 0) return null
@@ -324,6 +356,13 @@ export function Player({ roteiro, engine }: Props) {
    */
   const [visor, setVisor] = useState<Visor>('ok')
   const [combate, setCombate] = useState<EstadoCombate | null>(null)
+  /** Estado da expedição de identificação. `null` fora da cena. */
+  const [ident, setIdent] = useState<EstadoIdent | null>(null)
+  /** Leitura do cache. Mora aqui porque o painel e a cena leem a mesma coisa. */
+  const [cache, setCache] = useState<EstadoCache | null>(null)
+  /** Calibração viva: muda a 60 fps, então fica fora do estado. */
+  const refCalibracao = useRef(1)
+  const lerCalibracao = useCallback(() => refCalibracao.current, [])
   /** Tremor da tela inteira: o impacto do combate e a quebra do visor. */
   const [impacto, setImpacto] = useState(false)
   /**
@@ -357,6 +396,10 @@ export function Player({ roteiro, engine }: Props) {
    * callback e religaria o listener.
    */
   const refCombateAtivo = useRef(false)
+  /** A identificação está esperando o operador? Lida pelo callback do teclado. */
+  const refIdentAtiva = useRef(false)
+  /** `true` = a tripulação acertou; `false` = o operador revelou (tecla X). */
+  const refRespostaIdent = useRef<((acertou: boolean) => void) | null>(null)
   /** Recebe a marcação do operador no combate. Vive enquanto a cena viver. */
   const refRespostaCombate = useRef<((setor: number | 'forcado' | null) => void) | null>(null)
   /**
@@ -1220,6 +1263,182 @@ export function Player({ roteiro, engine }: Props) {
     }
   }, [indice, janelaTrilha, engine])
 
+  useEffect(() => {
+    if (!janelaCache || indice < janelaCache.de || indice > janelaCache.ate) setCache(null)
+  }, [indice, janelaCache])
+
+  // --- expedicao de identificacao (2A) --------------------------------------
+
+  /**
+   * O laço da identificação.
+   *
+   * Mesma forma do combate e pelo mesmo motivo: a cena não é feita de falas
+   * numa lista, é feita de tempo — uma pista a cada sete segundos, uma barra
+   * caindo, e uma espera que só termina quando o operador aperta. E, como lá,
+   * ela SEMPRE termina: qualquer erro no meio avança em vez de travar.
+   */
+  useEffect(() => {
+    if (!cena || cena.tipo !== 'identificacao') {
+      setIdent(null)
+      motor.turbidez = 0
+      motor.exibirEspecie(null)
+      return
+    }
+    const roteiro = cena
+    let cancelado = false
+    let quadro = 0
+    const relogios: number[] = []
+    const daqui = (ms: number) =>
+      new Promise<void>((resolve) => {
+        relogios.push(window.setTimeout(resolve, ms))
+      })
+
+    const sortear = (falas: string[][], audios: string[]) => {
+      if (!falas?.length || !audios?.length) return null
+      const i = Math.floor(Math.random() * falas.length)
+      return { linhas: falas[i], url: audios[i] ?? audios[0] }
+    }
+    const dizer = async (grupo: { linhas: string[]; url: string } | null) => {
+      if (!grupo) return
+      const ms = await falarAvulso(grupo.url, grupo.linhas)
+      await daqui(ms)
+    }
+
+    let acumulado = 0
+    const identificadas: string[] = []
+    const totalEspecies = roteiro.especies.length
+
+    const publicarCache = (alvo: number, corrompido = false) =>
+      setCache({
+        alvo,
+        total: CACHE_TOTAL,
+        identificadas: [...identificadas],
+        slots: totalEspecies,
+        corrompido,
+      })
+
+    const publicar = (estado: EstadoIdent) => setIdent(estado)
+
+    publicarCache(0, true)
+
+    /** Uma espécie, do primeiro contato até a ficha na tela. */
+    const rodar = async (indice: number) => {
+      if (cancelado) return
+      const especie = roteiro.especies[indice]
+      motor.tom = especie.ambiente ?? 'aberto'
+      motor.turbidez = 0.92
+      motor.exibirEspecie(especie.id)
+      if (especie.profundidade) motor.definirAlvo(especie.profundidade)
+      refCalibracao.current = 1
+      let pistas = 0
+      publicar({ fase: 'procurando', indice, pistas, calibracao: 1, acertou: false })
+
+      await dizer(sortear(roteiro.falas.inicio, roteiro.audio.inicio))
+      if (cancelado) return
+
+      // A barra cai enquanto a sala pensa e estaciona no piso quando a última
+      // pista sai: passada a terceira, o tempo já não tira mais nada de ninguém.
+      const inicio = performance.now()
+      const queda = quadroSeguro('calibração da identificação', () => {
+        quadro = requestAnimationFrame(queda)
+        if (cancelado) return
+        const s = (performance.now() - inicio) / 1000
+        const teto = pistas >= especie.pistas.length ? PISO_CALIBRACAO : 1
+        const caiu = 1 - (s / (especie.intervaloPistas * especie.pistas.length)) * (1 - PISO_CALIBRACAO)
+        refCalibracao.current = Math.max(PISO_CALIBRACAO, Math.min(teto, caiu))
+      })
+      quadro = requestAnimationFrame(queda)
+
+      /** A espera: as pistas saem sozinhas, o operador corta quando quiser. */
+      const marcado = await new Promise<boolean>((resolve) => {
+        refRespostaIdent.current = (acertou) => {
+          refRespostaIdent.current = null
+          resolve(acertou)
+        }
+        const proximaPista = async () => {
+          for (const pista of especie.pistas) {
+            await daqui(especie.intervaloPistas * 1000)
+            if (cancelado || !refRespostaIdent.current) return
+            pistas += 1
+            publicar({
+              fase: 'procurando',
+              indice,
+              pistas,
+              calibracao: refCalibracao.current,
+              acertou: false,
+            })
+            const url = especie.audioPistas[pistas - 1]
+            if (url) await falarAvulso(url, [pista])
+            if (cancelado || !refRespostaIdent.current) return
+          }
+        }
+        void proximaPista()
+      })
+      cancelAnimationFrame(quadro)
+      if (cancelado) return
+
+      // --- revelação ---------------------------------------------------------
+      // A água limpa em 1,5 s. É a recompensa inteira da dinâmica: o bicho que
+      // era um vulto vira um animal, e a sala vê o que acabou de nomear.
+      motor.turbidez = 0
+      engine.tocarSfx(marcado ? 'ok' : 'sonar')
+      // Ganho cheio por acerto, metade quando a revelação foi do operador.
+      const ganho = Math.round(especie.incrementoCache * (marcado ? 1 : 0.5))
+      acumulado += ganho
+      identificadas.push(especie.id)
+      publicarCache(acumulado)
+      publicar({
+        fase: 'revelado',
+        indice,
+        pistas,
+        calibracao: refCalibracao.current,
+        acertou: marcado,
+      })
+      // O orbe morfa na espécie revelada, quando existe a forma dela. Sem a
+      // forma ele simplesmente não morfa — a cena não depende disso.
+      if (formaRegistrada(especie.id)) {
+        const chave = await prepararForma(especie.id)
+        if (!cancelado) setFormaForcada(chave === FORMA_PADRAO ? null : chave)
+      }
+
+      await dizer(
+        marcado
+          ? sortear(roteiro.falas.acerto, roteiro.audio.acerto)
+          : sortear(roteiro.falas.revelado, roteiro.audio.revelado),
+      )
+      if (cancelado) return
+      // Contemplação: 4 s com o bicho nítido antes de a água sujar de novo.
+      await daqui(MS_CONTEMPLACAO)
+      if (cancelado) return
+
+      if (indice + 1 < totalEspecies) {
+        void rodar(indice + 1)
+      } else {
+        motor.exibirEspecie(null)
+        // O banco fecha INTEIRO na virada, mesmo que alguma espécie tenha sido
+        // revelada pelo operador e valido metade. Quem completa o resto é a IA,
+        // e é isso que a fala do `ident-fim` diz: "banco recalibrado". Deixar
+        // um número quebrado na tela diria que a expedição falhou pela metade.
+        publicarCache(CACHE_TOTAL)
+        publicar({ fase: 'fim', indice, pistas, calibracao: refCalibracao.current, acertou: marcado })
+        avancar()
+      }
+    }
+
+    void rodar(0).catch(() => {
+      if (!cancelado) avancar()
+    })
+
+    return () => {
+      cancelado = true
+      cancelAnimationFrame(quadro)
+      relogios.forEach((id) => window.clearTimeout(id))
+      refRespostaIdent.current = null
+      motor.turbidez = 0
+      motor.exibirEspecie(null)
+    }
+  }, [cena, engine, falarAvulso, avancar, prepararForma, setPainel])
+
   // --- diretor de cena ------------------------------------------------------
 
   // As saídas ficam numa ref pra o Diretor ser criado UMA vez: ele tem estado
@@ -1491,6 +1710,11 @@ export function Player({ roteiro, engine }: Props) {
           engine.tocarSfx('ok')
           break
         }
+        case 'turbidez':
+          // Depuração: suja ou limpa a água na hora, sem passar pela cena.
+          motor.turbidez = comando.valor
+          engine.tocarSfx('ok')
+          break
         case 'profundidade':
           refProfundidade.current = comando.metros
           motor.definirAlvo(comando.metros, 2500)
@@ -1542,6 +1766,13 @@ export function Player({ roteiro, engine }: Props) {
             if (refCombateAtivo.current) {
               engine.pararVoz()
               responderCombate('forcado')
+              break
+            }
+            // Na identificação, Enter (e a seta) CONFIRMAM o que a sala disse.
+            // Não pulam a cena: quem pula é o Esc do operador, e pular aqui
+            // deixaria o cache pela metade.
+            if (refIdentAtiva.current) {
+              refRespostaIdent.current?.(true)
               break
             }
             avancar()
@@ -1599,6 +1830,9 @@ export function Player({ roteiro, engine }: Props) {
                 Math.max(ESCALA_MIN, Number((atual + acao.passo * ESCALA_PASSO).toFixed(2))),
               ),
             )
+            break
+          case 'revelar':
+            if (refIdentAtiva.current) refRespostaIdent.current?.(false)
             break
           case 'ajuda':
             setAjudaVisivel((visivel) => !visivel)
@@ -1882,6 +2116,7 @@ export function Player({ roteiro, engine }: Props) {
   // num efeito) garante que a tecla apertada no mesmo quadro em que a fase
   // muda já veja o valor certo.
   refCombateAtivo.current = cena.tipo === 'combate' && combate?.fase === 'investida'
+  refIdentAtiva.current = cena.tipo === 'identificacao' && ident?.fase === 'procurando'
 
   const estadoOrbe = pane
     ? pane.fase === 'voltando'
@@ -1984,6 +2219,39 @@ export function Player({ roteiro, engine }: Props) {
               aoResponder={responderCombate}
             />
           )}
+          {cena.tipo === 'identificacao' && ident && (
+            <>
+              {/* A câmera grande é o palco: mesma caixa da cena do olho, com o
+                  bicho e a turbidez desenhados DENTRO dela pelo motor. */}
+              <div className="olho-camera olho-camera--ident" aria-hidden="true">
+                <Feed
+                  className="feed--olho"
+                  rotulo="CAM 01 · EXT PROA"
+                  camera={{ x0: 0, abertura: 1 }}
+                  largura={480}
+                  altura={304}
+                  visor={visor}
+                  semente={3319}
+                />
+              </div>
+              <Identificacao
+                especie={cena.especies[ident.indice]}
+                estado={ident}
+                total={cena.especies.length}
+                lerCalibracao={lerCalibracao}
+              />
+              {/* O cache é da CENA, não do Diretor: ele fica aberto o tempo
+                  todo, no canto, e não disputa a faixa central com os painéis
+                  que a fala abre. Por isso é renderizado aqui e não por
+                  `setPainel` — assim nada o fecha no meio da dinâmica. */}
+              {cache && (
+                <Painel
+                  painel={{ nome: 'cache', origem: 'operador', dica: 'recalibrando' }}
+                  cache={cache}
+                />
+              )}
+            </>
+          )}
           {cena.tipo === 'olho' && passoOlho !== null && passoOlho !== 'olho' && (
             <div className={`olho-camera olho-camera--${passoOlho}`} aria-hidden="true">
               <Feed
@@ -2008,6 +2276,7 @@ export function Player({ roteiro, engine }: Props) {
             />
           )}
           <Painel
+            cache={cache ?? undefined}
             painel={
               painel && {
                 ...painel,

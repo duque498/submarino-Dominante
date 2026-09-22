@@ -35,6 +35,7 @@ export type Comando =
       chaveAudio?: ChaveResposta
     }
   | { tipo: 'profundidade'; metros: number; resposta: string }
+  | { tipo: 'turbidez'; valor: number; resposta: string }
   | {
       tipo: 'vozes'
       /** Número da voz na lista. Sem ele, o comando só lista. */
@@ -85,6 +86,7 @@ export function vocabulario(): string[] {
     'camera 1',
     'camera 2',
     'profundidade 4500',
+    'turbidez 0.8',
     'som',
     'ambiente',
     'gatilhos off',
@@ -220,6 +222,17 @@ export function interpretar(entrada: string): Comando {
       tipo: 'profundidade',
       metros,
       resposta: MOLDES.profundidade(metros),
+    }
+  }
+
+  // 5b) turbidez (depuração: suja ou limpa a água na hora)
+  const turbidez = /^turbidez\s+([01](?:[.,]\d+)?)$/.exec(texto)
+  if (turbidez) {
+    const valor = Math.max(0, Math.min(1, Number(turbidez[1].replace(',', '.'))))
+    return {
+      tipo: 'turbidez',
+      valor,
+      resposta: MOLDES.turbidez(valor),
     }
   }
 

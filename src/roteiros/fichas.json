@@ -67,5 +67,27 @@
       "Status": "extinto"
     },
     "credito": "[PENDENTE] crédito da imagem — autor, licença e fonte"
+  },
+  "peixe-boi": {
+    "titulo": "Peixe-boi-marinho",
+    "dados": {
+      "Nome científico": "Trichechus manatus",
+      "Comprimento": "até cerca de 3,5 m",
+      "Grupo": "Sirênio (mamífero aquático)",
+      "Alimentação": "herbívoro: plantas aquáticas",
+      "Ocorrência no Brasil": "litoral do Amapá a Alagoas",
+      "Status IUCN": "Vulnerável"
+    }
+  },
+  "arraia-manta": {
+    "titulo": "Arraia-manta",
+    "dados": {
+      "Nome científico": "Mobula birostris",
+      "Envergadura": "até cerca de 7 m",
+      "Grupo": "Elasmobrânquio (peixe cartilaginoso)",
+      "Alimentação": "filtra plâncton",
+      "Ocorrência no Brasil": "águas tropicais; Laje de Santos, SP",
+      "Status IUCN": "Em perigo"
+    }
   }
 }

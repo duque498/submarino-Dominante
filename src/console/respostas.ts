@@ -33,6 +33,7 @@ export function audioDaResposta(chave: ChaveResposta): string {
 export const MOLDES = {
   forma: (nome: string) => `Assumindo forma: ${nome.toUpperCase()}.`,
   painel: (nome: string) => `Abrindo ${nome.toUpperCase()}.`,
+  turbidez: (v: number) => `Turbidez da água em ${Math.round(v * 100)} por cento.`,
   ficha: (nome: string) => `Abrindo ficha: ${nome.toUpperCase()}.`,
   navegando: (alvo: string) => `Navegando para ${alvo}.`,
   profundidade: (metros: number) => `Ajustando profundidade para ${metros} metros.`,

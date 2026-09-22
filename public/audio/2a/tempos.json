@@ -1,6 +1,6 @@
 {
   "arte-intro": {
-    "duracaoMs": 14712,
+    "duracaoMs": 25128,
     "linhas": [
       {
         "inicio": 0,
@@ -12,11 +12,19 @@
       },
       {
         "inicio": 10248,
-        "fim": 11976
+        "fim": 12552
       },
       {
-        "inicio": 12576,
-        "fim": 14568
+        "inicio": 13152,
+        "fim": 19968
+      },
+      {
+        "inicio": 20568,
+        "fim": 22296
+      },
+      {
+        "inicio": 22896,
+        "fim": 24888
       }
     ]
   },
@@ -84,6 +92,216 @@
       {
         "inicio": 26232,
         "fim": 29928
+      }
+    ]
+  },
+  "ident-acerto-1": {
+    "duracaoMs": 2040,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2040
+      }
+    ]
+  },
+  "ident-acerto-2": {
+    "duracaoMs": 2736,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2736
+      }
+    ]
+  },
+  "ident-acerto-3": {
+    "duracaoMs": 2136,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2136
+      }
+    ]
+  },
+  "ident-arraia-manta-pista-1": {
+    "duracaoMs": 4392,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4392
+      }
+    ]
+  },
+  "ident-arraia-manta-pista-2": {
+    "duracaoMs": 2208,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2208
+      }
+    ]
+  },
+  "ident-arraia-manta-pista-3": {
+    "duracaoMs": 3192,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3192
+      }
+    ]
+  },
+  "ident-baleia-pista-1": {
+    "duracaoMs": 6144,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 6144
+      }
+    ]
+  },
+  "ident-baleia-pista-2": {
+    "duracaoMs": 4104,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4104
+      }
+    ]
+  },
+  "ident-baleia-pista-3": {
+    "duracaoMs": 3288,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3288
+      }
+    ]
+  },
+  "ident-fim": {
+    "duracaoMs": 5400,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2088
+      },
+      {
+        "inicio": 2688,
+        "fim": 5352
+      }
+    ]
+  },
+  "ident-inicio-1": {
+    "duracaoMs": 2136,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2136
+      }
+    ]
+  },
+  "ident-inicio-2": {
+    "duracaoMs": 2832,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2832
+      }
+    ]
+  },
+  "ident-inicio-3": {
+    "duracaoMs": 3168,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3168
+      }
+    ]
+  },
+  "ident-intro": {
+    "duracaoMs": 13800,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3528
+      },
+      {
+        "inicio": 4128,
+        "fim": 6912
+      },
+      {
+        "inicio": 7512,
+        "fim": 13704
+      }
+    ]
+  },
+  "ident-peixe-boi-pista-1": {
+    "duracaoMs": 4800,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4800
+      }
+    ]
+  },
+  "ident-peixe-boi-pista-2": {
+    "duracaoMs": 3720,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3720
+      }
+    ]
+  },
+  "ident-peixe-boi-pista-3": {
+    "duracaoMs": 4008,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4008
+      }
+    ]
+  },
+  "ident-revelado-1": {
+    "duracaoMs": 1992,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1992
+      }
+    ]
+  },
+  "ident-revelado-2": {
+    "duracaoMs": 3528,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3528
+      }
+    ]
+  },
+  "ident-tartaruga-pista-1": {
+    "duracaoMs": 4320,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4320
+      }
+    ]
+  },
+  "ident-tartaruga-pista-2": {
+    "duracaoMs": 2544,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2544
+      }
+    ]
+  },
+  "ident-tartaruga-pista-3": {
+    "duracaoMs": 3936,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3936
       }
     ]
   },

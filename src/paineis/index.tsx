@@ -5,6 +5,7 @@ import { PainelEco } from './PainelEco'
 import { PainelEspectro } from './PainelEspectro'
 import { PainelFicha } from './PainelFicha'
 import { PainelMapa } from './PainelMapa'
+import { PainelCache, type EstadoCache } from './PainelCache'
 import { PainelSonar } from './PainelSonar'
 import { PainelStatus, type Queda } from './PainelStatus'
 import { PainelTraco } from './PainelTraco'
@@ -55,6 +56,7 @@ const TITULOS: Record<string, string> = {
   zonas: 'zonas da coluna d\u0027água',
   eco: 'medição por eco',
   dossie: 'dossiê · contato não catalogado',
+  cache: 'cache de espécies',
 }
 
 /** Quanto o painel que está saindo fica na tela antes de sumir. */
@@ -83,6 +85,8 @@ type Props = {
   aoPingGrave?: (altura: number) => void
   /** Segundos da aproximação do contato, só na cena que a pede. */
   aproximacao?: number
+  /** Leitura do cache, só na expedição de identificação. */
+  cache?: EstadoCache
   /** Estado do visor: a câmera em painel também racha. */
   visor?: 'ok' | 'rachado' | 'parcial'
 }
@@ -111,6 +115,7 @@ export function Painel({
   aoPing,
   aoPingGrave,
   aproximacao,
+  cache,
   visor = 'ok',
 }: Props) {
   const [saindo, setSaindo] = useState<PainelAberto | null>(null)
@@ -154,6 +159,7 @@ export function Painel({
             aoPing,
             aoPingGrave,
             aproximacao,
+            cache,
             visor,
             contato: visivel.contato,
             despedindo: visivel.despedindo,
@@ -178,6 +184,7 @@ type Extras = {
   profundidade?: number
   travado?: boolean
   aoPing?: () => void
+  cache?: EstadoCache
 }
 
 function corpoDoPainel(
@@ -208,6 +215,12 @@ function corpoDoPainel(
       return <PainelCamera argumento={argumento} visor={extras.visor} />
     case 'zonas':
       return <PainelZonas />
+    case 'cache':
+      return extras.cache ? (
+        <PainelCache estado={extras.cache} />
+      ) : (
+        <p className="painel__vazio">cache sem leitura.</p>
+      )
     case 'eco':
       return <PainelEco aoFechar={extras.aoFechar} aoPing={extras.aoPing} />
     case 'traco':

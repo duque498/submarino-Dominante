@@ -1,4 +1,5 @@
 import { especiePorChave, especiesEm, type Especie } from './bestiario'
+import { comportamentoDe, desenharSprite, imagemDaEspecie } from './sprites'
 import { perfilDe, rgba, suave, type Perfil } from './perfil'
 
 /**
@@ -202,6 +203,33 @@ export class MotorMundo {
    * entender o que está acontecendo. Ligada por cena, não por profundidade.
    */
   agitacao = 0
+  /**
+   * Turbidez da água, 0 a 1. Alvo; o valor desenhado persegue em 1,5 s.
+   *
+   * A expedição de identificação depende disto: a plateia só tem uma silhueta
+   * se mexendo porque a água está suja, e a recompensa por acertar é a água
+   * LIMPAR. Sem turbidez, o bicho apareceria nítido e não haveria o que
+   * identificar.
+   */
+  turbidez = 0
+  /** Cor da suspensão. Mangue é marrom; recife, azul-leitoso. */
+  tom: 'recife' | 'mangue' | 'aberto' = 'aberto'
+  private turbidezAtual = 0
+  /**
+   * A espécie em foco da expedição de identificação.
+   *
+   * Desenhada ENTRE a fauna e a turbidez, de propósito: assim a água suja
+   * borra o bicho junto com o resto do quadro, que é o que uma câmera faria.
+   * Se ela fosse desenhada por cima, na camada da cena, a plateia veria um
+   * animal nítido atrás de um vidro embaçado — e a dinâmica inteira depende de
+   * não dar pra reconhecer.
+   */
+  private foco: { chave: string; nascimento: number } | null = null
+
+  /** Põe uma espécie na frente da câmera. `null` tira. */
+  exibirEspecie(chave: string | null) {
+    this.foco = chave ? { chave, nascimento: performance.now() } : null
+  }
 
   /**
    * Passagem: a silhueta distorcendo a ESTÁTICA, entre rodadas do combate.
@@ -491,6 +519,8 @@ export class MotorMundo {
     // pra os bichos não sumirem de um quadro pro outro na frente da plateia.
     const alvoFauna = this.travessiaViva ? 0.1 : 1
     this.atenuacaoFauna += (alvoFauna - this.atenuacaoFauna) * Math.min(1, dt * 4)
+    // 1,5 s de um extremo ao outro, como pede o roteiro da identificação.
+    this.turbidezAtual += (this.turbidez - this.turbidezAtual) * Math.min(1, dt / 1.5)
 
     // profundidade
     if (this.velocidadeDescida > 0) {
@@ -729,6 +759,8 @@ export class MotorMundo {
     this.desenharParticulas(ctx, L, A, perfil, mundoParaTela, visivel)
     this.desenharBioluminescencia(ctx, L, A, perfil, mundoParaTela, visivel, agora)
     this.desenharFarol(ctx, L, A, perfil, agora)
+    if (this.foco) this.desenharFoco(ctx, L, A, perfil, agora)
+    if (this.turbidezAtual > 0.01) this.desenharTurbidez(ctx, L, A, agora)
     if (!camera.simples) this.desenharGrao(ctx, L, A)
     // Visor remendado: a imagem voltou suja e vai limpando sozinha. É o que
     // conta que alguém consertou às pressas, sem precisar de uma linha de fala.
@@ -1353,6 +1385,125 @@ export class MotorMundo {
     ctx.arc(cx, cy, raio, 0, Math.PI * 2)
     ctx.fill()
     ctx.globalCompositeOperation = 'source-over'
+  }
+
+  /**
+   * A espécie em foco, com o warp de tiras.
+   *
+   * Vai e volta dentro do quadro em vez de atravessar e sumir: a plateia
+   * precisa de tempo pra olhar, e um bicho que sai de cena levaria a pista
+   * junto. O `flip` no fim de cada perna é espelhamento com afinamento de
+   * 300 ms — virar de uma vez lê como troca de imagem, não como manobra.
+   */
+  private desenharFoco(
+    ctx: CanvasRenderingContext2D,
+    L: number,
+    A: number,
+    perfil: Perfil,
+    agora: number,
+  ) {
+    const foco = this.foco
+    if (!foco) return
+    const img = imagemDaEspecie(foco.chave)
+    if (!img) return
+    const c = comportamentoDe(foco.chave)
+    const t = (agora - foco.nascimento) / 1000
+
+    // Vaivém: uma perna de ida, uma de volta, com a virada no extremo.
+    const periodo = Math.max(6, 1.6 / Math.max(0.005, c.velocidade))
+    const ciclo = (t % periodo) / periodo
+    const indo = ciclo < 0.5
+    const avanco = indo ? ciclo * 2 : 2 - ciclo * 2
+    const x = L * (0.16 + avanco * 0.68)
+    const y = A * c.altura + Math.sin(t * 0.55) * A * c.deriva
+
+    // Afinamento da virada: 300 ms encolhendo e voltando em torno do extremo.
+    const doExtremo = Math.min(Math.abs(ciclo - 0.5), Math.min(ciclo, 1 - ciclo)) * periodo
+    const flip = Math.min(1, doExtremo / 0.3)
+
+    desenharSprite(
+      ctx,
+      img,
+      c,
+      {
+        x,
+        y,
+        largura: L * c.largura * (0.35 + flip * 0.65),
+        t,
+        fase: 0,
+        direcao: indo ? 1 : -1,
+        // Na água limpa o farol pega nele; no turvo ele é um vulto escuro.
+        // O farol só liga abaixo de 650 m, e a identificação acontece entre 5 e
+        // 40 m — então quem manda aqui é a turbidez, não a lanterna.
+        nitidez: Math.max(0, 1 - this.turbidezAtual) * (0.78 + perfil.farol * 0.22),
+        alpha: 1,
+      },
+      this.telaFoco(L, A),
+    )
+  }
+
+  /** Canvas de apoio do sprite em foco. Separado do da travessia: os dois
+   *  podem estar em uso no mesmo quadro. */
+  private telaSprite: HTMLCanvasElement | null = null
+
+  private telaFoco(L: number, A: number): CanvasRenderingContext2D | null {
+    this.telaSprite ??= document.createElement('canvas')
+    if (this.telaSprite.width !== L || this.telaSprite.height !== A) {
+      this.telaSprite.width = L
+      this.telaSprite.height = A
+    }
+    return this.telaSprite.getContext('2d')
+  }
+
+  /** Quanto da turbidez já está na tela (o alvo persegue em 1,5 s). */
+  turbidezVisivel(): number {
+    return this.turbidezAtual
+  }
+
+  /**
+   * Água suja: desfoque, lavagem de cor e material em suspensão.
+   *
+   * O desfoque é feito encolhendo o próprio quadro e devolvendo ampliado —
+   * exatamente o "blur por baixa resolução" do roteiro, e de graça: dois
+   * `drawImage` contra um `filter: blur` que a cada quadro custaria caro num
+   * Chromebook sem GPU. O canvas de apoio é o mesmo da travessia.
+   *
+   * Depois vem a lavagem (a água entre a lente e o bicho tem cor e espalha luz)
+   * e só então as partículas, que ficam POR CIMA do borrão: sujeira perto da
+   * lente é nítida, e é ela que entrega que o problema é a água, não a câmera.
+   */
+  private desenharTurbidez(ctx: CanvasRenderingContext2D, L: number, A: number, agora: number) {
+    const t = Math.min(1, this.turbidezAtual)
+    const fora = this.telaTravessia(L, A)
+    if (fora) {
+      // De 1/1 (nítido) a 1/6 (irreconhecível de perto).
+      const escala = Math.max(0.16, 1 - t * 0.84)
+      const pl = Math.max(1, Math.round(L * escala))
+      const pa = Math.max(1, Math.round(A * escala))
+      fora.clearRect(0, 0, L, A)
+      fora.drawImage(ctx.canvas, 0, 0, L, A, 0, 0, pl, pa)
+      ctx.imageSmoothingEnabled = true
+      ctx.drawImage(fora.canvas, 0, 0, pl, pa, 0, 0, L, A)
+    }
+
+    const [r, g, b] =
+      this.tom === 'mangue' ? [86, 66, 34] : this.tom === 'recife' ? [96, 140, 150] : [60, 96, 112]
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.34 * t})`
+    ctx.fillRect(0, 0, L, A)
+
+    // Material em suspensão. A quantidade é da turbidez; o movimento é lento e
+    // sem direção, que é como sedimento se comporta.
+    const quantos = Math.round((this.economizar ? 40 : 90) * t)
+    for (let i = 0; i < quantos; i++) {
+      const s = i * 127.3
+      const x = ((Math.sin(s) * 0.5 + 0.5) * L + agora * 0.004 * (1 + (i % 3))) % L
+      const y = ((Math.cos(s * 1.7) * 0.5 + 0.5) * A + agora * 0.002 * (1 + (i % 5))) % A
+      const raio = 0.6 + (i % 4) * 0.5
+      ctx.fillStyle = `rgba(220, 235, 230, ${(0.05 + (i % 3) * 0.05) * t})`
+      ctx.beginPath()
+      ctx.arc(x, y, raio, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 
   /** Grão de vídeo: poucos pontos, redesenhados a cada quadro. */

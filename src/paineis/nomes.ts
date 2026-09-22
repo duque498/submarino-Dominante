@@ -25,6 +25,7 @@ export const PAINEIS: Array<{
   { nome: 'traco', aliases: ['desenhar', 'desenho', 'rabisco'], capturaTeclado: true },
   { nome: 'espectro', aliases: ['cores', 'cor', 'luz'], capturaTeclado: true },
   { nome: 'zonas', aliases: ['camadas', 'zona', 'coluna', 'profundidades'] },
+  { nome: 'cache', aliases: ['banco', 'registros', 'especies'] },
   { nome: 'eco', aliases: ['ecolocalizacao', 'ecolocalização', 'distancia', 'pulso'], capturaTeclado: true },
 ]
 

@@ -20,8 +20,8 @@ O **3A** está escrito e jogável de ponta a ponta: descida à abissal, visor
 rachando, as quatro apresentações, o combate acústico com a plateia e o
 encerramento na superfície.
 
-Falta o **2B** (ainda sem roteiro da professora), a expedição de identificação
-do 2A e os roteiros de Biologia e Educação Física do 2A.
+Falta o **2B** (ainda sem roteiro da professora) e os roteiros de Biologia e
+Educação Física do 2A.
 
 > **O conteúdo do 3A é provisório.** A criatura, a mecânica e as falas novas da
 > IA ainda vão ser confirmadas com a turma e com a professora. O código foi
@@ -629,6 +629,85 @@ susto é o `impacto` no fim da cena, e espera que grita perde o corte.
 Tipo `fim`: título, subtítulo e uma nota, sem avanço automático e sem próxima
 cena. É onde a apresentação termina e **fica**, enquanto a plateia aplaude.
 
+## Expedição de identificação (2A)
+
+Tipo de cena novo: `identificacao`. Substitui o quiz do 2A. O banco de espécies
+do submarino corrompeu na descida — `CACHE DE ESPÉCIES: 0 / 240.112` — e a IA
+precisa que a tripulação identifique o que a câmera está captando. A água está
+turva: só uma silhueta se movendo. A IA dá três pistas, **da mediana pra fácil**,
+e a plateia grita o nome. `Enter` confirma, `X` revela sem acerto.
+
+É o contrário do quiz que substitui: ninguém escolhe entre alternativas e
+ninguém erra. O que muda com o tempo não é a chance de acertar, é o TAMANHO da
+recompensa — e a recompensa é ver o bicho. Especificação completa em
+[`docs/2A_IDENTIFICACAO.md`](docs/2A_IDENTIFICACAO.md).
+
+| campo | o que faz |
+|---|---|
+| `especies[].id` | chave do PNG, da ficha e da forma do orbe |
+| `especies[].aceitos` | sinônimos que valem como acerto (referência do operador) |
+| `especies[].pistas` | exatamente 3, da mediana pra fácil |
+| `especies[].intervaloPistas` | segundos entre pistas |
+| `especies[].ambiente` | `recife`, `mangue` ou `aberto` — dá a cor da água |
+| `especies[].incrementoCache` | quanto o cache sobe. A soma fecha em 240.112 |
+
+> O validador recusa menos de três pistas, lista de `aceitos` vazia e soma de
+> incrementos que não fecha o total: sem a soma exata, o contador pararia num
+> número quebrado depois da última espécie.
+
+### O animal: PNG + warp de tiras
+
+O bestiário procedural desenha bem um vulto passando no facho, mas aqui a
+plateia precisa RECONHECER a espécie — e reconhecer uma tartaruga-verde por um
+polígono é pedir demais. A forma vem de um PNG de silhueta
+(`src/formas/especies/<id>.png`, bicho olhando pra DIREITA, fundo transparente)
+e o movimento vem do código, em `src/mundo/sprites.ts`.
+
+A imagem é fatiada em **24 tiras verticais** e cada tira é deslocada em y por um
+seno cuja fase atrasa da cabeça pra cauda: uma onda viajante percorrendo o
+corpo, o mesmo princípio da espinha do megalodonte aplicado a pixels. Por cima
+disso: rolagem de ±4°, respiração de ±2% e nadadeiras com seno próprio.
+
+Duas coisas custaram caro e valem estar escritas:
+
+- **Nada de `ctx.filter`.** A primeira versão aplicava brilho por tira, e o
+  canvas `filter` monta um passe de composição por desenho: medido, **14 fps**
+  contra os 60 de agora. O sprite é pintado num canvas de apoio e a luz entra
+  numa passada só, com `source-atop` — que de quebra é o "contraluz do farol +
+  brilho na borda superior" que o roteiro pede.
+- **A nadadeira tem que morrer nas bordas.** A primeira versão deslocava a
+  região inteira em bloco, e como as regiões atravessam o corpo o bicho se
+  despedaçava em faixas. Agora o deslocamento é afinado por seno nos dois eixos
+  dentro da região: ela flexiona pra fora do corpo em vez de rasgá-lo.
+
+**Escala relativa é conteúdo, não enfeite**: a tartaruga cabe no quadro com
+folga e a jubarte NÃO cabe — entra e passa. É assim que a plateia entende que
+uma é do tamanho de uma mesa e a outra de um ônibus. O comportamento também é
+por espécie: a tartaruga rema, o peixe-boi paira, a manta "voa".
+
+### Água turva
+
+`motor.turbidez` (0 a 1) e `motor.tom` (`recife` · `mangue` · `aberto`), com
+transição de 1,5 s. O desfoque é feito encolhendo o quadro e devolvendo
+ampliado — o "blur por baixa resolução" do roteiro, e de graça: dois
+`drawImage` contra um `filter: blur` que num Chromebook sem GPU custaria caro.
+Depois vem a lavagem de cor e só então as partículas, que ficam POR CIMA do
+borrão: sujeira perto da lente é nítida, e é ela que entrega que o problema é a
+água, não a câmera. Console: `turbidez 0.8`.
+
+O animal é desenhado **dentro** da câmera, entre a fauna e a turbidez, e não na
+camada da cena. Se fosse por cima, a plateia veria um bicho nítido atrás de um
+vidro embaçado — e a dinâmica inteira depende de não dar pra reconhecer.
+
+### Painel `cache`
+
+Odômetro com rolagem de dígitos, barra e quatro slots que vão se preenchendo com
+a silhueta de cada espécie. Fica no canto superior direito durante toda a cena,
+renderizado pela CENA e não por `setPainel`: assim nenhum painel do Diretor o
+fecha no meio da dinâmica. Ele sobrevive uma cena além da identificação, porque
+é no `ident-fim` que a IA diz "banco recalibrado" e o contador fecha em 240.112
+— mesmo que alguma espécie tenha sido revelada pelo operador e valido metade.
+
 ## Dinâmicas: quiz e verdadeiro/falso
 
 > Os tipos `quiz` e `vf` continuam no código e testados, mas **saíram do
@@ -678,7 +757,7 @@ Referência pra quem preencher os JSONs do 2B e do 3A (provisório, ajustável):
 
 | Turma | Faixa | Cenas |
 |---|---|---|
-| **2A** | 50 → 900 m | `entrada` 50, `bio` 120, `ef` 300, `arte` 450, `transicao-2b` 900 (a identificação entra em 600) |
+| **2A** | 50 → 900 m | `entrada` 50, `bio` 120, `ef` 300, `arte` 450, `ident` 600, `transicao-2b` 900 |
 | **2B** | ~900 → 3000 m | começa onde o 2A parou e desce até a batipelágica |
 | **3A** | ~3000 → 5500 m | chega ao abissal; a **cena final volta pra 0** (retorno à superfície) |
 

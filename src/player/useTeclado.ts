@@ -16,6 +16,7 @@ export type Acao =
   | { tipo: 'escala'; passo: number }
   | { tipo: 'console' }
   | { tipo: 'fechar' }
+  | { tipo: 'revelar' }
 
 function traduzir(evento: KeyboardEvent): Acao | null {
   switch (evento.key) {
@@ -53,6 +54,9 @@ function traduzir(evento: KeyboardEvent): Acao | null {
       return { tipo: 'reiniciar' }
     case 'h':
       return { tipo: 'ajuda' }
+    // Só a expedição de identificação usa: revela a espécie sem acerto.
+    case 'x':
+      return { tipo: 'revelar' }
     case 'm':
       return { tipo: 'proximaForma' }
     case 'n':
