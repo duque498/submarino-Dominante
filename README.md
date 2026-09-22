@@ -346,8 +346,18 @@ Uma camada de música à parte no `AudioEngine`. Ela **entra quando o bicho
 aparece**, não quando o combate começa: o tema é dele, não da mecânica. Sobe com
 fade de 1,5 s na travessia da cena do olho, atravessa o dossiê e as instruções
 sem reiniciar (`iniciarTrilha` só retoma o volume quando já está tocando),
-**recua 4 dB enquanto a IA fala** e **corta seco** no fim — fade é despedida, e
-ali o que se quer é o silêncio chegando de repente.
+**recua 6 dB enquanto a IA fala** e, no fim, **sai em fade de 3 s** — o contato
+foi neutralizado e a música se despede junto com a ameaça. A cena só vira
+depois que o fade termina, pra a fala do `neutralizado` não começar por cima da
+música morrendo.
+
+**A trilha tem uma janela, e ela é guardada.** Quem liga (a travessia) e quem
+desliga (o fim do combate) são efeitos diferentes, e o operador atravessa isso
+com a seta esquerda ou com `cena <id>` a qualquer momento — sair da cena do olho
+pra trás deixava a música tocando por cima de uma apresentação de biologia. Um
+efeito no Player cala a trilha sempre que o índice sai do trecho `olho` →
+`neutralizado`, derivado da estrutura do roteiro e não de ids fixos. Verificado
+cena a cena nas 19 do 3A, mais o caminho de voltar com a seta.
 
 > O nível saiu de 0,42 com −9 dB de recuo, passou por 0,62 com −6 e está em
 > **0,9 com −4**. As duas subidas vieram de medir: amostrando o volume a cada
@@ -506,6 +516,23 @@ ao que ela lê no sonar de papelão.
 > avança aconteça o que acontecer, e qualquer erro dentro do laço (um mp3 que
 > não existe, uma promessa rejeitada) também avança em vez de deixar a plateia
 > olhando um sonar parado.
+
+### Mixagem
+
+Os números de mix moram em `src/audio/config.ts`, num lugar só: quem mexe neles
+no dia é quem está ouvindo a sala, e essa pessoa precisa achar tudo junto. Cada
+um aceita override pela URL, porque no dia não dá pra recompilar.
+
+| ajuste | padrão | URL |
+|---|---|---|
+| `AUDIO.voz.ganho` | `0.63` (−4 dB) | `?voz=0.6` |
+
+A voz saía no nível cheio do mp3, direto no destino, sem nó de ganho — à frente
+de tudo, inclusive da trilha, que é um `<audio>` com `volume` absoluto e não
+tinha como competir. O `GainNode` entra **depois do analisador**, de propósito:
+quem move o orbe é o nível da voz, e baixar o volume da sala não pode encolher o
+orbe. A linha de ativação passa a dizer o ganho em uso (`voz 0.63 (-4.0 dB)`) —
+se alguém abrir com `?voz=0.3` e esquecer, o log denuncia.
 
 ### O dossiê
 

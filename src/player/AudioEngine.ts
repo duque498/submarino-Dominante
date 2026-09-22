@@ -1,4 +1,5 @@
 import { AmbienteOceano } from '../audio/ambiente'
+import { AUDIO } from '../audio/config'
 import {
   aguardarVozes,
   escolherVoz,
@@ -91,15 +92,15 @@ const CAMINHO_TRILHA = './audio/sfx/Theme battle.mp3'
  */
 const TRILHA_VOLUME = 0.9
 /**
- * Ducking enquanto a IA fala: -4 dB (10^(-4/20) = 0,63).
+ * Ducking enquanto a IA fala: -6 dB (10^(-6/20) = 0,5).
  *
- * Foi -9, depois -6. O recuo existe pra a fala passar por cima, não pra a
- * música sumir: a -4 dB ela fica em 0,57 sob a voz, quase o volume de repouso
- * anterior. Quem garante a fala inteligível é o compressor dela, não o silêncio
- * da trilha.
+ * O recuo existe pra a fala passar por cima, não pra a música sumir. Passou por
+ * -9 e por -4 antes de parar aqui; o que mudou junto foi a voz ganhar um nó de
+ * ganho próprio (-4 dB, `AUDIO.voz.ganho`), então a trilha a -6 dB fica MAIS
+ * presente em relação à voz do que estava a -4 sem esse nó.
  */
-const TRILHA_DUCK = 0.63
-/** Fade de entrada e de saída. */
+const TRILHA_DUCK = 0.5
+/** Fade de entrada e de saída, quando ninguém pede outro. */
 const MS_FADE_TRILHA = 1500
 
 /** Efeitos moram em audio/sfx/ e seguem regra própria — ver preload(). */
@@ -144,6 +145,8 @@ export class AudioEngine {
   private buffers = new Map<string, AudioBuffer>()
   private contexto: AudioContext | null = null
   private analisador: AnalyserNode | null = null
+  /** Ganho da voz. Depois do analisador: mexer no mix não mexe no orbe. */
+  private ganhoVoz: GainNode | null = null
   /** Saída dos efeitos sintetizados, com compressor pra não estourar. */
   private saidaSfx: AudioNode | null = null
   private ambiente: AmbienteOceano | null = null
@@ -175,6 +178,8 @@ export class AudioEngine {
   private trilhaAbafada = false
   private trilhaAlvo = 0
   private fadeTrilha = 0
+  /** Duração do fade em curso. A saída do combate pede uma mais longa. */
+  private msFade = MS_FADE_TRILHA
 
   // --- ciclo de vida --------------------------------------------------------
 
@@ -218,7 +223,10 @@ export class AudioEngine {
     this.contexto = new AudioContext()
     this.analisador = this.contexto.createAnalyser()
     this.analisador.fftSize = 1024
-    this.analisador.connect(this.contexto.destination)
+    this.ganhoVoz = this.contexto.createGain()
+    this.ganhoVoz.gain.value = AUDIO.voz.ganho
+    this.analisador.connect(this.ganhoVoz)
+    this.ganhoVoz.connect(this.contexto.destination)
     this.amostras = new Uint8Array(new ArrayBuffer(this.analisador.fftSize))
 
     // Os efeitos sintetizados passam por um compressor: eles são altos de
@@ -386,9 +394,15 @@ export class AudioEngine {
     return { tocou: true, duracaoMs: buffer.duration * 1000, fim }
   }
 
-  /** Camada B: HTMLAudioElement cru + envelope sintético pro orbe. */
+  /**
+   * Camada B: HTMLAudioElement cru + envelope sintético pro orbe.
+   *
+   * Não passa pelo grafo do Web Audio, então o ganho da voz entra aqui na mão —
+   * senão a reserva tocaria mais alto que a camada principal.
+   */
   private tocarElemento(url: string): Promise<Reproducao> {
     const elemento = this.obterElemento(url)
+    elemento.volume = AUDIO.voz.ganho
     this.elementoAtual = elemento
 
     let resolverFim: () => void = () => {}
@@ -647,6 +661,7 @@ export class AudioEngine {
     if (!trilha) return
     try {
       this.trilhaAlvo = TRILHA_VOLUME
+      this.msFade = MS_FADE_TRILHA
       if (trilha.paused) {
         trilha.currentTime = 0
         void trilha.play().catch(() => {
@@ -662,9 +677,16 @@ export class AudioEngine {
   }
 
   /** Sai com fade de 1,5 s, ou de corte quando a cena pede silêncio seco. */
-  pararTrilha(corte = false): void {
+  /**
+   * Silencia a trilha. `corte` mata na hora; sem ele, desce em `ms`.
+   *
+   * O fim do combate pede 3 s: o contato foi neutralizado e a música se
+   * despede junto com a ameaça, em vez de ser cortada como no susto.
+   */
+  pararTrilha(corte = false, ms = MS_FADE_TRILHA): void {
     if (!this.trilha) return
     this.trilhaAlvo = 0
+    this.msFade = ms
     if (corte) {
       this.trilha.volume = 0
       this.trilha.pause()
@@ -702,7 +724,7 @@ export class AudioEngine {
         return
       }
       const alvo = this.trilhaAlvo * (this.trilhaAbafada ? TRILHA_DUCK : 1)
-      const delta = (TRILHA_VOLUME * passo) / MS_FADE_TRILHA
+      const delta = (TRILHA_VOLUME * passo) / this.msFade
       const resta = alvo - trilha.volume
       trilha.volume = Math.max(
         0,

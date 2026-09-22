@@ -6,6 +6,7 @@ import type { Cena, Roteiro, Turma } from './roteiros/tipos'
 import { TURMAS } from './roteiros/tipos'
 import { validarRoteiro } from './roteiros/validar'
 import { carregarFormas } from './formas'
+import { AUDIO } from './audio/config'
 import { AudioEngine } from './player/AudioEngine'
 import { Player } from './player/Player'
 import { useTeclado } from './player/useTeclado'
@@ -91,10 +92,14 @@ export default function App() {
     const cenasComAudio = new Set(audios.map((url) => url.split('/').pop())).size
     const comTempos = engine.contarTempos(resultado.roteiro.turma)
     const sfxProprio = AudioEngine.urlsSfx().filter((url) => engine.camadaDe(url) === 'A').length
+    // O ganho da voz entra no diagnóstico porque ele é ajustável pela URL: se
+    // alguém abrir com `?voz=0.3` e esquecer, a linha de ativação denuncia.
+    const dbVoz = (20 * Math.log10(AUDIO.voz.ganho)).toFixed(1)
     console.info(
       `[audio] camada A em ${camadaA}/${audios.length} · ` +
         `tempos reais em ${comTempos}/${cenasComAudio} cenas · ` +
-        `sfx ${sfxProprio > 0 ? 'de arquivo' : 'sintético'}`,
+        `sfx ${sfxProprio > 0 ? 'de arquivo' : 'sintético'} · ` +
+        `voz ${AUDIO.voz.ganho} (${dbVoz} dB)`,
     )
     // Bipe de confirmação: a primeira tecla já produz som. Serve de UX e de
     // diagnóstico — se isso não sai, o problema é o áudio da máquina, não o app.

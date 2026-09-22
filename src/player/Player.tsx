@@ -229,6 +229,8 @@ const MS_APAGAO = 400
 const MS_FAKEOUT_SILENCIO = 2000
 /** O retorno solto na borda ate a cena virar. */
 const MS_FAKEOUT_RETORNO = 1800
+/** Despedida da trilha depois do fake-out, antes de a IA voltar a falar. */
+const MS_FADE_NEUTRALIZADO = 3000
 /** O HUD se firmando depois que a energia volta. */
 const MS_GLITCH_VOLTA = 520
 
@@ -254,6 +256,24 @@ export function Player({ roteiro, engine }: Props) {
   )
 
   const [indice, setIndice] = useState(0)
+  /**
+   * Em que trecho do roteiro a trilha do combate tem permissão de existir.
+   *
+   * Ela começa na travessia da cena do olho e morre no fim do combate, mas
+   * quem a liga e quem a desliga são efeitos diferentes — e o operador pode
+   * atravessar isso com a seta esquerda ou com `cena <id>` no console a
+   * qualquer momento. Sem uma guarda, sair da cena do olho pra trás deixava a
+   * música tocando por cima de uma apresentação de biologia.
+   *
+   * Derivado da estrutura, não de ids: do `olho` até a cena logo depois do
+   * `combate`, que é onde a IA diz que o contato foi neutralizado.
+   */
+  const janelaTrilha = useMemo(() => {
+    const combate = sequencia.findIndex((c) => c.tipo === 'combate')
+    if (combate < 0) return null
+    const olho = sequencia.findIndex((c) => c.tipo === 'olho')
+    return { de: olho >= 0 ? olho : combate, ate: combate + 1 }
+  }, [sequencia])
   /** Cronômetro da legenda: só arranca quando o áudio da cena arrancou. */
   const [sinc, setSinc] = useState<{
     duracaoMs: number | null
@@ -1089,14 +1109,23 @@ export function Player({ roteiro, engine }: Props) {
     }
 
     const encerrar = async () => {
-      // Fake-out. A trilha CORTA — sem fade, porque fade é despedida e aqui o
-      // que se quer é o silêncio chegando de repente.
-      engine.pararTrilha(true)
+      // Fake-out: o mostrador esvazia e um retorno solto aparece na borda.
       trocarFase('fakeout')
       await esperarSeguro(MS_FAKEOUT_SILENCIO)
       if (cancelado) return
       engine.tocarSfx('sonar', 0.6, panDoSetor((setor + 1) % setores))
       await esperarSeguro(MS_FAKEOUT_RETORNO)
+      if (cancelado) return
+
+      // Só agora a trilha se despede, e em 3 s até zero — não em corte. O
+      // contato foi neutralizado: a música sai junto com a ameaça, e essa saída
+      // é a transição. Cortar aqui seria um susto a mais numa cena que acabou
+      // de parar de assustar.
+      //
+      // A cena só vira DEPOIS que o fade termina, pra a fala do `neutralizado`
+      // não começar por cima da música morrendo.
+      engine.pararTrilha(false, MS_FADE_NEUTRALIZADO)
+      await esperarSeguro(MS_FADE_NEUTRALIZADO)
       if (cancelado) return
       setCombate((e) => (e ? { ...e, fase: 'fim' } : e))
       avancar()
@@ -1180,6 +1209,16 @@ export function Player({ roteiro, engine }: Props) {
       setApagao(false)
     }
   }, [cena, engine, falarAvulso, reagir, avancar, pularPara])
+
+  /**
+   * A guarda: fora da janela, a trilha cala. Corte, e não fade — se a cena não
+   * é dela, ela não tem o que dizer enquanto sai.
+   */
+  useEffect(() => {
+    if (!janelaTrilha || indice < janelaTrilha.de || indice > janelaTrilha.ate) {
+      engine.pararTrilha(true)
+    }
+  }, [indice, janelaTrilha, engine])
 
   // --- diretor de cena ------------------------------------------------------
 
