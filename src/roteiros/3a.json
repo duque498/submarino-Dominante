@@ -293,15 +293,15 @@
       "rodadas": [
         {
           "distancia": 900,
-          "tempo": 10
+          "tempo": 16
         },
         {
           "distancia": 450,
-          "tempo": 7
+          "tempo": 13
         },
         {
           "distancia": 150,
-          "tempo": 5
+          "tempo": 9
         }
       ],
       "falas": {

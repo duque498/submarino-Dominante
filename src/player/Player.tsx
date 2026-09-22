@@ -178,6 +178,27 @@ function layoutDaCena(cena: Cena): Layout {
 }
 
 /**
+ * Velocidade base de uma investida, pra o `tempo` do roteiro VALER.
+ *
+ * O laço acelera o contato perto do centro (`1 + perto * 0,8`), e com a base
+ * ingênua — distância ÷ tempo — esse empurrão era de graça: a investida de
+ * 900 m declarada com 10 s chegava ao casco em 7,0 s medidos. O roteiro
+ * mentia, e quem pagava era a plateia, que tinha 30% menos tempo do que a
+ * professora escreveu.
+ *
+ * Integrando o percurso com v(d) = base · (1,8 − 0,8·d/alcance):
+ *
+ *     T = (alcance / (0,8 · base)) · ln( 1,8 / (1,8 − 0,8·D/alcance) )
+ *
+ * e isolando a base pra T = tempo. A aceleração dos erros continua entrando
+ * por cima: errar o setor ENCURTA o tempo, que é a penalidade.
+ */
+function velocidadeBase(distancia: number, tempo: number, alcance: number): number {
+  const fim = 1.8 - (0.8 * Math.min(distancia, alcance)) / alcance
+  return (alcance / (0.8 * tempo)) * Math.log(1.8 / fim)
+}
+
+/**
  * Setor da proxima investida, diferente do anterior quando da.
  *
  * Repetir o setor faria a plateia decorar em vez de escutar; com dois setores
@@ -398,6 +419,22 @@ export function Player({ roteiro, engine }: Props) {
     if (refPaneAtiva.current) return
     setIndice((atual) => Math.max(atual - 1, 0))
   }, [])
+
+  /**
+   * Vai direto pra uma cena pelo id. Usado pelo desfecho do combate.
+   *
+   * Sem isto, o único caminho pra fora do combate era `avancar()`, que cai
+   * sempre no `neutralizado` — a cena que diz "ameaça neutralizada". Dizer isso
+   * depois de o casco zerar seria a IA mentindo na frente da plateia.
+   */
+  const pularPara = useCallback(
+    (id: string) => {
+      const alvo = sequencia.findIndex((c) => c.id === id)
+      if (alvo >= 0) setIndice(alvo)
+      return alvo >= 0
+    },
+    [sequencia],
+  )
 
   const lerNivel = useCallback(() => engine.nivel(), [engine])
 
@@ -809,6 +846,11 @@ export function Player({ roteiro, engine }: Props) {
       setPassoOlho('travessia')
       motor.travessia(roteiro.criatura, MS_OLHO_TRAVESSIA / 1000)
       engine.tocarSfx('whoosh', 0.7)
+      // A trilha entra AQUI, com o corpo no facho — e não lá no combate. O tema
+      // é do bicho, não da mecânica: ele aparece, a música começa, e ela
+      // atravessa o dossiê e as instruções até o combate sem reiniciar
+      // (`iniciarTrilha` só retoma o volume quando já está tocando).
+      engine.iniciarTrilha()
       setRajadaLog([
         'Objeto atravessando o facho',
         'Comprimento estimado: FORA DE ESCALA',
@@ -922,9 +964,7 @@ export function Player({ roteiro, engine }: Props) {
     const sim = refSimCombate.current
     const zerarSim = (distancia: number, tempo: number) => {
       sim.distancia = distancia
-      // Velocidade BASE: a distância dividida pelo tempo da rodada. A aceleração
-      // e o empurrão de proximidade entram por cima, no laço.
-      refBaseVel.current = distancia / tempo
+      refBaseVel.current = velocidadeBase(distancia, tempo, alcance())
       sim.velocidade = refBaseVel.current
       sim.desvio = 0
       sim.pulso = null
@@ -1025,12 +1065,20 @@ export function Player({ roteiro, engine }: Props) {
       if (casco <= 0) {
         // Casco no chão: a IA sobe forçada. Não é derrota — é outro jeito de a
         // cena acabar. Nunca existe estado que trave a apresentação.
+        //
+        // A trilha corta aqui, como corta no fake-out: o que vem depois é a
+        // subida, e subida não tem trilha de combate por cima.
+        engine.pararTrilha(true)
         if (roteiro.falas.critico && roteiro.audio.critico) {
           await dizer({ linhas: roteiro.falas.critico, url: roteiro.audio.critico })
         }
         if (cancelado) return
         setCombate((e) => (e ? { ...e, fase: 'fim' } : e))
-        avancar()
+        // Direto pra SUBIDA, pulando o `neutralizado`: ele diz "ameaça
+        // neutralizada", e ninguém neutralizou nada. Dali em diante o
+        // encerramento é o mesmo — a apresentação termina igual, com as falas
+        // finais da turma.
+        if (!pularPara('subida')) avancar()
         return
       }
 
@@ -1131,7 +1179,7 @@ export function Player({ roteiro, engine }: Props) {
       motor.pararPassagem()
       setApagao(false)
     }
-  }, [cena, engine, falarAvulso, reagir, avancar])
+  }, [cena, engine, falarAvulso, reagir, avancar, pularPara])
 
   // --- diretor de cena ------------------------------------------------------
 

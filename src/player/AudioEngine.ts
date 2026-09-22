@@ -77,22 +77,28 @@ const CAMINHO_TRILHA = './audio/sfx/Theme battle.mp3'
 /**
  * Volume de repouso da trilha.
  *
- * Subiu de 0,42 pra 0,62 depois de MEDIR o combate novo: amostrando o volume a
- * cada 200 ms por 51 s, a trilha ficava no cheio só 9% do tempo e abafada 70%.
- * A IA agora fala em toda aparição, acerto, perda e retorno — ducking que fazia
- * sentido com três perguntas espaçadas deixa a música inaudível numa cena que é
- * quase toda fala. Num alto-falante de escola, com o ventilador do projetor
- * junto, 0,15 é silêncio.
- */
-const TRILHA_VOLUME = 0.62
-/**
- * Ducking enquanto a IA fala: -6 dB (10^(-6/20) = 0,5), não mais -9.
+ * Foi 0,42, depois 0,62, agora 0,9 — e as duas subidas vieram de medir, não de
+ * achar. Amostrando o volume a cada 200 ms por 51 s de combate, a 0,42 a trilha
+ * ficava no cheio só 9% do tempo e abafada 70%: a IA fala em toda aparição,
+ * acerto, perda e retorno, e um ducking calibrado pra três perguntas espaçadas
+ * deixava a música inaudível numa cena que é quase toda fala.
  *
- * Abaixo disso a trilha sumia embaixo da voz; acima, competia com ela. A -6 dB
- * a música continua presente sob a fala — 0,31 contra os 0,15 de antes, que é
- * mais alto do que o volume CHEIO chegava a ser no combate antigo.
+ * A comparação que fecha a conta: a voz da IA toca pelo Web Audio direto no
+ * destino, sem nó de ganho — ou seja, no nível do próprio mp3, que é 1. A
+ * trilha é um `<audio>` com `volume` absoluto. A 0,62 ela estava mesmo bem
+ * abaixo da voz, e numa sala de escola com o ventilador do projetor junto isso
+ * é a diferença entre música e nada.
  */
-const TRILHA_DUCK = 0.5
+const TRILHA_VOLUME = 0.9
+/**
+ * Ducking enquanto a IA fala: -4 dB (10^(-4/20) = 0,63).
+ *
+ * Foi -9, depois -6. O recuo existe pra a fala passar por cima, não pra a
+ * música sumir: a -4 dB ela fica em 0,57 sob a voz, quase o volume de repouso
+ * anterior. Quem garante a fala inteligível é o compressor dela, não o silêncio
+ * da trilha.
+ */
+const TRILHA_DUCK = 0.63
 /** Fade de entrada e de saída. */
 const MS_FADE_TRILHA = 1500
 

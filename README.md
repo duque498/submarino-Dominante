@@ -342,19 +342,22 @@ tem a sua fratura, sempre a mesma (gerador com semente fixa).
 
 ### A trilha
 
-Uma camada de música à parte no `AudioEngine`, só pro combate do 3A: entra com
-fade de 1,5 s na primeira investida, **recua 6 dB enquanto a IA fala** e
-**corta seco** no fake-out — fade é despedida, e ali o que se quer é o silêncio
-chegando de repente.
+Uma camada de música à parte no `AudioEngine`. Ela **entra quando o bicho
+aparece**, não quando o combate começa: o tema é dele, não da mecânica. Sobe com
+fade de 1,5 s na travessia da cena do olho, atravessa o dossiê e as instruções
+sem reiniciar (`iniciarTrilha` só retoma o volume quando já está tocando),
+**recua 4 dB enquanto a IA fala** e **corta seco** no fim — fade é despedida, e
+ali o que se quer é o silêncio chegando de repente.
 
-> Os 6 dB eram 9, e o volume de repouso era 0,42. Medindo o combate novo —
-> amostra do volume a cada 200 ms, 51 s corridos — a trilha ficava no cheio
-> **9% do tempo** e abafada 70%: a IA agora fala em toda aparição, acerto,
-> perda e retorno, e um ducking calibrado pra três perguntas espaçadas deixava
-> a música inaudível numa cena que é quase toda fala. Num alto-falante de
-> escola, com o ventilador do projetor junto, 0,15 é silêncio. A 0,62 de
-> repouso e −6 dB de recuo, o piso passou de 0,09 pra 0,25 — mais alto do que o
-> volume CHEIO chegava a ser antes.
+> O nível saiu de 0,42 com −9 dB de recuo, passou por 0,62 com −6 e está em
+> **0,9 com −4**. As duas subidas vieram de medir: amostrando o volume a cada
+> 200 ms por 51 s de combate, a 0,42 a trilha ficava no cheio 9% do tempo e
+> abafada 70% — a IA fala em toda aparição, acerto, perda e retorno, e um
+> ducking calibrado pra três perguntas espaçadas some numa cena que é quase
+> toda fala. A comparação que fecha a conta: a **voz** toca pelo Web Audio
+> direto no destino, sem nó de ganho, ou seja no nível do mp3, que é 1 — a
+> trilha é um `<audio>` com `volume` absoluto, então 0,62 estava mesmo abaixo
+> da voz. Medido agora: piso 0,41, teto 0,9.
 
 O arquivo fica em `public/audio/sfx/Theme battle.mp3` e **não é embutido no
 `audios.js`**: são alguns MB que em base64 crescem mais um terço, dentro de um
@@ -418,7 +421,7 @@ operador aperta `1`, `2` ou `3`.
 | `criatura` | chave do bestiário. **Só vira blip**: a plateia nunca vê o bicho |
 | `setores` | rótulos, na ordem das teclas `1`…`9` |
 | `rodadas[].distancia` | metros de onde o contato NASCE. Manda na escala e no eco |
-| `rodadas[].tempo` | segundos da borda até o casco, na velocidade base |
+| `rodadas[].tempo` | **segundos da borda até o casco**, de verdade (ver abaixo) |
 | `rodadas[].setor` | fixo; **sem o campo, sorteado** — nenhuma rodada é decorada |
 | `falas.*` | listas de falas; `rodada` tem uma por rodada, o resto é sorteado |
 
@@ -449,6 +452,14 @@ operador aperta `1`, `2` ou `3`.
 O tempo de eco mostrado é `2d / 1500 m/s` — o mesmo número que o grupo 1 explica
 no painel `eco`, de propósito: se a conta na tela não batesse com a aula deles,
 a cena desmentiria a apresentação.
+
+> **O `tempo` do roteiro vale de verdade.** O laço acelera o contato perto do
+> centro, e com a base ingênua — distância ÷ tempo — esse empurrão saía de
+> graça: a investida de 900 m declarada com 10 s chegava ao casco em **7,0 s
+> medidos**. O roteiro mentia, e quem pagava era a plateia. `velocidadeBase()`
+> integra o percurso e resolve a base pra o tempo bater; medido de novo, 16 s
+> declarados dão 15,8 s. A aceleração dos erros continua entrando por cima —
+> errar o setor ENCURTA o tempo, e essa é a penalidade.
 
 > A simulação (distância, desvio, cooldown) mora numa **ref**, não no estado:
 > ela muda a 60 fps, e como estado seria um render do Player inteiro por quadro.
@@ -487,11 +498,14 @@ panoramizado pelo setor do contato (proa no centro, os outros abrindo pros
 lados), com a esteira de água 420 ms atrás. É o que liga o que a plateia ouve
 ao que ela lê no sonar de papelão.
 
-> **Nunca existe derrota que trave a apresentação.** Se o casco zerar antes do
-> contato, a IA diz a fala `critico` e a subida acontece do mesmo jeito. Depois
-> da última rodada a cena avança aconteça o que acontecer, e qualquer erro
-> dentro do laço (um mp3 que não existe, uma promessa rejeitada) também avança
-> em vez de deixar a plateia olhando um sonar parado.
+> **Nunca existe derrota que trave a apresentação.** Se o casco zerar, a IA diz
+> a fala `critico`, a trilha corta e a cena pula direto pra `subida` — a subida
+> de emergência acontece do mesmo jeito e a turma termina com as falas finais
+> de sempre. Pula o `neutralizado` de propósito: aquela cena diz "ameaça
+> neutralizada", e ninguém neutralizou nada. Depois da última rodada a cena
+> avança aconteça o que acontecer, e qualquer erro dentro do laço (um mp3 que
+> não existe, uma promessa rejeitada) também avança em vez de deixar a plateia
+> olhando um sonar parado.
 
 ### O dossiê
 
