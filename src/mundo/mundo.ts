@@ -81,6 +81,22 @@ type Fauna = {
    * justamente NÃO se ver direito.
    */
   vulto?: boolean
+  /**
+   * Multiplicador do relógio da animação. 1 = o ritmo natural da espécie.
+   *
+   * Existe por causa da travessia do olho: o megalodonte bate a cauda a 0,4 Hz,
+   * o que em três segundos é UMA batida — e uma batida não lê como nadar.
+   */
+  ritmo?: number
+  /**
+   * Altura de referência. Com ela, o bicho ONDULA em volta de uma linha em vez
+   * de derivar.
+   *
+   * A deriva normal da fauna é um passeio aleatório, e em três segundos de
+   * travessia ela tirava o megalodonte do facho: ele entrava no meio do quadro
+   * e saía pelo rodapé. Aqui a altura é da cena, não do acaso.
+   */
+  yBase?: number
 }
 type Particula = { x: number; y: number; v: number; raio: number; fase: number }
 type Biolum = { x: number; y: number; fase: number; periodo: number; raio: number }
@@ -233,6 +249,54 @@ export class MotorMundo {
       vulto: true,
     })
   }
+
+  /**
+   * Travessia: a criatura cruza o facho de ponta a ponta, num tempo dado.
+   *
+   * Diferente do vulto, que é um relance rápido e fora de controle: aqui a
+   * duração é do roteiro, porque a cena depende de a plateia ter TEMPO de
+   * medir o bicho com os olhos. Ele entra por um lado, atravessa a luz inteira
+   * e sai pelo outro; o que fica é o tamanho.
+   *
+   * Assume a janela de câmera [0, 1] — a mesma do feed grande do olho.
+   */
+  travessia(chave: string, segundos: number, escala = 1.5) {
+    const especie = especiePorChave(chave)
+    if (!especie) return
+    // Medido na câmera grande, olhando o quadro: a 3 e a 2,2 o bicho passava
+    // das duas bordas ao mesmo tempo e virava uma mancha preta — a plateia não
+    // via um animal, via o vídeo falhando. A 1,5 ele cabe inteiro, com nadadeira
+    // e cauda dentro do quadro, que é o que faz o tamanho ser LIDO.
+    // As bordas são meia silhueta de folga de cada lado, pra entrar e sair inteiro.
+    const DE = -0.5
+    const ATE = 1.5
+    this.travessiaViva = {
+      x: DE,
+      // O facho está em 0,52 da altura. Um fio acima disso põe a linha do corpo
+      // na luz e deixa a cauda batendo no miolo do cone.
+      y: 0.5,
+      yBase: 0.5,
+      vx: (ATE - DE) / segundos,
+      escala,
+      especie,
+      distancia: 7,
+      fase: Math.random() * Math.PI * 2,
+      vida: 1,
+      vulto: true,
+      ritmo: 2.2,
+    }
+    this.fauna.push(this.travessiaViva)
+  }
+
+  /** Tira a travessia da água. O Player chama ao sair do passo. */
+  pararTravessia() {
+    if (!this.travessiaViva) return
+    const i = this.fauna.indexOf(this.travessiaViva)
+    if (i >= 0) this.fauna.splice(i, 1)
+    this.travessiaViva = null
+  }
+
+  private travessiaViva: Fauna | null = null
 
   constructor() {
     this.semear()
@@ -478,7 +542,11 @@ export class MotorMundo {
     for (let i = this.fauna.length - 1; i >= 0; i--) {
       const f = this.fauna[i]
       f.x += f.vx * dt
-      f.y += Math.sin(this.t * 0.6 + f.fase) * 0.004 * dt * 60
+      if (f.yBase !== undefined) {
+        f.y = f.yBase + Math.sin(this.t * 0.9 + f.fase) * 0.018
+      } else {
+        f.y += Math.sin(this.t * 0.6 + f.fase) * 0.004 * dt * 60
+      }
       f.distancia += sorteio(-0.4, 0.4)
       f.distancia = Math.max(4, Math.min(60, f.distancia))
 
@@ -1032,7 +1100,7 @@ export class MotorMundo {
         ctx,
         comp,
         alt,
-        t: this.t,
+        t: this.t * (f.ritmo ?? 1),
         fase: f.fase,
         // Silhueta e sem farol: o vulto é um buraco preto passando na frente da
         // luz, não um bicho iluminado.

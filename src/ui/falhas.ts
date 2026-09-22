@@ -14,10 +14,21 @@
 
 const EVENTO = 'domi:falha'
 
+/**
+ * Ruído de navegador que NÃO é falha.
+ *
+ * O aviso do ResizeObserver é o caso: os canvas se redimensionam dentro do
+ * próprio callback do observador, o Chrome avisa que adiou uma notificação, e
+ * nada acontece de errado. Virava `ERR:` no log de bordo na frente da plateia,
+ * que é o oposto do que este arquivo existe pra fazer.
+ */
+const RUIDO = [/ResizeObserver loop/i]
+
 /** Últimas falhas, pra quem montar depois ainda ver o que aconteceu. */
 const historico: string[] = []
 
 export function registrarFalha(mensagem: string) {
+  if (RUIDO.some((padrao) => padrao.test(mensagem))) return
   const linha = `ERR: ${mensagem}`.slice(0, 160)
   // Repetição não ajuda ninguém: um laço quebrado dispara o mesmo erro 60
   // vezes por segundo e encheria o log em dois segundos.

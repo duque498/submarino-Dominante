@@ -253,7 +253,10 @@ export type FalasCombate = {
   /** Sorteadas. Pelo menos uma de cada. */
   acerto: string[][]
   erro: string[][]
-  timeout: string[][]
+  /** Sonar vazio depois de um acerto, antes de o contato reaparecer. */
+  perdido: string[][]
+  /** O contato volta, mais perto, em outro setor. */
+  retorno: string[][]
   /** Casco zerado antes do contato: a IA sobe forcada, nunca trava. */
   critico?: string[]
 }
@@ -263,7 +266,8 @@ export type AudioCombate = {
   rodada: string[]
   acerto: string[]
   erro: string[]
-  timeout: string[]
+  perdido: string[]
+  retorno: string[]
   critico?: string
 }
 

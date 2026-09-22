@@ -307,7 +307,7 @@
       "falas": {
         "rodada": [
           [
-            "Contato detectado. Qual setor?"
+            "Contato detectado. Setor?"
           ],
           [
             "Contato mais próximo. Setor?"
@@ -335,12 +335,20 @@
             "Direção errada. O contato passou."
           ]
         ],
-        "timeout": [
+        "perdido": [
           [
-            "Sem resposta. Impacto no casco."
+            "Sinal perdido. Aguardando."
           ],
           [
-            "Tempo esgotado. Impacto no casco."
+            "Contato fora de alcance."
+          ]
+        ],
+        "retorno": [
+          [
+            "Reaproximando."
+          ],
+          [
+            "Novo contato. Setor?"
           ]
         ],
         "critico": [
@@ -362,9 +370,13 @@
           "./audio/3a/combate-erro-1.mp3",
           "./audio/3a/combate-erro-2.mp3"
         ],
-        "timeout": [
-          "./audio/3a/combate-timeout-1.mp3",
-          "./audio/3a/combate-timeout-2.mp3"
+        "perdido": [
+          "./audio/3a/combate-perdido-1.mp3",
+          "./audio/3a/combate-perdido-2.mp3"
+        ],
+        "retorno": [
+          "./audio/3a/combate-retorno-1.mp3",
+          "./audio/3a/combate-retorno-2.mp3"
         ],
         "critico": "./audio/3a/combate-critico.mp3"
       }

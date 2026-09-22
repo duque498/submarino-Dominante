@@ -2117,6 +2117,61 @@ body {
   text-align: right;
 }
 
+.combate__recarga {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 8px;
+  border: 1px solid rgba(27, 106, 120, 0.45);
+  border-radius: 3px;
+  background: rgba(4, 22, 26, 0.5);
+}
+
+.combate__recarga-rotulo {
+  font-family: ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.55);
+}
+
+.combate__recarga-trilho {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(10, 44, 50, 0.9);
+  overflow: hidden;
+}
+
+.combate__recarga-nivel {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #2ad3c8;
+  /* Sem transição: a largura vem do laço, quadro a quadro. Uma transição por
+     cima disso atrasaria a barra em relação ao cooldown real. */
+}
+
+/* Recarregando: a barra enche e o rótulo avisa. Enquanto isso a tecla não
+   vale, e é isto que diz por quê. */
+.combate__recarga--ativa .combate__recarga-rotulo {
+  color: rgba(255, 196, 120, 0.85);
+}
+
+.combate__recarga--ativa .combate__recarga-nivel {
+  background: rgba(255, 176, 90, 0.9);
+}
+
+/* Recusa: a tecla foi apertada durante a recarga. Pisca uma vez, seco. */
+.combate__recarga--recusa {
+  border-color: rgba(255, 110, 90, 0.85);
+  background: rgba(46, 12, 10, 0.6);
+}
+
+.combate__recarga--recusa .combate__recarga-rotulo {
+  color: rgba(255, 130, 110, 0.95);
+}
+
 .combate__rodadas {
   margin: 0;
   font-family: ui-monospace, monospace;
@@ -2422,6 +2477,83 @@ body {
    O olho (3A)
    -------------------------------------------------------------------------- */
 
+/* Tempos 1 a 3: a câmera grande.
+   Mesma caixa do olho — a área central inteira, que é o maior quadro que cabe
+   sem passar por cima do log. Não é decisão de estética: é a cena inteira
+   dependendo de a plateia conseguir MEDIR o bicho, e num mini-feed de 200 px
+   ele atravessa a tela sem que ninguém entenda o tamanho. */
+.olho-camera {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #02080b;
+  border: 1px solid rgba(27, 106, 120, 0.7);
+  pointer-events: none;
+  animation: olho-entrar 420ms ease-out;
+}
+
+.olho-camera .feed--olho {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  font-size: clamp(0.55rem, 1.3vh, 0.85rem);
+}
+
+.olho-camera .feed--olho .feed__canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Estática leve por cima: o sinal está ruim, não morto. Uma faixa de linhas
+   fina o bastante pra a silhueta continuar legível. */
+.olho-camera::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    rgba(255, 255, 255, 0.035) 0 1px,
+    rgba(0, 0, 0, 0) 1px 3px
+  );
+  opacity: 0.8;
+  animation: olho-camera-ruido 3.1s steps(9) infinite;
+}
+
+@keyframes olho-camera-ruido {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Tempo 3: o escuro. A câmera continua lá, sem nada nela. O corte é rápido
+   (180 ms) porque o silêncio começa AGORA — desvanecer seria despedida. */
+.olho-camera--escuro {
+  background: #010507;
+}
+
+.olho-camera--escuro .feed--olho,
+.olho-camera--escuro::after {
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .olho-camera,
+  .olho-camera::after {
+    animation: none;
+  }
+  .olho-camera--escuro .feed--olho,
+  .olho-camera--escuro::after {
+    transition: none;
+  }
+}
+
 /* Ocupa a área central inteira, como um painel de câmera em tela cheia — mas
    sem moldura de painel: o que se vê é a câmera, não o sistema. */
 .olho {
@@ -2471,13 +2603,30 @@ body {
    Dossiê (3A)
    -------------------------------------------------------------------------- */
 
+/* O corpo vira flex e a grade do dossiê é o filho que estica.
+   Com `height: 100%` a grade media 308 px dentro de um corpo de 274: a coluna
+   da esquerda passava do rodapé da moldura e a silhueta era cortada no meio.
+   Altura por flex resolve contra a caixa real, não contra uma porcentagem que
+   depende de o pai ter altura declarada. */
+.painel--dossie .painel__corpo {
+  display: flex;
+}
+
 .dossie {
   display: grid;
   grid-template-columns: minmax(180px, 38%) 1fr;
   gap: 22px;
-  align-items: center;
-  height: 100%;
+  align-items: stretch;
+  flex: 1;
   min-height: 0;
+}
+
+.dossie__dados {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  /* Os dados não esticam: eles começam no topo, junto com a foto. */
+  align-self: start;
 }
 
 .dossie__silhueta {
@@ -2496,12 +2645,14 @@ body {
 }
 
 /* Carimbo torto, como carimbo de verdade. Pisca devagar: é um aviso que
-   acompanha a leitura, não um alarme. */
+   acompanha a leitura, não um alarme.
+   No canto, e não no meio: centrado ele caía em cima do corpo do bicho, que é
+   a única coisa que se move no painel. */
 .dossie__carimbo {
   position: absolute;
-  left: 50%;
-  bottom: 4%;
-  transform: translateX(-50%) rotate(-7deg);
+  right: 2%;
+  bottom: 3%;
+  transform: rotate(-7deg);
   padding: 4px 12px;
   border: 2px solid rgba(255, 110, 90, 0.8);
   border-radius: 3px;
@@ -2593,6 +2744,20 @@ body {
   }
 }
 
+/* A animação de abertura do painel é TRANSFORM + clip-path, e transform no pai
+   deforma tudo que está dentro — inclusive a foto. No dossiê ela vira só
+   opacidade: o painel continua entrando, a imagem não entorta. Era esta a
+   fonte do tremor. */
+.painel--dossie .painel__moldura {
+  animation: dossie-abrir 260ms ease-out;
+}
+
+@keyframes dossie-abrir {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Dossiê com imagem: a foto em cima, a silhueta nadando embaixo. Sem imagem,
    a silhueta ocupa a coluna inteira e nada muda de lugar. */
 .dossie__visual {
@@ -2604,9 +2769,11 @@ body {
 }
 
 .dossie--com-imagem .dossie__visual {
-  /* A foto leva a maior parte; a silhueta vira a faixa de baixo. */
+  /* A foto leva a maior parte; a silhueta vira a faixa de baixo. Medido a
+     1366×768: a 34% a silhueta saía com 75 px de altura e o bicho virava um
+     risco. 40% devolve o desenho sem comer a foto. */
   display: grid;
-  grid-template-rows: 1fr minmax(64px, 34%);
+  grid-template-rows: 1fr minmax(84px, 40%);
 }
 
 .dossie__foto {
@@ -2626,6 +2793,34 @@ body {
   /* Puxa pro ciano do resto do HUD: uma foto em cores naturais no meio de um
      painel monocromático parece colada de outro programa. */
   filter: saturate(0.55) contrast(1.08) sepia(0.18) hue-rotate(155deg) brightness(0.92);
+  /* A foto é ESTÁTICA. Só isto: 400 ms de fade e nada mais. Nenhum transform,
+     nenhum ruído, nenhum glitch — uma reconstrução científica que treme lê
+     como render de videogame, e o painel inteiro perde a autoridade que os
+     dados dele têm. */
+  animation: foto-entrar 400ms ease-out both;
+}
+
+@keyframes foto-entrar {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Scanline por cima, parada. É a única coisa que a foto ganha do HUD: ela diz
+   "isto está sendo exibido num monitor de bordo" sem mexer num pixel da
+   imagem. Fixa de propósito — scanline rolando é efeito, e efeito na foto é o
+   que se está tirando daqui. */
+.dossie__foto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    rgba(2, 12, 14, 0) 0px,
+    rgba(2, 12, 14, 0) 2px,
+    rgba(2, 12, 14, 0.28) 3px,
+    rgba(2, 12, 14, 0.28) 4px
+  );
 }
 
 .dossie__rotulo-foto {
@@ -2741,39 +2936,19 @@ body {
   }
 }
 
-/* Passagem entre rodadas: o painel de combate SAI DA FRENTE por 1,5 s.
-   O efeito pedido acontece na estática dos feeds, e com a moldura por cima
-   deles ninguém veria nada. Aqui o mostrador esmaece, o escurecimento de fundo
-   some, e por um instante a tela é só as duas câmeras cegas com alguma coisa
-   passando no ruído. Volta sozinho. */
-.combate[data-fase='passagem'] {
-  background: rgba(2, 10, 12, 0.15);
-  transition: background 400ms ease-out;
-}
-
-.combate[data-fase='passagem'] .painel__moldura {
-  opacity: 0.12;
-  transform: scale(0.985);
-  transition:
-    opacity 400ms ease-out,
-    transform 400ms ease-out;
+/* Sonar vazio depois de um acerto: a moldura recua um pouco e o mostrador
+   fica sozinho. São os 2 a 3 s em que a plateia procura. */
+.combate[data-fase='perdido'] .painel__moldura {
+  border-color: rgba(27, 106, 120, 0.35);
 }
 
 .combate .painel__moldura {
   transition:
     opacity 300ms ease-in,
-    transform 300ms ease-in;
-}
-
-/* Durante a passagem os feeds sobem acima do painel: são eles a informação. */
-.palco__cena:has(.combate[data-fase='passagem']) .feed--mini {
-  z-index: 8;
-  box-shadow: 0 0 30px rgba(120, 200, 210, 0.22);
+    border-color 300ms ease-in;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .combate[data-fase='passagem'],
-  .combate[data-fase='passagem'] .painel__moldura,
   .combate .painel__moldura {
     transition: none;
   }

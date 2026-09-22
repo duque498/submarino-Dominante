@@ -109,6 +109,10 @@ export function PainelDossie({ argumento }: Props) {
       // não a do corpo.
       const comp = Math.min(L * 0.94, A / 0.82)
       const alt = comp * especie.proporcao
+      // O desenho não é simétrico em torno da origem: a cauda vai mais pra trás
+      // do que o focinho vai pra frente. Medido na caixa real, a tinta ficava
+      // 20 px à esquerda do centro e o lóbulo encostava na borda. Isto recentra.
+      const meioX = L / 2 + comp * 0.14
       const pose = { t: relogio, fase: 0.4, luz: 1, farol: 0, alpha: 1, silhueta: true }
 
       // Revelação da esquerda pra direita, como plotter: é o que faz o desenho
@@ -120,7 +124,7 @@ export function PainelDossie({ argumento }: Props) {
 
       // 1) a silhueta um pouco maior — vira o CONTORNO depois de vazar o miolo
       ctx.save()
-      ctx.translate(L / 2, A / 2)
+      ctx.translate(meioX, A / 2)
       ctx.scale(1.035, 1.035)
       especie.desenhar({ ctx, comp, alt, ...pose })
       ctx.restore()
@@ -136,7 +140,7 @@ export function PainelDossie({ argumento }: Props) {
       ctx.globalCompositeOperation = 'destination-out'
       ctx.globalAlpha = 0.78
       ctx.save()
-      ctx.translate(L / 2, A / 2)
+      ctx.translate(meioX, A / 2)
       especie.desenhar({ ctx, comp, alt, ...pose })
       ctx.restore()
       ctx.globalAlpha = 1

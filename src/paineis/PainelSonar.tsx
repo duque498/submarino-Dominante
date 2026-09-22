@@ -1,20 +1,22 @@
 import { useEffect, useRef } from 'react'
+import {
+  atualizarRuido,
+  desenharSonar,
+  semearRuido,
+  type ContatoSonar,
+  type EstadoSonar,
+  type RuidoSonar,
+} from './sonar'
+import { quadroSeguro } from '../ui/falhas'
 
-const ANEIS = [200, 400, 600, 800]
-const MAX_BLIPS = 7
+/** Anéis do mostrador do console. Mesma régua do combate. */
+const ANEIS = [150, 300, 450, 600, 900]
+/** Metros na borda. */
+const ALCANCE = 954
 /** Velocidade da varredura, em rad/s. Uma volta leva ~4,8 s. */
 const VELOCIDADE = 1.3
-/** Topo do mostrador: no canvas o y cresce pra baixo, então 12h é 3π/2. */
-const TOPO = (Math.PI * 3) / 2
-
-type Blip = {
-  angulo: number
-  distancia: number
-  nascimento: number
-  vida: number
-  /** Contato nomeado: o que a IA acabou de citar na fala. */
-  rotulo?: string
-}
+/** Topo do mostrador: no canvas o y cresce pra baixo, então 12h é -π/2. */
+const TOPO = -Math.PI / 2
 
 /**
  * Nome da forma citada na fala -> rótulo de contato no mostrador.
@@ -36,7 +38,7 @@ const ROTULO_CONTATO: Record<string, string> = {
 
 /** Quanto o sonar leva pra "achar" o contato que a fala citou. */
 const MS_ATE_CONTATO = 1200
-/** Quanto o contato leva pra se apagar na despedida. */
+/** Quanto o contato pisca como perdido na despedida, antes de sumir. */
 const MS_APAGAR_CONTATO = 380
 
 type Props = {
@@ -81,7 +83,14 @@ type Props = {
   aoPingGrave?: (altura: number) => void
 }
 
-/** Varredura de sonar. Puramente animada — nenhum dado real por trás. */
+/**
+ * Varredura de sonar do console. Puramente animada — nenhum dado real atrás.
+ *
+ * É o MESMO instrumento do combate (`desenharSonar`), sem as cunhas de setor:
+ * fora do combate não há setor a marcar, então não há cunha acesa. A plateia
+ * vê o mesmo mostrador na cena de biologia e no combate, que é o ponto — o
+ * submarino tem um sonar, não dois parecidos.
+ */
 export function PainelSonar({
   aoPing,
   contato,
@@ -109,7 +118,6 @@ export function PainelSonar({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const blips: Blip[] = []
     let lado = 0
     const ajustar = () => {
       const caixa = canvas.getBoundingClientRect()
@@ -128,70 +136,30 @@ export function PainelSonar({
     // primeiro ping sair junto com a abertura.
     let angulo = daFala ? TOPO : TOPO - 0.25
     const nascimento = performance.now()
-    let contatoMarcado = false
-    let despediu = false
     let anterior = nascimento
     // Aproximação: o próximo ping sai quando o relógio passa deste instante.
     let proximoPing = nascimento
+    const ruido: RuidoSonar[] = semearRuido(nascimento, 11)
+
+    /** O contato nomeado, quando ele já apareceu. */
+    let achado: { angulo: number; distancia: number; rotulo?: string } | null = null
+    let despediuEm = 0
 
     const desenhar = (agora: number) => {
-      quadro = requestAnimationFrame(desenhar)
+      quadro = requestAnimationFrame(passo)
       const dt = Math.min(0.05, (agora - anterior) / 1000)
       anterior = agora
       const anguloAnterior = angulo
       angulo = (angulo + dt * VELOCIDADE) % (Math.PI * 2)
       // A volta zera o ângulo, então só conta cruzamento sem dar a volta.
       if (anguloAnterior < TOPO && angulo >= TOPO) refPing.current?.()
+      atualizarRuido(ruido, agora)
 
-      const c = lado / 2
-      const raio = c * 0.92
-      ctx.clearRect(0, 0, lado, lado)
-
-      // anéis de distância
-      ctx.strokeStyle = 'rgba(56, 232, 255, 0.28)'
-      ctx.lineWidth = 1
-      ctx.font = `${Math.max(8, lado * 0.032)}px ui-monospace, monospace`
-      ctx.fillStyle = 'rgba(56, 232, 255, 0.5)'
-      ANEIS.forEach((metros, i) => {
-        const r = (raio * (i + 1)) / ANEIS.length
-        ctx.beginPath()
-        ctx.arc(c, c, r, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.fillText(`${metros} m`, c + 4, c - r + 12)
-      })
-
-      // cruz central
-      ctx.beginPath()
-      ctx.moveTo(c - raio, c)
-      ctx.lineTo(c + raio, c)
-      ctx.moveTo(c, c - raio)
-      ctx.lineTo(c, c + raio)
-      ctx.strokeStyle = 'rgba(56, 232, 255, 0.16)'
-      ctx.stroke()
-
-      // rastro da varredura
-      const rastro = ctx.createConicGradient?.(angulo - 0.9, c, c)
-      if (rastro) {
-        rastro.addColorStop(0, 'rgba(77, 255, 166, 0)')
-        rastro.addColorStop(0.22, 'rgba(77, 255, 166, 0.22)')
-        rastro.addColorStop(0.25, 'rgba(77, 255, 166, 0)')
-        ctx.fillStyle = rastro
-        ctx.beginPath()
-        ctx.arc(c, c, raio, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      // linha da varredura
-      ctx.beginPath()
-      ctx.moveTo(c, c)
-      ctx.lineTo(c + Math.cos(angulo) * raio, c + Math.sin(angulo) * raio)
-      ctx.strokeStyle = 'rgba(77, 255, 166, 0.9)'
-      ctx.lineWidth = 1.5
-      ctx.stroke()
-
-      // --- aproximação -----------------------------------------------------
+      let alvo: ContatoSonar | null = null
       const segundos = refAproximacao.current
+
       if (segundos) {
+        // --- aproximação: ele vem da borda até quase o centro ---------------
         const avanco = Math.min(1, (agora - nascimento) / (segundos * 1000))
         // Ping acelerando: de 1,1 s no começo a 0,17 s no fim. A curva é
         // quadrática porque linear não LÊ como aceleração — lê como metrônomo
@@ -202,105 +170,67 @@ export function PainelSonar({
           // E mais grave: o que se aproxima soa mais baixo.
           refPingGrave.current?.(1 - avanco * 0.55)
         }
-
-        // O blip vem da borda ao centro. Enorme, com rastro.
-        const dist = 1 - avanco * 0.86
-        const bx = c + Math.cos(TOPO) * raio * dist
-        const by = c + Math.sin(TOPO) * raio * dist
-        const tam = raio * (0.05 + avanco * 0.16)
-        const pisca = (Math.sin(agora / (120 - avanco * 70)) + 1) / 2
-
-        ctx.beginPath()
-        ctx.moveTo(c + Math.cos(TOPO) * raio * Math.min(1, dist + 0.2), c + Math.sin(TOPO) * raio * Math.min(1, dist + 0.2))
-        ctx.lineTo(bx, by)
-        ctx.strokeStyle = `rgba(255, 110, 90, 0.3)`
-        ctx.lineWidth = tam * 0.9
-        ctx.lineCap = 'round'
-        ctx.stroke()
-
-        ctx.beginPath()
-        ctx.arc(bx, by, tam, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255, 110, 90, ${0.7 + pisca * 0.3})`
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(bx, by, tam * (1.9 + pisca * 0.8), 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(255, 110, 90, ${0.5 - pisca * 0.3})`
-        ctx.lineWidth = 1.5
-        ctx.stroke()
-
-        ctx.textAlign = 'center'
-        ctx.font = `${Math.max(9, lado * 0.035)}px ui-monospace, monospace`
-        ctx.fillStyle = 'rgba(255, 110, 90, 0.95)'
-        ctx.fillText('CONTATO', bx, by - tam - lado * 0.03)
-        ctx.textAlign = 'left'
-      }
-
-      // O contato nomeado: aparece de frente, no tempo certo, com o ping.
-      if (!refAproximacao.current && !contatoMarcado && daFala && agora - nascimento >= MS_ATE_CONTATO) {
-        contatoMarcado = true
-        blips.push({
-          angulo: TOPO + (Math.random() - 0.5) * 0.16,
-          distancia: 0.42 + Math.random() * 0.16,
-          nascimento: agora,
-          vida: 9000,
-          rotulo: refContato.current
-            ? (ROTULO_CONTATO[refContato.current] ?? refContato.current.toUpperCase())
-            : undefined,
-        })
-        refPing.current?.()
-      }
-
-      // Despedida: ping final e o contato nomeado se apaga. Os de cenário
-      // param de nascer — o mostrador se aquieta antes de sair.
-      if (refDespedindo.current && !despediu) {
-        despediu = true
-        refPing.current?.()
-        for (const blip of blips) {
-          if (!blip.rotulo) continue
-          blip.nascimento = agora - blip.vida + MS_APAGAR_CONTATO
+        const distancia = ALCANCE * (1 - avanco * 0.86)
+        alvo = {
+          setor: -1,
+          distancia,
+          desvio: Math.sin(agora / 900) * 0.5 + Math.sin(agora / 430 + 1.3) * 0.3,
+          // Metros por segundo do avanço, pra o vetor ter o tamanho certo.
+          velocidade: (ALCANCE * 0.86) / segundos,
+          estado: 'ativo',
+        }
+      } else {
+        // --- contato nomeado: aparece de frente, no tempo certo -------------
+        if (!achado && daFala && agora - nascimento >= MS_ATE_CONTATO) {
+          achado = {
+            angulo: (Math.random() - 0.5) * 0.5,
+            distancia: ALCANCE * (0.42 + Math.random() * 0.2),
+            rotulo: refContato.current
+              ? (ROTULO_CONTATO[refContato.current] ?? refContato.current.toUpperCase())
+              : undefined,
+          }
+          refPing.current?.()
+        }
+        // Despedida: ping final, o contato pisca como perdido e some. Só
+        // depois disso o painel sai.
+        if (refDespedindo.current && !despediuEm) {
+          despediuEm = agora
+          refPing.current?.()
+        }
+        const apagado = despediuEm > 0 && agora - despediuEm > MS_APAGAR_CONTATO
+        if (achado && !apagado) {
+          alvo = {
+            setor: -1,
+            distancia: achado.distancia,
+            desvio: achado.angulo,
+            velocidade: 0,
+            estado: despediuEm > 0 ? 'perdido' : 'ativo',
+            rotulo: achado.rotulo,
+          }
         }
       }
 
-      // contatos de cenário: nascem sob a varredura e desbotam
-      if (!despediu && blips.length < MAX_BLIPS && Math.random() < 0.02) {
-        blips.push({
-          angulo: angulo + (Math.random() - 0.5) * 0.2,
-          distancia: 0.2 + Math.random() * 0.75,
-          nascimento: agora,
-          vida: 2500 + Math.random() * 3500,
-        })
+      const estado: EstadoSonar = {
+        // Sem setores: fora do combate não há direção a marcar, e cunhas
+        // acesas aqui seriam enfeite sem função.
+        setores: [],
+        setorAceso: null,
+        alcance: ALCANCE,
+        aneis: ANEIS,
+        angulo,
+        pulso: null,
+        contato: alvo,
       }
-      for (let i = blips.length - 1; i >= 0; i--) {
-        const blip = blips[i]
-        const idade = (agora - blip.nascimento) / blip.vida
-        if (idade >= 1) {
-          blips.splice(i, 1)
-          continue
-        }
-        const bx = c + Math.cos(blip.angulo) * raio * blip.distancia
-        const by = c + Math.sin(blip.angulo) * raio * blip.distancia
-        ctx.beginPath()
-        ctx.arc(bx, by, (blip.rotulo ? 3.5 : 2.5) + (1 - idade) * 2, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255, 194, 77, ${(1 - idade) * 0.9})`
-        ctx.fill()
-        if (blip.rotulo) {
-          ctx.beginPath()
-          ctx.arc(bx, by, 11 + (1 - idade) * 5, 0, Math.PI * 2)
-          ctx.strokeStyle = `rgba(255, 194, 77, ${(1 - idade) * 0.55})`
-          ctx.lineWidth = 1
-          ctx.stroke()
-          ctx.fillStyle = `rgba(255, 194, 77, ${Math.min(1, (1 - idade) * 1.4)})`
-          ctx.fillText(`CONTATO: ${blip.rotulo}`, bx + 15, by + 4)
-        }
-      }
+      desenharSonar(ctx, lado, estado, ruido, agora)
     }
 
-    quadro = requestAnimationFrame(desenhar)
+    const passo = quadroSeguro('sonar do console', desenhar)
+    quadro = requestAnimationFrame(passo)
     return () => {
       cancelAnimationFrame(quadro)
       observador.disconnect()
     }
-  }, [])
+  }, [daFala])
 
   return (
     <div className="painel__sonar">

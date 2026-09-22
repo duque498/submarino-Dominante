@@ -246,6 +246,27 @@ volta a falar depois que o vidro já quebrou.
   "criatura": "megalodonte", "duracao": 3000 }
 ```
 
+A cena tem **três tempos**, todos automáticos, ~8,3 s no total:
+
+1. **A câmera abre grande** (1,5 s). Os dois mini-feeds saem e no lugar deles
+   entra um quadro só, do tamanho da área central — o maior que cabe sem passar
+   por cima do log. Estática leve por cima e o farol oscilando: a água já está
+   virando.
+2. **A travessia** (3 s). A silhueta articulada cruza o facho de ponta a ponta,
+   escura, com a cauda batendo. É aqui que a plateia **mede** o bicho; o olho
+   sozinho não daria o tamanho.
+3. **O escuro** (0,8 s). Nada. É o silêncio que faz a aparição valer — sem ele
+   o olho seria a continuação da travessia em vez de uma coisa nova.
+
+Só então **o olho**, do jeito que sempre foi.
+
+> O tamanho da travessia é medido, não chutado: a `escala` 3 e a 2,2 passavam
+> das duas bordas ao mesmo tempo e viravam uma mancha preta — a plateia não via
+> um animal, via o vídeo falhando. A 1,5 a tinta mede 183×94 px num quadro de
+> 480×304 e o bicho cabe inteiro, nadadeira e cauda dentro. O canvas da câmera
+> grande é **480×304** e não 16:9 porque o `object-fit: cover` cortava 13% em
+> cima e embaixo, exatamente onde estão a dorsal e a cauda.
+
 Mostrar o bicho inteiro resolveria o mistério; mostrar **só o olho** deixa o
 tamanho por conta de quem está assistindo. O desenho é procedural e não imagem,
 e não por purismo: a cena depende de a **pupila contrair quando o farol bate**,
@@ -298,13 +319,40 @@ lá é `fetch`, e a trilha não precisa de análise de nível.
 > no dia: o log de ativação diz `Trilha de combate: carregada` ou
 > `WARN: trilha de combate ausente — o combate roda sem música`.
 
+### O mostrador de sonar
+
+`src/paineis/sonar.ts` desenha o mostrador, e **o painel do console e o combate
+usam o mesmo**: o de fora é o de dentro sem as cunhas de setor. Eram dois
+desenhos parecidos e não iguais, e isso aparecia — a plateia via um radar na
+cena de biologia e outro no combate, e o submarino deixava de parecer uma
+máquina só.
+
+O desenho é de **instrumento**, não de radar de desenho animado. O que separa
+os dois é sempre a mesma coisa:
+
+- **anéis finos e rotulados** em metros (150 · 300 · 450 · 600 · 900 M), com o
+  número por dentro do anel — centrado nele, o do último esbarrava no `180°`;
+- **azimute a cada 30°** na borda, `N` no topo (a proa) e os cardeais em graus;
+- **varredura com rastro de 120°**, decaindo por gradiente cônico em vez de uma
+  linha dura girando;
+- **ruído de fundo**: blips fracos que nascem, brilham e somem. Um mostrador
+  limpo demais parece enfeite; instrumento de verdade está sempre um pouco sujo;
+- **o contato** é blip + halo pulsante + **vetor de velocidade** apontando pra
+  onde ele vai, com etiqueta grudada: `CONTATO · 720 M · ECO 0,96 s`. A etiqueta
+  sai pro lado de fora; quando nenhum dos lados cabe, sobe ou desce — nunca por
+  cima do submarino do centro;
+- **o submarino no centro**, com o anel tracejado do alcance do pulso.
+
+No combate entram as **cunhas**: um setor por fatia, com o número grande no arco
+externo e o nome embaixo. A cunha do contato acende.
+
 ### Combate acústico
 
 Tipo de cena novo: `combate`. A plateia lê o setor no sonar de papelão e o
 operador aperta `1`, `2` ou `3`.
 
 ```json
-{ "id": "combate", "tipo": "combate", "avanco": "manual", "cameras": false,
+{ "id": "combate", "tipo": "combate", "avanco": "manual",
   "criatura": "megalodonte",
   "setores": ["PROA", "BOMBORDO", "ESTIBORDO"],
   "rodadas": [
@@ -313,7 +361,7 @@ operador aperta `1`, `2` ou `3`.
     { "distancia": 150, "tempo": 5 }
   ],
   "falas": { "rodada": [["..."]], "acerto": [["..."]], "erro": [["..."]],
-             "timeout": [["..."]], "critico": ["..."] },
+             "perdido": [["..."]], "retorno": [["..."]], "critico": ["..."] },
   "audio": { "rodada": ["./audio/3a/combate-rodada-1.mp3"], "...": [] } }
 ```
 
@@ -321,24 +369,52 @@ operador aperta `1`, `2` ou `3`.
 |---|---|
 | `criatura` | chave do bestiário. **Só vira blip**: a plateia nunca vê o bicho |
 | `setores` | rótulos, na ordem das teclas `1`…`9` |
-| `rodadas[].distancia` | metros do contato. Manda no tempo de eco mostrado |
-| `rodadas[].tempo` | segundos até o impacto |
+| `rodadas[].distancia` | metros de onde o contato NASCE. Manda na escala e no eco |
+| `rodadas[].tempo` | segundos da borda até o casco, na velocidade base |
 | `rodadas[].setor` | fixo; **sem o campo, sorteado** — nenhuma rodada é decorada |
 | `falas.*` | listas de falas; `rodada` tem uma por rodada, o resto é sorteado |
 
-Cada acerto derruba o `CONTATO` em `1/nº de rodadas`; cada erro ou timeout tira
-25% da `INTEGRIDADE` do casco. O tempo de eco mostrado é `2d / 1500 m/s` — o
-mesmo número que o grupo 1 explica no painel `eco`, de propósito: se a conta na
-tela não batesse com a aula deles, a cena desmentiria a apresentação.
+**Não há cronômetro. O contato AVANÇA** — o relógio é ele:
+
+1. A investida começa com o blip nascendo na borda externa de um setor sorteado
+   e vindo pro centro. Não em linha reta: **zigue-zague** (duas senoides, pra
+   não virar pêndulo) e **acelerando perto do centro** (`1 + perto × 0,8`) —
+   um bicho que chega no mesmo ritmo em que saiu não dá aflição nenhuma. A
+   distância na tela cai com ele, e os pings ficam mais rápidos e mais graves.
+2. **Chegou ao centro:** apagão, −25% de casco, fala de `erro`. 1,5 s depois ele
+   volta, no mesmo setor ou em outro. **Impacto não pula investida** — ele custa
+   casco, e o contato continua onde estava.
+3. **Setor certo:** o pulso sai naquela direção, acerta, e ele é empurrado pra
+   fora em 900 ms. `CONTATO` cai 1/3, mais um terço da imagem acústica é
+   revelado, o blip vira `SINAL PERDIDO` piscando e some. Vêm **2 a 3 s de sonar
+   vazio** (fala `perdido`, trilha baixa, a plateia procurando) e ele reaparece
+   em OUTRO setor, mais perto que a carga anterior — 900 → 450 → 150 m — com a
+   fala `retorno`.
+4. **Setor errado:** o pulso vai pro lado errado e se perde. Nenhuma penalidade
+   além da que já é dura: ele fica **20% mais rápido** e continua vindo.
+5. **Cooldown de 1,2 s** entre disparos, com a barra `RECARREGANDO PULSO` no
+   painel. É regra, não enfeite: sem ela, apertar 1-2-3 em sequência acerta
+   sempre e a cena vira apertar botão. Durante a recarga a tecla é **negada**
+   com um clique seco (estática a 1,6× de altura) e a barra pisca em vermelho —
+   sem isso a pessoa acha que o teclado falhou e aperta mais forte.
+
+O tempo de eco mostrado é `2d / 1500 m/s` — o mesmo número que o grupo 1 explica
+no painel `eco`, de propósito: se a conta na tela não batesse com a aula deles,
+a cena desmentiria a apresentação.
+
+> A simulação (distância, desvio, cooldown) mora numa **ref**, não no estado:
+> ela muda a 60 fps, e como estado seria um render do Player inteiro por quadro.
+> O painel lê por função (`lerSim`) e escreve no DOM direto, igual à coluna
+> d'água do mergulho.
 
 **O bicho nunca aparece desenhado.** É o ponto da cena: a plateia vê um blip e
 ouve um número, e quem traduz isso em direção é o objeto que eles construíram.
 Mostrar o megalodonte resolveria a tensão e roubaria o trabalho deles.
 
-Teclas: `1` `2` `3` respondem, `Espaço` corta a fala, e **`→` força a rodada a
-seguir** (válvula de segurança — não pula a cena, que perderia o fim). `M`, `N`
-e `O` ficam desligados: o orbe não é o assunto ali. **O disparo é imediato**: o
-pulso sai no mesmo quadro da tecla, sem contagem e sem carregamento — quem
+Teclas: `1` `2` `3` disparam o pulso no setor, `Espaço` corta a fala, e **`→`
+força a rodada a seguir** (válvula de segurança — não pula a cena, que perderia
+o fim). `M`, `N` e `O` ficam desligados: o orbe não é o assunto ali. **O disparo
+é imediato**: fora da recarga, o pulso sai no mesmo quadro da tecla — quem
 apertou precisa ouvir que apertou, ou a tecla parece não ter funcionado.
 
 Quatro coisas acontecem em volta das três perguntas:
@@ -351,11 +427,9 @@ Quatro coisas acontecem em volta das três perguntas:
    vezes em vermelho e o HUD volta com glitch. É curto de propósito: o
    suficiente pra assustar, curto o bastante pra ninguém achar que o projetor
    desligou.
-3. **Passagem entre rodadas.** Por 1,5 s o painel de combate esmaece e a tela
-   é só as duas câmeras cegas — com a estática se organizando na forma dele e
-   voltando a ser ruído. **Nunca nítida**: nitidez seria a IA recuperando a
-   visão, e a cena inteira depende de ela não recuperar. O truque é desenhar a
-   *máscara* do bicho e, dentro dela, dar outra densidade ao ruído.
+3. **Sonar vazio.** Entre um acerto e o retorno o mostrador fica sem nada por
+   2 a 3 s. É a única vez na cena em que não há o que fazer, e é ela que faz a
+   próxima aparição valer.
 4. **Fake-out.** Depois do terceiro acerto a trilha corta, dois segundos de
    silêncio, um retorno solto aparece na borda oposta e some. Só então vem o
    `neutralizado`.
@@ -378,6 +452,18 @@ classificado — carimbo `ESTIMATIVA DOS SENSORES` piscando, silhueta se
 desenhando da esquerda pra direita em 600 ms (como plotter) e os dados entrando
 linha a linha, no ritmo da fala. Depois de fechar o traço, a silhueta **continua
 nadando**, com a mesma batida da câmera.
+
+**A foto é ESTÁTICA, sempre.** Só um fade de 400 ms e uma scanline fixa por
+cima — nenhum transform, nenhum ruído, nenhum glitch. Uma reconstrução
+científica que treme lê como render de videogame e o painel inteiro perde a
+autoridade que os dados dele têm. A fonte do tremor era a animação genérica de
+abertura de painel (`transform` + `clip-path`): transform no pai deforma tudo
+que está dentro, inclusive a imagem. No dossiê ela vira só opacidade.
+
+> A única coisa que se move no painel é a silhueta articulada de baixo, no
+> canvas dela. A caixa dessa faixa era medida por `height: 100%` numa cadeia que
+> não resolvia — a grade media 308 px dentro de um corpo de 274 e a silhueta era
+> cortada no meio. Agora o corpo é flex e a grade estica contra a caixa real.
 
 Quando existe uma imagem de reconstrução em `src/formas/dossie/<chave>.jpg`,
 ela entra acima da silhueta com o rótulo `RECONSTRUÇÃO DOS SENSORES`, e o

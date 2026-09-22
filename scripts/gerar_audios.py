@@ -145,7 +145,7 @@ def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
             # ditas em sequência: entre uma e outra a plateia responde. Os nomes
             # batem com o campo `audio` do JSON — se mudar aqui, muda lá.
             falas_combate = cena.get("falas", {})
-            for chave in ("rodada", "acerto", "erro", "timeout"):
+            for chave in ("rodada", "acerto", "erro", "perdido", "retorno"):
                 for n, bloco in enumerate(falas_combate.get(chave) or [], start=1):
                     juntar(f"{cid}-{chave}-{n}", bloco)
             juntar(f"{cid}-critico", falas_combate.get("critico"))

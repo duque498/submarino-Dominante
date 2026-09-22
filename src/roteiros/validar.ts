@@ -231,7 +231,7 @@ function conferirCombate(cena: CenaCombate, onde: string, erros: string[]) {
   })
 
   const total = cena.rodadas.length
-  for (const chave of ['rodada', 'acerto', 'erro', 'timeout'] as const) {
+  for (const chave of ['rodada', 'acerto', 'erro', 'perdido', 'retorno'] as const) {
     const falas = cena.falas?.[chave]
     if (!Array.isArray(falas) || falas.length === 0) {
       erros.push(`${onde}: "falas.${chave}" precisa ser uma lista de falas nao vazia.`)

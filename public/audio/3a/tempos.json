@@ -70,12 +70,48 @@
       }
     ]
   },
-  "combate-rodada-1": {
-    "duracaoMs": 2208,
+  "combate-perdido-1": {
+    "duracaoMs": 1920,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2208
+        "fim": 1920
+      }
+    ]
+  },
+  "combate-perdido-2": {
+    "duracaoMs": 1896,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1896
+      }
+    ]
+  },
+  "combate-retorno-1": {
+    "duracaoMs": 1320,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1320
+      }
+    ]
+  },
+  "combate-retorno-2": {
+    "duracaoMs": 1680,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1680
+      }
+    ]
+  },
+  "combate-rodada-1": {
+    "duracaoMs": 1968,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1968
       }
     ]
   },
@@ -94,24 +130,6 @@
       {
         "inicio": 0,
         "fim": 2448
-      }
-    ]
-  },
-  "combate-timeout-1": {
-    "duracaoMs": 2208,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 2208
-      }
-    ]
-  },
-  "combate-timeout-2": {
-    "duracaoMs": 2328,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 2328
       }
     ]
   },
