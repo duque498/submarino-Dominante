@@ -106,6 +106,8 @@ type Fauna = {
    * isso escapa da faixa de profundidade da espécie, como o vulto.
    */
   travessia?: boolean
+  /** 0 = ondulação natural, 1 = tronco duro e só a cauda varrendo. */
+  rigidez?: number
 }
 type Particula = { x: number; y: number; v: number; raio: number; fase: number }
 type Biolum = { x: number; y: number; fase: number; periodo: number; raio: number }
@@ -269,33 +271,40 @@ export class MotorMundo {
    *
    * Assume a janela de câmera [0, 1] — a mesma do feed grande do olho.
    */
-  travessia(chave: string, segundos: number, escala = 6) {
+  travessia(chave: string, segundos: number, escala = 13) {
     const especie = especiePorChave(chave)
     if (!especie) return
-    // ESCALA 6: o corpo é mais ALTO e mais COMPRIDO que o quadro. É o ponto da
-    // cena — o que atravessa a luz não é um tubarão inteirinho no meio da tela,
-    // é um flanco com guelras, e nunca se vê o bicho todo de uma vez. Caber no
-    // quadro seria dizer que ele cabe.
+    // ESCALA 13: o corpo tem ~3,5 larguras de quadro e o dobro da altura dele.
+    // A plateia nunca vê o bicho, vê um FLANCO — e é isso que dá o tamanho.
     //
-    // Isto só é possível porque a travessia escapa do mundo cilíndrico (ver
-    // `semVolta` em desenharFauna): pela projeção normal, um corpo desse
-    // comprimento sumia de repente com a cauda ainda no meio do quadro.
-    const DE = -1.15
-    const ATE = 2.15
+    // O enquadramento é feito pra o ROSTO não entrar. O focinho começa uma
+    // largura e meia de quadro à direita e só se afasta; o que atravessa a
+    // câmera é da guelra pra trás. Mostrar a cara resolveria o mistério que a
+    // cena seguinte existe pra criar.
+    //
+    // As contas são da câmera grande (480×304): meio corpo mede ~1,7 unidade,
+    // a guelra fica a ~1,04 do centro e a ponta da cauda a ~1,94. Sai quando a
+    // cauda passa da borda direita.
+    const DE = -0.05
+    const ATE = 3.05
     this.travessiaViva = {
       x: DE,
-      // O facho está em 0,52 da altura. A linha do corpo fica na luz e as
-      // guelras caem no miolo do cone, que é onde a lanterna é mais forte.
-      y: 0.5,
-      yBase: 0.5,
+      // Abaixo do quadro: assim o que cruza a tela é a LINHA DO DORSO com o
+      // corpo embaixo dela. Centrado, o quadro cairia inteiro dentro do bicho e
+      // sobraria uma parede lisa — sem borda, nada diz que aquilo é um animal.
+      y: 1,
+      yBase: 1,
       vx: (ATE - DE) / segundos,
       escala,
       especie,
       distancia: 7,
       fase: Math.random() * Math.PI * 2,
-      vida: 1,
+      // Começa invisível: quem acende é o fade de entrada.
+      vida: 0,
       travessia: true,
-      ritmo: 1.6,
+      // Tronco duro, só a cauda varrendo — tubarão grande não serpenteia.
+      rigidez: 1,
+      ritmo: 1.3,
     }
     this.fauna.push(this.travessiaViva)
   }
@@ -589,6 +598,13 @@ export class MotorMundo {
 
       // O vulto e a travessia são invocados pelo roteiro e não obedecem à
       // faixa: eles estão ali porque a cena disse que estão.
+      if (f.travessia) {
+        // Entra por fade, não por corte. O corpo é maior que o quadro, então
+        // ele não tem borda pra "entrar" — o que a plateia vê é o facho
+        // encontrando uma coisa que já estava ali, que assusta mais do que um
+        // peixe passando.
+        f.vida = Math.min(1, f.vida + dt * 2.2)
+      }
       if (f.vulto || f.travessia) {
         if (f.x < -1.2 || f.x > LARGURA_MUNDO + 1.2) this.fauna.splice(i, 1)
         continue
@@ -1125,9 +1141,12 @@ export class MotorMundo {
       // com a cauda ainda no meio do quadro. Aqui ele atravessa numa reta, que
       // é o que uma câmera fixa veria.
       const sx = f.travessia ? semVolta(f.x) : projetar(f.x)
-      if (!visivel(sx, 220)) continue
-      const sy = f.y * A
       const comp = f.escala * A * 0.42
+      // A margem do corte acompanha o TAMANHO. Com 220 px fixos, um corpo de
+      // 1600 px era descartado enquanto ainda enchia a tela: o corte olha o
+      // centro do bicho, e o centro dele passa longe da borda.
+      if (!visivel(sx, f.travessia ? comp : 220)) continue
+      const sy = f.y * A
       const alt = comp * f.especie.proporcao
       const dir = Math.sign(f.vx)
       // A opacidade NÃO é multiplicada por perfil.fauna: aquilo é densidade de
@@ -1140,7 +1159,7 @@ export class MotorMundo {
       const alpha = f.vulto
         ? 0.9 * f.vida
         : f.travessia
-          ? 0.7
+          ? 0.58 * f.vida
           : Math.min(1, 0.45 + perfil.luz * 0.35 + perfil.farol * 0.35) *
             f.vida *
             this.atenuacaoFauna
@@ -1158,6 +1177,7 @@ export class MotorMundo {
         // O bicho da travessia passa sem olhar pra câmera: o olho é a cena
         // seguinte, e mostrá-lo aqui gastaria o plano antes da hora.
         olhar: !f.travessia,
+        rigidez: f.rigidez,
       }
 
       if (f.travessia) {

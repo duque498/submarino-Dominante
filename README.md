@@ -252,11 +252,12 @@ A cena tem **três tempos**, todos automáticos, ~8,3 s no total:
    entra um quadro só, do tamanho da área central — o maior que cabe sem passar
    por cima do log. Estática leve por cima e o farol oscilando: a água já está
    virando.
-2. **A travessia** (3 s). O corpo atravessa o facho — e ele é **maior que o
-   quadro**, nos dois eixos. Nunca se vê o bicho inteiro de uma vez: entra o
-   focinho com a fileira de dentes, passa o flanco com as cinco fendas
-   branquiais, sai a cauda. É aqui que a plateia **mede** o bicho; o olho
-   sozinho não daria o tamanho.
+2. **A travessia** (3 s). O corpo atravessa o facho. Ele tem **três larguras e
+   meia de quadro** e o dobro da altura, então a plateia nunca vê o bicho — vê
+   um FLANCO. E **não vê a cara**: o enquadramento começa com o focinho uma
+   largura e meia à direita, e o que cruza a câmera é da guelra pra trás, a
+   linha do dorso varrendo a tela com o corpo embaixo dela até a cauda sair.
+   É aqui que a plateia **mede** o bicho; o olho sozinho não daria o tamanho.
 3. **O escuro** (0,8 s). Nada. É o silêncio que faz a aparição valer — sem ele
    o olho seria a continuação da travessia em vez de uma coisa nova.
 
@@ -278,9 +279,23 @@ quadro:
   bicho enorme perde o tamanho no instante em que divide a luz com uma
   água-viva.
 - **Ele escapa do mundo cilíndrico.** A projeção normal dá a volta passando de
-  1,5 unidade da câmera, e isso limitava o tamanho: um corpo de 1,6 unidade
+  1,5 unidade da câmera, e isso limitava o tamanho: um corpo de 3,5 unidades
   sumia de repente com a cauda ainda no meio do quadro. A travessia projeta em
-  linha reta (`semVolta`), que é o que uma câmera fixa veria.
+  linha reta (`semVolta`), e o corte de visibilidade usa uma margem do tamanho
+  do bicho em vez dos 220 px fixos — o corte olha o CENTRO, e o centro de um
+  corpo desses passa longe da borda.
+- **O tronco vai duro** (`Pincel.rigidez: 1`). A ondulação da espinha já
+  crescia pra trás, mas o meio do corpo ainda varria meio corpo de altura:
+  invisível num bicho de 200 px, uma onda de 450 px quando ele atravessa com
+  1660 px de comprimento. Com rigidez, a onda só começa no terço traseiro e a
+  ponta da cauda continua varrendo o mesmo tanto — enrijecer não pode virar um
+  bicho que perdeu a batida.
+- **Ele entra por fade**, não por corte. Um corpo maior que o quadro não tem
+  borda pra entrar; o que a plateia vê é o facho encontrando uma coisa que já
+  estava ali.
+- **Fica abaixo do quadro** (`y: 1`). Centrado, a tela caía inteira dentro do
+  bicho e sobrava uma parede lisa — sem borda, nada diz que aquilo é um animal.
+  Com a espinha no rodapé, o que cruza a tela é a linha do dorso.
 
 E ele passa **sem olhar** (`Pincel.olhar: false`). O olho do bestiário é um
 ponto estilizado feito pra ser visto com 4 px; com 760 px de corpo ele vira uma

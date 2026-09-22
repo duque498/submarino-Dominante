@@ -50,6 +50,15 @@ export type Pincel = {
    * olho é a cena inteira. O bicho passa sem olhar; quem olha é a cena seguinte.
    */
   olhar?: boolean
+  /**
+   * Quanto o corpo fica RÍGIDO, de 0 (a ondulação natural) a 1 (só a cauda).
+   *
+   * Tubarão grande não serpenteia: o tronco vai duro e quem varre é o terço
+   * traseiro. A ondulação padrão já cresce pra trás, mas o meio do corpo ainda
+   * se mexe meio corpo de altura — invisível num bicho de 200 px, e uma onda
+   * de 450 px quando ele atravessa a câmera com 1600 px de comprimento.
+   */
+  rigidez?: number
 }
 
 export type Especie = {
@@ -953,16 +962,34 @@ const BATIDA_MEGALODONTE = 0.4
  *
  * `x` vai de -0,5 (ponta da cauda) a +0,5 (focinho), em frações do comprimento.
  */
-function espinha(x: number, alt: number, t: number, fase: number): number {
+function espinha(x: number, alt: number, t: number, fase: number, rigidez = 0): number {
   const K_ONDA = 7.5
-  const amplitude = Math.max(0, 0.42 - x) ** 1.6 * 2.1
+  // `rigidez` empurra o início da onda pra trás (0,42 -> -0,12: o tronco inteiro
+  // para) e deixa a subida mais íngreme. A constante é recalculada pra a PONTA
+  // da cauda varrer sempre o mesmo tanto — enrijecer o corpo não pode virar um
+  // bicho que também perdeu a batida.
+  const r = Math.max(0, Math.min(1, rigidez))
+  const inicio = 0.42 - r * 0.54
+  const expo = 1.6 + r * 0.9
+  const ganho = AMPLITUDE_PONTA / (inicio + 0.5) ** expo
+  const amplitude = Math.max(0, inicio - x) ** expo * ganho
   return Math.sin(t * Math.PI * 2 * BATIDA_MEGALODONTE + fase - x * K_ONDA) * alt * amplitude
 }
 
+/** Quanto a ponta da cauda varre, em alturas de corpo. É o mesmo em qualquer rigidez. */
+const AMPLITUDE_PONTA = 0.92 ** 1.6 * 2.1
+
 /** Inclinação local da espinha, pra as barbatanas acompanharem o corpo. */
-function anguloDaEspinha(x: number, alt: number, comp: number, t: number, fase: number): number {
+function anguloDaEspinha(
+  x: number,
+  alt: number,
+  comp: number,
+  t: number,
+  fase: number,
+  rigidez = 0,
+): number {
   const d = 0.02
-  const dy = espinha(x + d, alt, t, fase) - espinha(x - d, alt, t, fase)
+  const dy = espinha(x + d, alt, t, fase, rigidez) - espinha(x - d, alt, t, fase, rigidez)
   return Math.atan2(dy, d * 2 * comp)
 }
 
@@ -984,20 +1011,21 @@ function anguloDaEspinha(x: number, alt: number, comp: number, t: number, fase: 
  */
 function megalodonte(p: Pincel) {
   const { ctx, comp, alt, t, fase } = p
+  const rigidez = p.rigidez ?? 0
 
   /** Ponto na espinha, em px. */
   const ex = (x: number) => x * comp
-  const ey = (x: number) => espinha(x, alt, t, fase)
+  const ey = (x: number) => espinha(x, alt, t, fase, rigidez)
   /** Ponto deslocado perpendicularmente à espinha — é o que dá volume ao corpo. */
   const lado = (x: number, offset: number): [number, number] => {
-    const ang = anguloDaEspinha(x, alt, comp, t, fase)
+    const ang = anguloDaEspinha(x, alt, comp, t, fase, rigidez)
     return [ex(x) - Math.sin(ang) * offset, ey(x) + Math.cos(ang) * offset]
   }
 
   // cauda assimétrica: o lóbulo superior é quase o dobro do inferior
   const xCauda = -0.42
   const yCauda = ey(xCauda)
-  const angCauda = anguloDaEspinha(xCauda, alt, comp, t, fase)
+  const angCauda = anguloDaEspinha(xCauda, alt, comp, t, fase, rigidez)
   ctx.save()
   ctx.translate(ex(xCauda), yCauda)
   ctx.rotate(angCauda)
