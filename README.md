@@ -20,7 +20,8 @@ O **3A** está escrito e jogável de ponta a ponta: descida à abissal, visor
 rachando, as quatro apresentações, o combate acústico com a plateia e o
 encerramento na superfície.
 
-Falta o **2B** (ainda sem roteiro da professora) e as dinâmicas de quiz do 2A.
+Falta o **2B** (ainda sem roteiro da professora), a expedição de identificação
+do 2A e os roteiros de Biologia e Educação Física do 2A.
 
 > **O conteúdo do 3A é provisório.** A criatura, a mecânica e as falas novas da
 > IA ainda vão ser confirmadas com a turma e com a professora. O código foi
@@ -630,6 +631,10 @@ cena. É onde a apresentação termina e **fica**, enquanto a plateia aplaude.
 
 ## Dinâmicas: quiz e verdadeiro/falso
 
+> Os tipos `quiz` e `vf` continuam no código e testados, mas **saíram do
+> `2a.json`**: a professora tirou a calibração do sonar do roteiro do 2A. Eles
+> ficam de pé pro 2B.
+
 Abrem como os painéis, numa janela sobre a área central: pergunta grande,
 alternativas em cards com o número da tecla bem visível e um timer circular
 que faz ping de sonar acelerando nos últimos 5 segundos.
@@ -673,7 +678,7 @@ Referência pra quem preencher os JSONs do 2B e do 3A (provisório, ajustável):
 
 | Turma | Faixa | Cenas |
 |---|---|---|
-| **2A** | 50 → 900 m | `entrada` 50, `bio` 120, `arte` 300, `ef` 450, `quiz-intro` 600, `transicao-2b` 900 |
+| **2A** | 50 → 900 m | `entrada` 50, `bio` 120, `ef` 300, `arte` 450, `transicao-2b` 900 (a identificação entra em 600) |
 | **2B** | ~900 → 3000 m | começa onde o 2A parou e desce até a batipelágica |
 | **3A** | ~3000 → 5500 m | chega ao abissal; a **cena final volta pra 0** (retorno à superfície) |
 

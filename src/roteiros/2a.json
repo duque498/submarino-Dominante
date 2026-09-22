@@ -68,7 +68,7 @@
       "log": [
         "Carregando setor: BIOLOGIA",
         "Consultando catálogo de espécies...",
-        "Profundidade alvo: 600 m",
+        "Profundidade alvo: 120 m",
         "Lanternas externas: ligadas"
       ]
     },
@@ -90,56 +90,6 @@
       "profundidade": 120
     },
     {
-      "id": "arte-intro",
-      "tipo": "fala",
-      "avanco": "auto",
-      "audio": "./audio/2a/arte-intro.mp3",
-      "tela": {
-        "titulo": "PRÓXIMO SETOR",
-        "status": "PREPARANDO NOVA EXPLORAÇÃO",
-        "linhas": [
-          "Exploração concluída.",
-          "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
-          {
-            "texto": "Mas nem toda cor chega ao fundo.",
-            "acoes": [
-              {
-                "tipo": "painel",
-                "nome": "espectro",
-                "quando": "fim",
-                "ate": "fimCena"
-              }
-            ]
-          },
-          "A luz vermelha se apaga nos primeiros metros. Quanto mais fundo a expedição desce, menos cores a água deixa passar.",
-          "Próximo setor: Arte.",
-          "Preparando nova exploração."
-        ]
-      },
-      "log": [
-        "Setor BIOLOGIA arquivado",
-        "Carregando setor: ARTE",
-        "Indexando registros visuais da expedição...",
-        "Calibrando câmeras de documentação"
-      ]
-    },
-    {
-      "id": "arte",
-      "tipo": "apresentacao",
-      "avanco": "manual",
-      "tela": {
-        "titulo": "SETOR: ARTE",
-        "status": "EXPLORAÇÃO EM CURSO"
-      },
-      "orbe": "palco",
-      "profundidade": 300,
-      "formas": [
-        "esfera",
-        "onda",
-        "concha"
-      ]
-    },
-    {
       "id": "ef-intro",
       "tipo": "fala",
       "avanco": "auto",
@@ -148,8 +98,7 @@
         "titulo": "PRÓXIMO SETOR",
         "status": "INICIANDO EXPLORAÇÃO",
         "linhas": [
-          "Setor Arte explorado com sucesso.",
-          "Nossa expedição continua.",
+          "Exploração concluída.",
           {
             "texto": "O próximo setor nos leva a uma relação diferente entre o ser humano e o ambiente marinho. Educação Física.",
             "acoes": [
@@ -165,7 +114,7 @@
         ]
       },
       "log": [
-        "Setor ARTE arquivado",
+        "Setor BIOLOGIA arquivado",
         "Carregando setor: EDUCAÇÃO FÍSICA",
         "Medindo resistência da corrente...",
         "Monitorando sinais vitais da tripulação"
@@ -185,114 +134,58 @@
         "triangulo",
         "circulo"
       ],
-      "profundidade": 450
+      "profundidade": 300
     },
     {
-      "id": "quiz-intro",
+      "id": "arte-intro",
       "tipo": "fala",
       "avanco": "auto",
-      "audio": "./audio/2a/quiz-intro.mp3",
+      "audio": "./audio/2a/arte-intro.mp3",
       "tela": {
-        "titulo": "CALIBRAÇÃO DO SONAR",
-        "status": "AGUARDANDO DADOS DA TRIPULAÇÃO",
+        "titulo": "PRÓXIMO SETOR",
+        "status": "PREPARANDO NOVA EXPLORAÇÃO",
         "linhas": [
-          "Setores explorados. Antes de alterar a rota, o sistema precisa calibrar o sonar com dados da tripulação.",
-          "Responda em voz alta. Três perguntas."
+          "Setor Educação Física explorado com sucesso.",
+          {
+            "texto": "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "espectro",
+                "quando": "fim",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "Próximo setor: Arte.",
+          "Preparando nova exploração."
         ]
       },
       "log": [
-        "Sonar em modo de calibração",
-        "Aguardando entrada da tripulação...",
-        "Três amostras necessárias"
-      ],
-      "profundidade": 600
+        "Setor EDUCAÇÃO FÍSICA arquivado",
+        "Carregando setor: ARTE",
+        "Indexando registros visuais da expedição...",
+        "Calibrando câmeras de documentação"
+      ]
     },
     {
-      "id": "quiz-1",
-      "tipo": "quiz",
+      "id": "arte",
+      "tipo": "apresentacao",
       "avanco": "manual",
-      "pergunta": "Que porcentagem da superfície da Terra é coberta pelos oceanos?",
-      "alternativas": [
-        "51%",
-        "71%",
-        "89%"
-      ],
-      "correta": 1,
-      "tempo": 15,
-      "audio": {
-        "pergunta": "./audio/2a/quiz-1-pergunta.mp3",
-        "acerto": "./audio/2a/quiz-1-acerto.mp3",
-        "erro": "./audio/2a/quiz-1-erro.mp3"
+      "tela": {
+        "titulo": "SETOR: ARTE",
+        "status": "EXPLORAÇÃO EM CURSO"
       },
-      "falaAcerto": [
-        "Correto. Setenta e um por cento. Sonar calibrado em um terço."
-      ],
-      "falaErro": [
-        "Incorreto. A resposta era setenta e um por cento. Recalibrando."
-      ],
-      "log": [
-        "Aguardando resposta da tripulação...",
-        "Amostra registrada"
-      ],
-      "cameras": false
-    },
-    {
-      "id": "quiz-2",
-      "tipo": "quiz",
-      "avanco": "manual",
-      "pergunta": "Quantas espécies marinhas já foram identificadas pela ciência?",
-      "alternativas": [
-        "Cerca de 24 mil",
-        "Cerca de 240 mil",
-        "Cerca de 2 milhões"
-      ],
-      "correta": 1,
-      "tempo": 15,
-      "audio": {
-        "pergunta": "./audio/2a/quiz-2-pergunta.mp3",
-        "acerto": "./audio/2a/quiz-2-acerto.mp3",
-        "erro": "./audio/2a/quiz-2-erro.mp3"
-      },
-      "falaAcerto": [
-        "Correto. Cerca de duzentas e quarenta mil. Mas estima-se que existam até dois milhões."
-      ],
-      "falaErro": [
-        "Incorreto. São cerca de duzentas e quarenta mil espécies conhecidas."
-      ],
-      "log": [
-        "Aguardando resposta da tripulação...",
-        "Amostra registrada"
-      ],
-      "cameras": false
-    },
-    {
-      "id": "quiz-3",
-      "tipo": "quiz",
-      "avanco": "manual",
-      "pergunta": "Qual destes é um recife de coral brasileiro?",
-      "alternativas": [
-        "Abrolhos",
-        "Fernando de Magalhães",
-        "Grande Barreira"
-      ],
-      "correta": 0,
-      "tempo": 15,
-      "audio": {
-        "pergunta": "./audio/2a/quiz-3-pergunta.mp3",
-        "acerto": "./audio/2a/quiz-3-acerto.mp3",
-        "erro": "./audio/2a/quiz-3-erro.mp3"
-      },
-      "falaAcerto": [
-        "Correto. Abrolhos, no sul da Bahia. Sonar totalmente calibrado."
-      ],
-      "falaErro": [
-        "Incorreto. A resposta era Abrolhos. Calibração concluída mesmo assim."
-      ],
-      "log": [
-        "Aguardando resposta da tripulação...",
-        "Amostra registrada"
-      ],
-      "cameras": false
+      "orbe": "palco",
+      "profundidade": 450,
+      "formas": [
+        "esfera",
+        "peixe",
+        "tartaruga",
+        "baleia",
+        "agua-viva",
+        "onda"
+      ]
     },
     {
       "id": "transicao-2b",

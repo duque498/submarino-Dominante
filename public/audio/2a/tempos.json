@@ -1,30 +1,22 @@
 {
   "arte-intro": {
-    "duracaoMs": 23616,
+    "duracaoMs": 14712,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1560
+        "fim": 3072
       },
       {
-        "inicio": 2160,
-        "fim": 8136
+        "inicio": 3672,
+        "fim": 9648
       },
       {
-        "inicio": 8736,
-        "fim": 11040
+        "inicio": 10248,
+        "fim": 11976
       },
       {
-        "inicio": 11640,
-        "fim": 18456
-      },
-      {
-        "inicio": 19056,
-        "fim": 20784
-      },
-      {
-        "inicio": 21384,
-        "fim": 23376
+        "inicio": 12576,
+        "fim": 14568
       }
     ]
   },
@@ -46,23 +38,19 @@
     ]
   },
   "ef-intro": {
-    "duracaoMs": 14400,
+    "duracaoMs": 11040,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2352
+        "fim": 1560
       },
       {
-        "inicio": 2952,
-        "fim": 4872
+        "inicio": 2160,
+        "fim": 8784
       },
       {
-        "inicio": 5472,
-        "fim": 12096
-      },
-      {
-        "inicio": 12696,
-        "fim": 14256
+        "inicio": 9384,
+        "fim": 10944
       }
     ]
   },
@@ -154,100 +142,6 @@
       {
         "inicio": 9000,
         "fim": 10704
-      }
-    ]
-  },
-  "quiz-1-acerto": {
-    "duracaoMs": 3816,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3816
-      }
-    ]
-  },
-  "quiz-1-erro": {
-    "duracaoMs": 3720,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 3720
-      }
-    ]
-  },
-  "quiz-1-pergunta": {
-    "duracaoMs": 4200,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 4200
-      }
-    ]
-  },
-  "quiz-2-acerto": {
-    "duracaoMs": 5160,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 5160
-      }
-    ]
-  },
-  "quiz-2-erro": {
-    "duracaoMs": 4272,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 4272
-      }
-    ]
-  },
-  "quiz-2-pergunta": {
-    "duracaoMs": 4056,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 4056
-      }
-    ]
-  },
-  "quiz-3-acerto": {
-    "duracaoMs": 4248,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 4248
-      }
-    ]
-  },
-  "quiz-3-erro": {
-    "duracaoMs": 4272,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 4272
-      }
-    ]
-  },
-  "quiz-3-pergunta": {
-    "duracaoMs": 2880,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 2880
-      }
-    ]
-  },
-  "quiz-intro": {
-    "duracaoMs": 9960,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 6744
-      },
-      {
-        "inicio": 7344,
-        "fim": 9912
       }
     ]
   },
