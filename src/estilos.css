@@ -2773,25 +2773,24 @@ body {
 /* Com foto o painel VIRA: a imagem é um recorte EM PÉ, e empilhá-la numa
    moldura deitada desperdiçava metade da caixa — a cabeça saía com 114 px de
    largura num quadro de 256. Aqui ela ocupa a coluna da esquerda inteira, de
-   cima a baixo, e a silhueta desce pra uma faixa larga embaixo dos dados —
-   que é a forma certa pra um bicho comprido visto de perfil. O crédito ganha
-   a última linha, atravessando as duas colunas. */
+   cima a baixo, e os dados ficam com a direita. O crédito ganha a última
+   linha, atravessando as duas colunas. */
 .dossie--com-imagem {
-  grid-template-columns: minmax(150px, 31%) 1fr;
-  grid-template-rows: 1fr minmax(72px, 30%) auto;
+  grid-template-columns: minmax(160px, 34%) 1fr;
+  grid-template-rows: 1fr auto;
   column-gap: 22px;
   row-gap: 10px;
 }
 
-/* `contents` promove a foto e a silhueta pra grade do painel sem mexer no
-   JSX — sem foto, o `.dossie__visual` continua sendo a coluna de sempre. */
+/* `contents` promove a foto pra grade do painel sem mexer no JSX — sem foto,
+   o `.dossie__visual` continua sendo a coluna de sempre, com a silhueta. */
 .dossie--com-imagem .dossie__visual {
   display: contents;
 }
 
 .dossie--com-imagem .dossie__foto {
   grid-column: 1;
-  grid-row: 1 / 3;
+  grid-row: 1;
 }
 
 .dossie--com-imagem .dossie__dados {
@@ -2799,14 +2798,9 @@ body {
   grid-row: 1;
 }
 
-.dossie--com-imagem .dossie__silhueta {
-  grid-column: 2;
-  grid-row: 2;
-}
-
 .dossie--com-imagem .dossie__credito {
   grid-column: 1 / -1;
-  grid-row: 3;
+  grid-row: 2;
   margin: 0;
 }
 

@@ -187,10 +187,15 @@ export function PainelDossie({ argumento }: Props) {
             <figcaption className="dossie__rotulo-foto">reconstrução dos sensores</figcaption>
           </figure>
         )}
-        <div className="dossie__silhueta">
-          <canvas ref={refCanvas} className="dossie__canvas" />
-          <span className="dossie__carimbo">estimativa dos sensores</span>
-        </div>
+        {/* A silhueta desenhada é a reserva pra quando NÃO há foto. Com foto
+            ela sai: duas versões do mesmo bicho lado a lado disputavam o olho,
+            e a que a professora escolheu é a foto. */}
+        {!imagem && (
+          <div className="dossie__silhueta">
+            <canvas ref={refCanvas} className="dossie__canvas" />
+            <span className="dossie__carimbo">estimativa dos sensores</span>
+          </div>
+        )}
       </div>
       <div className="dossie__dados">
         <h3 className="dossie__titulo">{ficha.titulo}</h3>

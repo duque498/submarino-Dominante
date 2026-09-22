@@ -97,6 +97,15 @@ type Fauna = {
    * e saía pelo rodapé. Aqui a altura é da cena, não do acaso.
    */
   yBase?: number
+  /**
+   * Travessia: o bicho passando no facho, DESENHADO — não em silhueta.
+   *
+   * É o contrário do vulto. O vulto é um relance preto; aqui a plateia tem que
+   * ver o CORPO: as guelras, o dorso, a pele pegando a lanterna do submarino.
+   * Por isso ele é pintado com a luz do perfil e com opacidade cheia, e por
+   * isso escapa da faixa de profundidade da espécie, como o vulto.
+   */
+  travessia?: boolean
 }
 type Particula = { x: number; y: number; v: number; raio: number; fase: number }
 type Biolum = { x: number; y: number; fase: number; periodo: number; raio: number }
@@ -260,20 +269,23 @@ export class MotorMundo {
    *
    * Assume a janela de câmera [0, 1] — a mesma do feed grande do olho.
    */
-  travessia(chave: string, segundos: number, escala = 1.5) {
+  travessia(chave: string, segundos: number, escala = 6) {
     const especie = especiePorChave(chave)
     if (!especie) return
-    // Medido na câmera grande, olhando o quadro: a 3 e a 2,2 o bicho passava
-    // das duas bordas ao mesmo tempo e virava uma mancha preta — a plateia não
-    // via um animal, via o vídeo falhando. A 1,5 ele cabe inteiro, com nadadeira
-    // e cauda dentro do quadro, que é o que faz o tamanho ser LIDO.
-    // As bordas são meia silhueta de folga de cada lado, pra entrar e sair inteiro.
-    const DE = -0.5
-    const ATE = 1.5
+    // ESCALA 6: o corpo é mais ALTO e mais COMPRIDO que o quadro. É o ponto da
+    // cena — o que atravessa a luz não é um tubarão inteirinho no meio da tela,
+    // é um flanco com guelras, e nunca se vê o bicho todo de uma vez. Caber no
+    // quadro seria dizer que ele cabe.
+    //
+    // Isto só é possível porque a travessia escapa do mundo cilíndrico (ver
+    // `semVolta` em desenharFauna): pela projeção normal, um corpo desse
+    // comprimento sumia de repente com a cauda ainda no meio do quadro.
+    const DE = -1.15
+    const ATE = 2.15
     this.travessiaViva = {
       x: DE,
-      // O facho está em 0,52 da altura. Um fio acima disso põe a linha do corpo
-      // na luz e deixa a cauda batendo no miolo do cone.
+      // O facho está em 0,52 da altura. A linha do corpo fica na luz e as
+      // guelras caem no miolo do cone, que é onde a lanterna é mais forte.
       y: 0.5,
       yBase: 0.5,
       vx: (ATE - DE) / segundos,
@@ -282,8 +294,8 @@ export class MotorMundo {
       distancia: 7,
       fase: Math.random() * Math.PI * 2,
       vida: 1,
-      vulto: true,
-      ritmo: 2.2,
+      travessia: true,
+      ritmo: 1.6,
     }
     this.fauna.push(this.travessiaViva)
   }
@@ -297,6 +309,26 @@ export class MotorMundo {
   }
 
   private travessiaViva: Fauna | null = null
+  /**
+   * Quanto a fauna COMUM aparece. Cai a quase nada durante a travessia.
+   *
+   * Sem isto, uma água-viva e um peixinho dividiam o quadro com o megalodonte
+   * — e, pior, eram desenhados mais opacos que ele, porque a fauna comum tem
+   * piso de opacidade e ele não. Um bicho enorme perde o tamanho na hora em que
+   * divide a luz com outra coisa. Aqui a água esvazia e sobra ele.
+   */
+  private atenuacaoFauna = 1
+  /** Canvas de apoio da travessia. Um só, redimensionado quando precisa. */
+  private telaFora: HTMLCanvasElement | null = null
+
+  private telaTravessia(L: number, A: number): CanvasRenderingContext2D | null {
+    this.telaFora ??= document.createElement('canvas')
+    if (this.telaFora.width !== L || this.telaFora.height !== A) {
+      this.telaFora.width = L
+      this.telaFora.height = A
+    }
+    return this.telaFora.getContext('2d')
+  }
 
   constructor() {
     this.semear()
@@ -446,6 +478,11 @@ export class MotorMundo {
   private atualizar(dt: number, agora: number) {
     this.t += dt
 
+    // Esvazia (e depois repovoa) a água em ~250 ms. Em rampa, e não em corte,
+    // pra os bichos não sumirem de um quadro pro outro na frente da plateia.
+    const alvoFauna = this.travessiaViva ? 0.1 : 1
+    this.atenuacaoFauna += (alvoFauna - this.atenuacaoFauna) * Math.min(1, dt * 4)
+
     // profundidade
     if (this.velocidadeDescida > 0) {
       const passo = this.velocidadeDescida * dt
@@ -550,9 +587,9 @@ export class MotorMundo {
       f.distancia += sorteio(-0.4, 0.4)
       f.distancia = Math.max(4, Math.min(60, f.distancia))
 
-      // O vulto é invocado pelo roteiro e não obedece à faixa: ele está ali
-      // porque a cena disse que está.
-      if (f.vulto) {
+      // O vulto e a travessia são invocados pelo roteiro e não obedecem à
+      // faixa: eles estão ali porque a cena disse que estão.
+      if (f.vulto || f.travessia) {
         if (f.x < -1.2 || f.x > LARGURA_MUNDO + 1.2) this.fauna.splice(i, 1)
         continue
       }
@@ -1073,11 +1110,22 @@ export class MotorMundo {
   ): Alvo | null {
     let alvo: Alvo | null = null
     let menorDesvio = Infinity
+    /** Projeção em linha reta, sem a volta do mundo cilíndrico. */
+    const semVolta = (x: number) => {
+      const frac = (x - camera.x0) / camera.abertura
+      return (camera.espelhado ? 1 - frac : frac) * L
+    }
     if (perfil.fauna < 0.05) return null
 
     for (const f of this.fauna) {
-      const sx = projetar(f.x)
-      if (!visivel(sx, 120)) continue
+      // A travessia não obedece ao mundo cilíndrico.
+      //
+      // A projeção normal dá a volta passando de 1,5 unidade da câmera, e isso
+      // limitava o TAMANHO do bicho: um corpo de 1,6 unidade sumia de repente
+      // com a cauda ainda no meio do quadro. Aqui ele atravessa numa reta, que
+      // é o que uma câmera fixa veria.
+      const sx = f.travessia ? semVolta(f.x) : projetar(f.x)
+      if (!visivel(sx, 220)) continue
       const sy = f.y * A
       const comp = f.escala * A * 0.42
       const alt = comp * f.especie.proporcao
@@ -1091,13 +1139,13 @@ export class MotorMundo {
       // quadro, que é o que acontece de verdade.
       const alpha = f.vulto
         ? 0.9 * f.vida
-        : Math.min(1, 0.45 + perfil.luz * 0.35 + perfil.farol * 0.35) * f.vida
+        : f.travessia
+          ? 0.7
+          : Math.min(1, 0.45 + perfil.luz * 0.35 + perfil.farol * 0.35) *
+            f.vida *
+            this.atenuacaoFauna
 
-      ctx.save()
-      ctx.translate(sx, sy)
-      ctx.scale(dir * (camera.espelhado ? -1 : 1), 1)
-      f.especie.desenhar({
-        ctx,
+      const pincel = {
         comp,
         alt,
         t: this.t * (f.ritmo ?? 1),
@@ -1106,10 +1154,40 @@ export class MotorMundo {
         // luz, não um bicho iluminado.
         luz: f.vulto ? 0 : perfil.luz,
         farol: f.vulto ? 0 : perfil.farol,
-        alpha,
-        silhueta: f.vulto,
-      })
-      ctx.restore()
+        silhueta: f.vulto === true,
+        // O bicho da travessia passa sem olhar pra câmera: o olho é a cena
+        // seguinte, e mostrá-lo aqui gastaria o plano antes da hora.
+        olhar: !f.travessia,
+      }
+
+      if (f.travessia) {
+        // A travessia é composta FORA e depois colada com a opacidade.
+        //
+        // O bicho é desenhado em partes — corpo, peitorais, dorsal, cauda — e
+        // com alpha direto no pincel cada parte fica translúcida em relação às
+        // outras: via-se a nadadeira ATRAVÉS do corpo e ele virava um modelo de
+        // vidro. Pintado opaco num canvas próprio e colado de uma vez, o corpo
+        // é sólido e só o conjunto é que é translúcido contra a água.
+        const fora = this.telaTravessia(L, A)
+        if (fora) {
+          fora.clearRect(0, 0, L, A)
+          fora.save()
+          fora.translate(sx, sy)
+          fora.scale(dir * (camera.espelhado ? -1 : 1), 1)
+          f.especie.desenhar({ ctx: fora, ...pincel, alpha: 1 })
+          fora.restore()
+          ctx.save()
+          ctx.globalAlpha = alpha
+          ctx.drawImage(fora.canvas, 0, 0)
+          ctx.restore()
+        }
+      } else {
+        ctx.save()
+        ctx.translate(sx, sy)
+        ctx.scale(dir * (camera.espelhado ? -1 : 1), 1)
+        f.especie.desenhar({ ctx, ...pincel, alpha })
+        ctx.restore()
+      }
 
       // O retículo segue o bicho MAIS PERTO DO CENTRO do quadro, não o
       // primeiro da lista: com três na água, "o primeiro" podia estar na borda

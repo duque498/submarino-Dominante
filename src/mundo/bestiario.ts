@@ -41,6 +41,15 @@ export type Pincel = {
    * gradiente ali deixaria o corte indeciso.
    */
   silhueta?: boolean
+  /**
+   * Desenhar o olho? Só a travessia do 3A diz que não.
+   *
+   * O olho do bestiário é um ponto estilizado, feito pra ser visto com 4 px.
+   * Na travessia o bicho passa com 760 px de corpo e ele vira uma bola de
+   * desenho animado — e, pior, aparece DOIS SEGUNDOS antes do plano em que o
+   * olho é a cena inteira. O bicho passa sem olhar; quem olha é a cena seguinte.
+   */
+  olhar?: boolean
 }
 
 export type Especie = {
@@ -132,7 +141,7 @@ function contraluz(p: Pincel, traçar: () => void) {
 function olho(p: Pincel, x: number, y: number, r: number) {
   const { ctx, alpha } = p
   // Na silhueta o olho seria um furo branco no meio do bicho.
-  if (p.silhueta) return
+  if (p.silhueta || p.olhar === false) return
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
   ctx.fillStyle = `rgba(3, 9, 13, ${alpha})`

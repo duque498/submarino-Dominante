@@ -252,20 +252,44 @@ A cena tem **três tempos**, todos automáticos, ~8,3 s no total:
    entra um quadro só, do tamanho da área central — o maior que cabe sem passar
    por cima do log. Estática leve por cima e o farol oscilando: a água já está
    virando.
-2. **A travessia** (3 s). A silhueta articulada cruza o facho de ponta a ponta,
-   escura, com a cauda batendo. É aqui que a plateia **mede** o bicho; o olho
+2. **A travessia** (3 s). O corpo atravessa o facho — e ele é **maior que o
+   quadro**, nos dois eixos. Nunca se vê o bicho inteiro de uma vez: entra o
+   focinho com a fileira de dentes, passa o flanco com as cinco fendas
+   branquiais, sai a cauda. É aqui que a plateia **mede** o bicho; o olho
    sozinho não daria o tamanho.
 3. **O escuro** (0,8 s). Nada. É o silêncio que faz a aparição valer — sem ele
    o olho seria a continuação da travessia em vez de uma coisa nova.
 
 Só então **o olho**, do jeito que sempre foi.
 
-> O tamanho da travessia é medido, não chutado: a `escala` 3 e a 2,2 passavam
-> das duas bordas ao mesmo tempo e viravam uma mancha preta — a plateia não via
-> um animal, via o vídeo falhando. A 1,5 a tinta mede 183×94 px num quadro de
-> 480×304 e o bicho cabe inteiro, nadadeira e cauda dentro. O canvas da câmera
-> grande é **480×304** e não 16:9 porque o `object-fit: cover` cortava 13% em
-> cima e embaixo, exatamente onde estão a dorsal e a cauda.
+Quatro decisões fazem a travessia funcionar, e as quatro vieram de olhar o
+quadro:
+
+- **Ele é DESENHADO, não silhueta** (`Fauna.travessia`). O vulto do `contato` é
+  um relance preto; aqui a plateia tem que ver o corpo. É pintado com a `luz` e
+  o `farol` do perfil — a 900 m o facho está em 0,78, então é a lanterna do
+  submarino que o ilumina, que é a única luz que existe lá embaixo.
+- **Composto fora e colado com a opacidade.** O bicho é desenhado em partes, e
+  com alpha direto no pincel cada parte ficava translúcida em relação às
+  outras: via-se a peitoral ATRAVÉS do corpo e ele virava um modelo de vidro.
+  Pintado opaco num canvas próprio e colado de uma vez, o corpo é sólido.
+- **A fauna comum some** enquanto ele passa (rampa de ~250 ms até 10%). Ela era
+  desenhada mais opaca que ele — a fauna tem piso de opacidade e ele não — e um
+  bicho enorme perde o tamanho no instante em que divide a luz com uma
+  água-viva.
+- **Ele escapa do mundo cilíndrico.** A projeção normal dá a volta passando de
+  1,5 unidade da câmera, e isso limitava o tamanho: um corpo de 1,6 unidade
+  sumia de repente com a cauda ainda no meio do quadro. A travessia projeta em
+  linha reta (`semVolta`), que é o que uma câmera fixa veria.
+
+E ele passa **sem olhar** (`Pincel.olhar: false`). O olho do bestiário é um
+ponto estilizado feito pra ser visto com 4 px; com 760 px de corpo ele vira uma
+bola de desenho animado — e apareceria dois segundos antes do plano em que o
+olho é a cena inteira.
+
+> O canvas da câmera grande é **480×304** e não 16:9 porque o `object-fit:
+> cover` cortava 13% em cima e embaixo, exatamente onde estão a dorsal e a
+> cauda. Medido: 60 fps durante a travessia, igual à linha de base.
 
 Mostrar o bicho inteiro resolveria o mistério; mostrar **só o olho** deixa o
 tamanho por conta de quem está assistindo. O desenho é procedural e não imagem,
@@ -304,9 +328,18 @@ tem a sua fratura, sempre a mesma (gerador com semente fixa).
 ### A trilha
 
 Uma camada de música à parte no `AudioEngine`, só pro combate do 3A: entra com
-fade de 1,5 s na primeira rodada, **recua 9 dB enquanto a IA fala** (mesma
-regra do ambiente) e **corta seco** no fake-out — fade é despedida, e ali o que
-se quer é o silêncio chegando de repente.
+fade de 1,5 s na primeira investida, **recua 6 dB enquanto a IA fala** e
+**corta seco** no fake-out — fade é despedida, e ali o que se quer é o silêncio
+chegando de repente.
+
+> Os 6 dB eram 9, e o volume de repouso era 0,42. Medindo o combate novo —
+> amostra do volume a cada 200 ms, 51 s corridos — a trilha ficava no cheio
+> **9% do tempo** e abafada 70%: a IA agora fala em toda aparição, acerto,
+> perda e retorno, e um ducking calibrado pra três perguntas espaçadas deixava
+> a música inaudível numa cena que é quase toda fala. Num alto-falante de
+> escola, com o ventilador do projetor junto, 0,15 é silêncio. A 0,62 de
+> repouso e −6 dB de recuo, o piso passou de 0,09 pra 0,25 — mais alto do que o
+> volume CHEIO chegava a ser antes.
 
 O arquivo fica em `public/audio/sfx/Theme battle.mp3` e **não é embutido no
 `audios.js`**: são alguns MB que em base64 crescem mais um terço, dentro de um
@@ -453,17 +486,24 @@ desenhando da esquerda pra direita em 600 ms (como plotter) e os dados entrando
 linha a linha, no ritmo da fala. Depois de fechar o traço, a silhueta **continua
 nadando**, com a mesma batida da câmera.
 
-**A foto é ESTÁTICA, sempre.** Só um fade de 400 ms e uma scanline fixa por
-cima — nenhum transform, nenhum ruído, nenhum glitch. Uma reconstrução
-científica que treme lê como render de videogame e o painel inteiro perde a
-autoridade que os dados dele têm. A fonte do tremor era a animação genérica de
-abertura de painel (`transform` + `clip-path`): transform no pai deforma tudo
-que está dentro, inclusive a imagem. No dossiê ela vira só opacidade.
+**Com foto, o painel não anima nada.** A foto é estática: só um fade de 400 ms
+e uma scanline fixa por cima — nenhum transform, nenhum ruído, nenhum glitch.
+Uma reconstrução científica que treme lê como render de videogame e o painel
+inteiro perde a autoridade que os dados dele têm. A fonte do tremor era a
+animação genérica de abertura de painel (`transform` + `clip-path`): transform
+no pai deforma tudo que está dentro, inclusive a imagem. No dossiê ela vira só
+opacidade.
 
-> A única coisa que se move no painel é a silhueta articulada de baixo, no
-> canvas dela. A caixa dessa faixa era medida por `height: 100%` numa cadeia que
-> não resolvia — a grade media 308 px dentro de um corpo de 274 e a silhueta era
-> cortada no meio. Agora o corpo é flex e a grade estica contra a caixa real.
+**A silhueta desenhada é a reserva pra quando NÃO há foto.** Com foto ela sai:
+duas versões do mesmo bicho lado a lado disputavam o olho, e a que vale é a
+foto. Aí o painel vira duas colunas — a imagem ocupando a esquerda inteira, de
+cima a baixo, os dados na direita — e o crédito atravessa a última linha.
+
+> A imagem é um recorte em pé com fundo transparente, então o `object-fit` é
+> `contain`: cortar um recorte come o focinho ou a mandíbula. E o filtro do
+> painel perdeu o `hue-rotate(155deg)` — ele existia pra puxar uma foto em cores
+> naturais pro ciano do HUD, e uma foto que já chega azul-esverdeada ia parar no
+> magenta.
 
 Quando existe uma imagem de reconstrução em `src/formas/dossie/<chave>.jpg`,
 ela entra acima da silhueta com o rótulo `RECONSTRUÇÃO DOS SENSORES`, e o

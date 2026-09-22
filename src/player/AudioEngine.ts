@@ -74,10 +74,25 @@ const CAMINHOS_SFX: Record<Sfx, string> = {
  */
 const CAMINHO_TRILHA = './audio/sfx/Theme battle.mp3'
 
-/** Volume de repouso da trilha. Ela é fundo, não é a cena. */
-const TRILHA_VOLUME = 0.42
-/** Ducking: -9 dB enquanto a IA fala. 10^(-9/20) = 0,355. */
-const TRILHA_DUCK = 0.355
+/**
+ * Volume de repouso da trilha.
+ *
+ * Subiu de 0,42 pra 0,62 depois de MEDIR o combate novo: amostrando o volume a
+ * cada 200 ms por 51 s, a trilha ficava no cheio só 9% do tempo e abafada 70%.
+ * A IA agora fala em toda aparição, acerto, perda e retorno — ducking que fazia
+ * sentido com três perguntas espaçadas deixa a música inaudível numa cena que é
+ * quase toda fala. Num alto-falante de escola, com o ventilador do projetor
+ * junto, 0,15 é silêncio.
+ */
+const TRILHA_VOLUME = 0.62
+/**
+ * Ducking enquanto a IA fala: -6 dB (10^(-6/20) = 0,5), não mais -9.
+ *
+ * Abaixo disso a trilha sumia embaixo da voz; acima, competia com ela. A -6 dB
+ * a música continua presente sob a fala — 0,31 contra os 0,15 de antes, que é
+ * mais alto do que o volume CHEIO chegava a ser no combate antigo.
+ */
+const TRILHA_DUCK = 0.5
 /** Fade de entrada e de saída. */
 const MS_FADE_TRILHA = 1500
 
