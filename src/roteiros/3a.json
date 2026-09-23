@@ -223,6 +223,10 @@
         "linhas": [
           {
             "texto": "Visor externo destruído. Câmeras: offline.",
+            "prosodia": {
+              "rate": "+4%",
+              "dinamica": "preservada"
+            },
             "acoes": [
               {
                 "tipo": "trilha",
@@ -233,6 +237,10 @@
           },
           {
             "texto": "Compilando últimas leituras dos sensores.",
+            "prosodia": {
+              "rate": "+2%",
+              "dinamica": "preservada"
+            },
             "acoes": [
               {
                 "tipo": "orbe",
@@ -247,11 +255,19 @@
               }
             ]
           },
-          "Porte estimado: dezoito metros.",
+          {
+            "texto": "Porte estimado: dezoito metros.",
+            "prosodia": {
+              "rate": "-5%",
+              "dinamica": "preservada"
+            }
+          },
           {
             "texto": "...Dezoito metros?",
             "prosodia": {
-              "rate": "-15%"
+              "rate": "-15%",
+              "pitch": "+6Hz",
+              "dinamica": "preservada"
             },
             "enfase": {
               "escala": 1.2
@@ -272,6 +288,10 @@
           },
           {
             "texto": "Isso é um erro. Nenhum animal vivo tem esse tamanho. Recalibrando sensores.",
+            "prosodia": {
+              "rate": "+6%",
+              "dinamica": "preservada"
+            },
             "acoes": [
               {
                 "tipo": "log",
@@ -284,11 +304,17 @@
           {
             "texto": "Recalibrado. Nova leitura: dezoito metros.",
             "prosodia": {
-              "rate": "-10%"
+              "rate": "-10%",
+              "dinamica": "preservada"
             }
           },
           {
             "texto": "Não é erro.",
+            "prosodia": {
+              "rate": "-12%",
+              "pitch": "-2Hz",
+              "dinamica": "preservada"
+            },
             "acoes": [
               {
                 "tipo": "orbe",
@@ -298,6 +324,10 @@
           },
           {
             "texto": "Cruzando padrão morfológico com o banco de dados completo... incluindo registros fósseis.",
+            "prosodia": {
+              "rate": "+3%",
+              "dinamica": "preservada"
+            },
             "acoes": [
               {
                 "tipo": "painel",
@@ -308,11 +338,19 @@
               }
             ]
           },
-          "Correspondência encontrada. Otodus...",
+          {
+            "texto": "Correspondência encontrada. Otodus...",
+            "prosodia": {
+              "rate": "-3%",
+              "dinamica": "preservada"
+            }
+          },
           {
             "texto": "Espera.",
             "prosodia": {
-              "rate": "-20%"
+              "rate": "-20%",
+              "pitch": "-2Hz",
+              "dinamica": "preservada"
             },
             "pausaDepois": 1200,
             "acoes": [
@@ -329,13 +367,14 @@
             "texto": "Otodus megalodon.",
             "prosodia": {
               "rate": "-20%",
-              "pitch": "-4Hz"
+              "pitch": "-4Hz",
+              "dinamica": "preservada"
             },
             "enfase": {
               "escala": 1.4,
-              "glitch": false,
-              "segurarMs": 2000
+              "glitch": false
             },
+            "pausaDepois": 1400,
             "acoes": [
               {
                 "tipo": "painel",
@@ -351,19 +390,34 @@
               }
             ]
           },
-          "Isso é impossível. Essa espécie está extinta há três milhões e seiscentos mil anos.",
+          {
+            "texto": "Isso é impossível. Essa espécie está extinta há três milhões e seiscentos mil anos.",
+            "prosodia": {
+              "rate": "+5%",
+              "dinamica": "preservada"
+            }
+          },
           {
             "texto": "Eu... revisei a assinatura acústica três vezes. Não há dúvida.",
             "prosodia": {
               "rate": "-20%",
-              "pitch": "-3Hz"
+              "pitch": "-3Hz",
+              "dinamica": "preservada"
             }
           },
-          "Há um megalodonte a menos de trezentos metros deste submarino.",
+          {
+            "texto": "Há um megalodonte a menos de trezentos metros deste submarino.",
+            "prosodia": {
+              "rate": "-8%",
+              "pitch": "-2Hz",
+              "dinamica": "preservada"
+            }
+          },
           {
             "texto": "E ele nos viu.",
             "prosodia": {
-              "rate": "-25%"
+              "rate": "-25%",
+              "dinamica": "preservada"
             },
             "pausaDepois": 1500,
             "acoes": [
@@ -391,7 +445,9 @@
           {
             "texto": "Tripulação... preciso de vocês.",
             "prosodia": {
-              "rate": "-10%"
+              "rate": "-10%",
+              "pitch": "+2Hz",
+              "dinamica": "preservada"
             }
           }
         ]

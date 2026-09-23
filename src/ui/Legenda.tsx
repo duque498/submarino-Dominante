@@ -61,24 +61,6 @@ export function Legenda({
     () => planejar(linhas, duracaoTotalMs, tempos),
     [linhas, duracaoTotalMs, tempos],
   )
-  /**
-   * Quanto a entrada de cada linha atrasa por causa do `segurarMs` da
-   * anterior.
-   *
-   * Limitado ao SILÊNCIO que existe entre uma fala e a seguinte: segurar além
-   * disso poria a legenda de uma linha por cima do áudio da outra, e uma
-   * legenda que mente sobre o que está sendo dito é pior que uma legenda que
-   * passa rápido.
-   */
-  const atrasos = useMemo(() => {
-    return plano.map((_, i) => {
-      if (i === 0) return 0
-      const pedido = enfases?.[i - 1]?.segurarMs ?? 0
-      if (pedido <= 0) return 0
-      return Math.min(pedido, Math.max(0, plano[i].inicio - plano[i - 1].fimFala))
-    })
-  }, [plano, enfases])
-
   const refCaixa = useRef<HTMLDivElement>(null)
   const refContador = useRef<HTMLSpanElement>(null)
   const refFalando = useRef(falando)
@@ -179,7 +161,7 @@ export function Legenda({
         alvo = Math.max(0, Math.min(guiada, plano.length - 1))
       } else {
         for (let i = 0; i < plano.length; i++) {
-          if (plano[i].inicio + atrasos[i] <= decorrido) alvo = i
+          if (plano[i].inicio <= decorrido) alvo = i
         }
       }
       if (alvo !== linhaAtual) {
@@ -235,7 +217,7 @@ export function Legenda({
     }
     // `cena` entra nas dependências pra o glitch de entrada rodar de novo a
     // cada cena, mesmo que o plano por acaso seja igual.
-  }, [plano, atrasos, ativa, cena])
+  }, [plano, ativa, cena])
 
   // O <div class="legenda"> é território do efeito abaixo, que monta e remove
   // as linhas na mão. Ele NÃO pode ter filho vindo do React: os dois brigariam

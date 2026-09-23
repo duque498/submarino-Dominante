@@ -119,6 +119,12 @@ export type RastroContato = {
   pontos: Array<{ x: number; y: number; em: number }>
   /** Direção do movimento, em radianos. Suavizada. */
   direcao: number
+  /** Giro em curso (o pulso empurrou): de onde, pra onde, até quando. */
+  giroDe: number
+  giroPara: number
+  giroAte: number
+  /** Quanto o corpo está afinado no meio do giro. 1 = inteiro. */
+  afinamento: number
   ultimoX: number
   ultimoY: number
   ultimoAgora: number
@@ -127,16 +133,53 @@ export type RastroContato = {
 }
 
 export function criarRastro(): RastroContato {
-  return { pontos: [], direcao: 0, ultimoX: NaN, ultimoY: NaN, ultimoAgora: 0, coesao: 1 }
+  return {
+    pontos: [],
+    direcao: 0,
+    giroDe: 0,
+    giroPara: 0,
+    giroAte: 0,
+    afinamento: 1,
+    ultimoX: NaN,
+    ultimoY: NaN,
+    ultimoAgora: 0,
+    coesao: 1,
+  }
+}
+
+/** Diferença entre dois ângulos pelo caminho curto. */
+function curto(delta: number): number {
+  return ((delta + Math.PI * 3) % (Math.PI * 2)) - Math.PI
 }
 
 /** Quantas posições passadas ficam acesas. */
 const RASTRO_MAX = 16
 /** Espaçamento entre marcas do rastro, em ms. */
 const RASTRO_MS = 110
-/** Fração do diâmetro que a silhueta ocupa: no alcance máximo e junto do centro. */
-const ICONE_LONGE = 0.09
-const ICONE_PERTO = 0.16
+/**
+ * Fração do diâmetro que a silhueta ocupa: no alcance máximo e junto do centro.
+ *
+ * Dobrou em relação à primeira versão (9% e 16%). A 9% de um mostrador de
+ * 440 px o bicho tinha 33 px de comprimento e 16 de altura: a cauda batia, mas
+ * não dava pra ver de onde a plateia está.
+ */
+const ICONE_LONGE = 0.18
+const ICONE_PERTO = 0.32
+
+/**
+ * Como o megalodonte do sonar nada, por cima do que o bestiário diz.
+ *
+ * `cabeca: 0.6` é o pedido literal: a onda só existe nos últimos 40% do
+ * comprimento. `onda: 0.25` põe a ponta da cauda a 25% da altura da silhueta —
+ * que é o tanto que se lê a quinze metros. `rolagem: 0` porque cabeça e tronco
+ * têm que ficar PARADOS: com a inclinação do corpo inteiro o bicho balançava e
+ * a cauda sumia no meio do balanço.
+ */
+const NADO_NO_SONAR = { cabeca: 0.6, onda: 0.25, voltas: 0.6, rolagem: 0 }
+/** Batida da cauda em repouso, em Hz. Sobe com a proximidade. */
+const BATIDA_BASE = 1.2
+/** Duração do giro quando o pulso o empurra. */
+const MS_GIRO = 200
 
 /**
  * Canvas de tingimento, reaproveitado entre quadros.
@@ -166,6 +209,7 @@ function silhuetaTingida(
   t: number,
   fase: number,
   cor: string,
+  batida: number,
 ): HTMLCanvasElement | null {
   const lado = Math.max(8, Math.ceil(largura * 1.5) * SUPER)
   if (!tinta) tinta = document.createElement('canvas')
@@ -176,10 +220,7 @@ function silhuetaTingida(
   const ctx = tinta.getContext('2d')
   if (!ctx) return null
   ctx.clearRect(0, 0, lado, lado)
-  const base = comportamentoDe(especie)
-  // Batida mais lenta e onda menor que na câmera: de longe, no mostrador, o
-  // que se lê é um corpo grande se movendo, não um peixe agitado.
-  const comp = { ...base, onda: base.onda * 0.75, batida: Math.min(base.batida, 0.3) }
+  const comp = { ...comportamentoDe(especie), ...NADO_NO_SONAR, batida }
   desenharSprite(ctx, img, comp, {
     x: lado / 2,
     y: lado / 2,
@@ -226,11 +267,41 @@ export function desenharSonar(
   const fonte = (f: number) => `${Math.max(8, lado * f)}px ui-monospace, monospace`
   const paraRaio = (metros: number) => (Math.min(metros, estado.alcance) / estado.alcance) * raio
 
-  // --- 1) cunhas dos setores -----------------------------------------------
   const setores = estado.setores.length
   const abertura = setores > 0 ? (Math.PI * 2) / setores : 0
   const inicioDe = (i: number) => TOPO - abertura / 2 + i * abertura
 
+  // --- 0) geometria do contato, antes de tudo ------------------------------
+  //
+  // Calculada aqui e não na seção 8 porque os rótulos dos anéis precisam saber
+  // se o bicho vai passar por cima deles: com a silhueta no tamanho novo, um
+  // "600" âmbar no meio do corpo dele é a única coisa que a plateia lê.
+  const alvo = estado.contato
+  // Trajetória RETA: o rumo é o do setor e não muda durante a investida. O
+  // desvio saiu de ÂNGULO dentro da cunha (onde 1 unidade varria 36°, e o
+  // contato lia como pêndulo) e virou deslocamento PERPENDICULAR à direção do
+  // movimento, em fração do raio. Deriva de nado, não manobra.
+  const ang = alvo
+    ? alvo.setor >= 0 && setores > 0
+      ? inicioDe(alvo.setor) + abertura / 2
+      : TOPO
+    : 0
+  const r = alvo ? paraRaio(alvo.distancia) : 0
+  const bx = alvo ? c + Math.cos(ang) * r + Math.cos(ang + Math.PI / 2) * alvo.desvio * raio : 0
+  const by = alvo ? c + Math.sin(ang) * r + Math.sin(ang + Math.PI / 2) * alvo.desvio * raio : 0
+  const proximidade = alvo ? 1 - Math.min(1, r / raio) : 0
+  const tamanho = raio * 2 * (ICONE_LONGE + (ICONE_PERTO - ICONE_LONGE) * proximidade)
+  /** Quanto um ponto da tela está coberto pela silhueta. 0 = livre, 1 = em cima. */
+  const cobertoPor = (x: number, y: number): number => {
+    if (!alvo || !alvo.especie || !temSprite(alvo.especie)) return 0
+    const dx = (x - bx) / (tamanho * 0.55)
+    const dy = (y - by) / (tamanho * 0.3)
+    const d = Math.sqrt(dx * dx + dy * dy)
+    return Math.max(0, Math.min(1, 1.35 - d))
+  }
+
+
+  // --- 1) cunhas dos setores -----------------------------------------------
   if (setores > 0) {
     for (let i = 0; i < setores; i++) {
       const aceso = estado.setorAceso === i
@@ -271,9 +342,13 @@ export function desenharSonar(
     // Por DENTRO do anel: centrado nele, o rótulo do último anel encostava no
     // `180°` do azimute, que vem logo fora da borda.
     const base = c + r - lado * 0.014
-    ctx.fillStyle = 'rgba(4, 16, 20, 0.82)'
+    // Onde a silhueta passa, o rótulo RECUA em vez de brigar. O contato é a
+    // informação da cena; a régua de distância é referência, e referência
+    // cede.
+    const recuo = 1 - cobertoPor(c, base) * 0.88
+    ctx.fillStyle = `rgba(4, 16, 20, ${0.82 * recuo})`
     ctx.fillRect(c - larg / 2, base - lado * 0.018, larg, lado * 0.024)
-    ctx.fillStyle = `rgba(${CIANO}, 0.55)`
+    ctx.fillStyle = `rgba(${CIANO}, ${0.55 * recuo})`
     ctx.fillText(texto, c, base)
   }
 
@@ -384,15 +459,7 @@ export function desenharSonar(
   }
 
   // --- 8) o contato ---------------------------------------------------------
-  const alvo = estado.contato
   if (alvo) {
-    const meio =
-      alvo.setor >= 0 && setores > 0 ? inicioDe(alvo.setor) + abertura / 2 : TOPO
-    // O desvio move o blip DENTRO da cunha: é o zigue-zague da aproximação.
-    const ang = meio + alvo.desvio * abertura * 0.3
-    const r = paraRaio(alvo.distancia)
-    const bx = c + Math.cos(ang) * r
-    const by = c + Math.sin(ang) * r
     const pulsa = (Math.sin(agora / 170) + 1) / 2
     const perdido = alvo.estado === 'perdido'
     // Perdido pisca em blocos: é sinal intermitente, não fade.
@@ -407,30 +474,35 @@ export function desenharSonar(
       const dt = rastro.ultimoAgora ? Math.min(0.1, (agora - rastro.ultimoAgora) / 1000) : 0
       rastro.ultimoAgora = agora
 
-      // Direção do MOVIMENTO, não do setor: enquanto ele avança a cabeça
-      // aponta pro centro; quando o pulso o empurra pra fora ele vira, e a
-      // virada é a informação — é como a plateia vê que o tiro acertou.
-      // A referência é a posição de ~1,7 s atrás, não a do quadro anterior: o
-      // desvio lateral é um seno de período curto, e quadro a quadro ele
-      // domina a direção — o bicho ficava de lado enquanto avançava. Na janela
-      // longa o zigue-zague se cancela e sobra o movimento LÍQUIDO, que é o
-      // que a plateia precisa ler.
-      const antigo = rastro.pontos[0]
-      if (antigo) {
-        const dx = bx - antigo.x
-        const dy = by - antigo.y
-        if (dx * dx + dy * dy > 1) {
-          const alvoDir = Math.atan2(dy, dx)
-          // Diferença pelo caminho curto, senão ele dá a volta inteira ao
-          // cruzar +-pi.
-          let delta = ((alvoDir - rastro.direcao + Math.PI * 3) % (Math.PI * 2)) - Math.PI
+      // A direção é EXATA, não derivada do rastro: a trajetória agora é reta
+      // e radial, então enquanto ele avança a cabeça aponta pro casco e,
+      // empurrado, ela aponta pra fora. Antes eu tirava a direção do
+      // deslocamento das últimas 1,7 s — com a pendulação isso era a única
+      // saída, e com a reta é só ruído numérico.
+      const rumo = perdido ? ang : ang + Math.PI
+
+      if (!Number.isFinite(rastro.ultimoX)) {
+        rastro.direcao = rumo
+        rastro.afinamento = 1
+      } else if (rastro.giroAte > agora) {
+        // Giro em curso: o corpo AFINA até virar um risco e volta a engrossar
+        // do outro lado. Girar 180° em rotação contínua leria como pirueta;
+        // afinando, lê como o bicho passando de perfil.
+        const f = 1 - (rastro.giroAte - agora) / MS_GIRO
+        rastro.direcao = f < 0.5 ? rastro.giroDe : rastro.giroPara
+        rastro.afinamento = Math.max(0.12, Math.abs(Math.cos(f * Math.PI)))
+      } else {
+        rastro.afinamento = 1
+        const delta = curto(rumo - rastro.direcao)
+        if (Math.abs(delta) > 2) {
+          rastro.giroDe = rastro.direcao
+          rastro.giroPara = rumo
+          rastro.giroAte = agora + MS_GIRO
+        } else {
           rastro.direcao += delta * Math.min(1, dt * 6)
         }
-      } else if (!Number.isFinite(rastro.ultimoX)) {
-        // Primeiro quadro: ainda não há de onde tirar direção. Aponta pro
-        // centro, que é pra onde ele vem.
-        rastro.direcao = ang + Math.PI
       }
+
       rastro.ultimoX = bx
       rastro.ultimoY = by
 
@@ -445,7 +517,8 @@ export function desenharSonar(
       rastro.coesao += (destino - rastro.coesao) * Math.min(1, dt * 2.6)
     }
 
-    const direcao = rastro?.direcao ?? ang + Math.PI
+    const direcao = rastro?.direcao ?? (perdido ? ang : ang + Math.PI)
+    const afinamento = rastro?.afinamento ?? 1
     const coesao = rastro ? rastro.coesao : perdido ? 0 : 1
 
     // --- 8b) rastro: pontos apagando, nunca linha --------------------------
@@ -465,8 +538,6 @@ export function desenharSonar(
     }
 
     // --- 8c) halo pulsante --------------------------------------------------
-    const proximidade = 1 - Math.min(1, r / raio)
-    const tamanho = raio * 2 * (ICONE_LONGE + (ICONE_PERTO - ICONE_LONGE) * proximidade)
     const haloBase = comSilhueta ? tamanho * 0.42 : lado * 0.026
     ctx.beginPath()
     ctx.arc(bx, by, haloBase + pulsa * lado * 0.018, 0, Math.PI * 2)
@@ -489,8 +560,14 @@ export function desenharSonar(
       // Espelhar em y no referencial JÁ girado devolve o dorso pra cima sem
       // mexer no sentido da cabeça.
       if (Math.cos(direcao) < 0) ctx.scale(1, -1)
+      // Afinamento do giro: encurta o EIXO DO CORPO. Um bicho que vira passa
+      // de perfil, e de perfil ele é um risco.
+      if (afinamento < 1) ctx.scale(afinamento, 1)
 
-      // A silhueta inteira, batendo devagar.
+      // A cauda bate mais rápido quanto mais perto do casco ele está: a
+      // frequência é a leitura de esforço, e esforço perto do casco é o que a
+      // cena precisa que a plateia sinta.
+      const batida = BATIDA_BASE * (1 + proximidade * 0.5)
       const pintado = silhuetaTingida(
         img,
         alvo.especie as string,
@@ -498,6 +575,7 @@ export function desenharSonar(
         agora / 1000,
         0,
         cor,
+        batida,
       )
       if (pintado) {
         const w = pintado.width / SUPER
@@ -583,11 +661,20 @@ export function desenharSonar(
     // Acima do blip quando ele está na metade de baixo, abaixo quando na de
     // cima: sempre pro lado de fora, nunca por cima da rota dele.
     const paraCima = by > c
-    const ex = deLado
-      ? paraEsquerda
-        ? bx - larg - afasta
-        : bx + afasta
-      : Math.max(folga, Math.min(lado - larg - folga, bx - larg / 2))
+    // Sempre dentro do mostrador. Com a silhueta no tamanho novo o
+    // afastamento ficou grande, e perto do centro a tarja saía pela borda
+    // esquerda — a etiqueta é o dado, e dado cortado não é dado.
+    const ex = Math.max(
+      folga,
+      Math.min(
+        lado - larg - folga,
+        deLado
+          ? paraEsquerda
+            ? bx - larg - afasta
+            : bx + afasta
+          : bx - larg / 2,
+      ),
+    )
     const ey = deLado
       ? by - alt / 2
       : paraCima

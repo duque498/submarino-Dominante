@@ -227,16 +227,47 @@ function layoutDaCena(cena: Cena): Layout {
  * mentia, e quem pagava era a plateia, que tinha 30% menos tempo do que a
  * professora escreveu.
  *
- * Integrando o percurso com v(d) = base · (1,8 − 0,8·d/alcance):
+ * O perfil de velocidade e em DEGRAUS: constante dentro de cada terco do
+ * trajeto e 15% mais rapida a cada terco. Integrando,
  *
- *     T = (alcance / (0,8 · base)) · ln( 1,8 / (1,8 − 0,8·D/alcance) )
+ *     T = (D/3) * (1/v + 1/(1,15 v) + 1/(1,3225 v)) = (D/v) * 0,8752363
  *
- * e isolando a base pra T = tempo. A aceleração dos erros continua entrando
- * por cima: errar o setor ENCURTA o tempo, que é a penalidade.
+ * entao a base que faz a investida durar exatamente `tempo` e
+ *
+ *     v = 0,8752363 * D / T
+ *
+ * A aceleracao dos erros continua entrando por cima: errar o setor ENCURTA o
+ * tempo, que e a penalidade.
  */
-function velocidadeBase(distancia: number, tempo: number, alcance: number): number {
-  const fim = 1.8 - (0.8 * Math.min(distancia, alcance)) / alcance
-  return (alcance / (0.8 * tempo)) * Math.log(1.8 / fim)
+
+/**
+ * Amplitude da deriva lateral do contato, em fracao do RAIO do mostrador.
+ *
+ * 3%: some na leitura de trajetoria e aparece na de vida. Acima disso o
+ * contato volta a parecer que esta manobrando em vez de vindo.
+ */
+export const DERIVA_CONTATO = 0.03
+
+/** Quanto dura o empurrao do pulso, da posicao dele ate fora do mostrador. */
+const MS_EMPURRAO = 650
+
+/** Quanto a velocidade sobe a cada terco do trajeto. */
+export const DEGRAU_VELOCIDADE = 1.15
+/**
+ * Integral do perfil em degraus, em unidades de D/v. Deriva de
+ * (1 + 1/1,15 + 1/1,15^2) / 3 — e o que converte tempo de rodada em
+ * velocidade base.
+ */
+const FATOR_PERFIL = (1 + 1 / DEGRAU_VELOCIDADE + 1 / DEGRAU_VELOCIDADE ** 2) / 3
+
+function velocidadeBase(distancia: number, tempo: number, _alcance: number): number {
+  return (FATOR_PERFIL * Math.max(1, distancia)) / Math.max(0.1, tempo)
+}
+
+/** Multiplicador do degrau em que o bicho esta, dado quanto do trajeto ja andou. */
+export function degrauDoTrajeto(percorrido: number): number {
+  const terco = Math.min(2, Math.max(0, Math.floor(percorrido * 3)))
+  return DEGRAU_VELOCIDADE ** terco
 }
 
 /**
@@ -1139,8 +1170,11 @@ export function Player({ roteiro, engine }: Props) {
     const contatoDe = () => Math.max(0, 1 - acertos / total)
 
     const sim = refSimCombate.current
+    /** De onde a investida corrente saiu. O trajeto e medido a partir dai. */
+    let nasceuEm = 0
     const zerarSim = (distancia: number, tempo: number) => {
       sim.distancia = distancia
+      nasceuEm = distancia
       refBaseVel.current = velocidadeBase(distancia, tempo, alcance())
       sim.velocidade = refBaseVel.current
       sim.desvio = 0
@@ -1195,13 +1229,19 @@ export function Player({ roteiro, engine }: Props) {
       if (cancelado) return
       trocarFase('perdido', { acertos, contato: contatoDe(), revelado: acertos })
       engine.tocarSfx('whoosh', 0.85, panDoSetor(setor))
-      // Empurrado pra fora, rápido, enquanto o blip pisca "SINAL PERDIDO".
+      // Empurrado pra fora em LINHA RETA, pelo mesmo rumo por onde veio, e
+      // passando da borda: ele não para no anel externo, ele sai do
+      // mostrador. Enquanto isso a silhueta se desfaz em pontos (ver
+      // `coesao`, em sonar.ts) — juntos, os dois são o "some".
+      //
+      // 650 ms e quase linear: o empurrão é o pulso acertando, e pulso que
+      // acerta não tem aceleração suave.
       const saida = performance.now()
       const de = sim.distancia
       const empurrar = () => {
         if (cancelado) return
-        const f = Math.min(1, (performance.now() - saida) / 900)
-        sim.distancia = de + (alcance() - de) * f * f
+        const f = Math.min(1, (performance.now() - saida) / MS_EMPURRAO)
+        sim.distancia = de + (alcance() * 1.2 - de) * (0.35 * f + 0.65 * f * f)
         if (f < 1) quadro = requestAnimationFrame(empurrar)
       }
       quadro = requestAnimationFrame(empurrar)
@@ -1328,15 +1368,21 @@ export function Player({ roteiro, engine }: Props) {
 
       if (refFaseCombate.current !== 'investida') return
 
-      // Velocidade: cresce perto do centro. Um bicho que chega no mesmo ritmo
-      // em que saiu não dá aflição nenhuma.
+      // Trajeto RETO, em degraus. O bicho nasce num ponto e vem em linha
+      // reta até o casco; a velocidade é constante dentro de cada terço e
+      // sobe 15% no terço seguinte. Antes ela crescia continuamente com a
+      // proximidade e o desvio era uma soma de senoides de amplitude 1 — o
+      // contato varria 72° da cunha e lia como PÊNDULO, não como bicho vindo.
+      const percorrido = nasceuEm > 0 ? 1 - sim.distancia / nasceuEm : 1
       const perto = 1 - Math.min(1, sim.distancia / alcance())
-      const v = refBaseVel.current * aceleracao * (1 + perto * 0.8)
+      const v = refBaseVel.current * aceleracao * degrauDoTrajeto(percorrido)
       sim.distancia = Math.max(0, sim.distancia - v * dt)
       sim.velocidade = v
-      // Zigue-zague: ele manobra. Duas senoides pra não virar pêndulo.
-      sim.desvio =
-        Math.sin(agora / 900) * 0.6 + Math.sin(agora / 430 + 1.3) * 0.4
+      // Deriva de nado: UM seno pequeno, perpendicular à direção do movimento
+      // (ver sonar.ts), período de 2 s. É o bastante pra ele não parecer um
+      // ponto deslizando num trilho, e pouco o bastante pra continuar sendo
+      // uma aproximação reta.
+      sim.desvio = Math.sin((agora / 1000) * Math.PI) * DERIVA_CONTATO
 
       // Pings acompanhando a proximidade: mais rápidos e mais graves.
       if (agora >= proximoPing) {

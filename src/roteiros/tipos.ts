@@ -218,9 +218,20 @@ export type EnfaseLinha = {
   escala?: number
   /** `false` desliga a materializacao letra a letra nesta linha. */
   glitch?: boolean
-  /** Milissegundos a mais que a linha fica na tela depois da fala acabar. */
-  segurarMs?: number
 }
+
+/*
+ * NAO existe "segurar a legenda por N ms".
+ *
+ * Tentei: a linha ficava mais tempo na tela empurrando a ENTRADA da seguinte.
+ * Mas o intervalo entre duas falas e silencio que pertence ao comeco da
+ * proxima — medido no `dossie`, segurar a fala 11 fez a legenda da 12 entrar
+ * 766 ms DEPOIS de a voz ja estar dizendo a 12. Legenda que mente sobre o que
+ * esta sendo dito e pior que legenda rapida.
+ *
+ * Pra uma linha ficar mais tempo na tela, o tempo tem que existir no AUDIO:
+ * use `pausaDepois` nela. A legenda segue os offsets reais e respeita sozinha.
+ */
 
 /**
  * Uma linha de fala. String simples continua valendo — a maioria das linhas

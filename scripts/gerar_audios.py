@@ -103,6 +103,22 @@ FILTRO_RADIO_LEVE = (
     "acompressor=threshold=-14dB:ratio=3:attack=8:release=200:makeup=6,"
     "alimiter=limit=0.89:level=disabled"
 )
+# Mesma cadeia com o compressor aberto, pras falas que pedem `dinamica:
+# "preservada"`.
+#
+# Medido nas 17 falas do dossie: o compressor a 3:1 derruba o crest (pico menos
+# RMS) de 15,3 dB pra 9,7 dB. Crest e o que faz a silaba acentuada SOAR
+# acentuada — comprimir a 3:1 e o que transforma uma fala com emocao numa
+# locucao de aeroporto. A 1,8:1 sobra quase tudo, e o makeup cai junto pra a
+# linha nao ficar mais alta que as vizinhas.
+#
+# Nao e o padrao de proposito: o 3:1 existe pra voz atravessar o barulho de uma
+# quadra cheia. Quem pede isto esta dizendo que naquele momento a sala esta em
+# silencio.
+FILTRO_DINAMICO = FILTRO_RADIO_LEVE.replace(
+    "acompressor=threshold=-14dB:ratio=3:attack=8:release=200:makeup=6",
+    "acompressor=threshold=-16dB:ratio=1.8:attack=12:release=240:makeup=3.5",
+)
 
 
 # --- extração das falas ----------------------------------------------------
@@ -478,11 +494,18 @@ def sintetizar(texto: str, voz: str, rate: str, pitch: str, destino: Path):
         raise SystemExit(1)
 
 
-def filtro_atual(com_filtro: bool, motor: str, pitch_extra: str = "") -> str:
+def cadeia_radio(motor: str, dinamica: bool) -> str:
+    """O filtro de intercomunicador do motor, na versão normal ou aberta."""
+    if motor == "edge":
+        return FILTRO_RADIO
+    return FILTRO_DINAMICO if dinamica else FILTRO_RADIO_LEVE
+
+
+def filtro_atual(
+    com_filtro: bool, motor: str, pitch_extra: str = "", dinamica: bool = False
+) -> str:
     """A cadeia de filtros que vai ser aplicada. Entra na chave do cache."""
-    base = "sem-filtro" if not com_filtro else (
-        FILTRO_RADIO if motor == "edge" else FILTRO_RADIO_LEVE
-    )
+    base = "sem-filtro" if not com_filtro else cadeia_radio(motor, dinamica)
     return f"{pitch_extra},{base}" if pitch_extra else base
 
 
@@ -492,12 +515,13 @@ def aplicar_filtro(
     com_filtro: bool,
     motor: str = "kokoro",
     pitch_extra: str = "",
+    dinamica: bool = False,
 ):
     """Normaliza taxa/canais/bitrate — sem isso o concat com -c copy falha."""
     comando = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(origem)]
     # O deslocamento de tom vem ANTES do filtro de rádio: reamostrar depois da
     # equalização moveria junto as bandas que o filtro acabou de posicionar.
-    cadeia = [p for p in (pitch_extra, FILTRO_RADIO if motor == "edge" else FILTRO_RADIO_LEVE) if p]
+    cadeia = [p for p in (pitch_extra, cadeia_radio(motor, dinamica)) if p]
     if not com_filtro:
         cadeia = [p for p in (pitch_extra,) if p]
     if cadeia:
@@ -679,6 +703,7 @@ def main() -> int:
             pitch_extra = (
                 "" if args.motor == "edge" else filtro_de_pitch(razao_de_pitch(pitch_linha))
             )
+            dinamica = fala.prosodia.get("dinamica") == "preservada"
             perfil = perfil_do_motor(args.motor, config, voz, rate_efetivo, pitch_efetivo)
             if args.motor != "edge" and rate_linha:
                 perfil += f"|rate:{rate_linha}"
@@ -694,7 +719,10 @@ def main() -> int:
             chave_crua = hashlib.sha1(assinatura_crua.encode("utf-8")).hexdigest()
             bruto = CACHE_DIR / f"cru-{chave_crua}.mp3"
 
-            assinatura = f"{assinatura_crua}|{filtro_atual(com_filtro, args.motor, pitch_extra)}"
+            assinatura = (
+                f"{assinatura_crua}|"
+                f"{filtro_atual(com_filtro, args.motor, pitch_extra, dinamica)}"
+            )
             chave = hashlib.sha1(assinatura.encode("utf-8")).hexdigest()
             destino = CACHE_DIR / f"{chave}.mp3"
 
@@ -712,7 +740,7 @@ def main() -> int:
                     gerados += 1
                 else:
                     print(f"  refiltrando: {fala.texto[:58]}")
-                aplicar_filtro(bruto, destino, com_filtro, args.motor, pitch_extra)
+                aplicar_filtro(bruto, destino, com_filtro, args.motor, pitch_extra, dinamica)
                 cache[chave] = assinatura
             caminhos[id(fala)] = destino
 
