@@ -735,9 +735,21 @@ disso: rolagem de ±4°, respiração de ±2% e nadadeiras com seno próprio.
 > Duas regras de desenho valeram mais que a curva:
 > **a cabeça ocupa os últimos ~15% do bicho**, não um terço (enquanto o corpo
 > começava a afunilar no meio, qualquer cabeça virava cone), e **cada espécie
-> tem UM detalhe que a entrega**: no golfinho o vinco entre o melão redondo e
-> o bico curto e rombudo; no tubarão o focinho cônico curto com a boca recuada
-> por baixo e a caudal assimétrica, com o lóbulo de cima bem maior.
+> tem UM detalhe que a entrega** — no golfinho, o vinco entre o melão redondo
+> e o bico curto e rombudo.
+>
+> **O tubarão não saiu à mão.** Mesmo com curva e cabeça curta, ele continuava
+> errado de um jeito que só uma referência resolve: a caudal que eu desenhava
+> era de tubarão-tigre, lóbulo de cima comprido e fino, quando a do branco é
+> quase meia-lua com os dois lóbulos grandes. A professora mandou uma prancha
+> de perfil, e a silhueta vem dela: `scripts/silhueta_de_prancha.py` acha o
+> FUNDO por inundação a partir da borda em vez de usar limiar de brilho — num
+> bicho de barriga branca sobre fundo branco, limiar comeria a barriga — e o
+> que sobra é o bicho, espelhado pra orientação canônica, com 7% de folga em
+> cima e embaixo pra o warp não cortar nada no deslocamento.
+>
+> A prancha é referência de forma, não arte final: a silhueta segue provisória
+> até os PNGs CC0 do PhyloPic, que continuam na lista de pendências.
 
 Três coisas custaram caro e valem estar escritas:
 
