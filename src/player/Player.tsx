@@ -1293,6 +1293,24 @@ export function Player({ roteiro, engine }: Props) {
         relogios.push(window.setTimeout(resolve, ms))
       })
 
+    /**
+     * Espera, mas o operador pode encurtar com Enter.
+     *
+     * É a válvula da contemplação: quem está no palco sente quando a sala já
+     * viu o bicho, e ficar preso a quatro segundos fixos com a turma esperando
+     * é pior do que cortar. O que ele NUNCA faz é pular a cena — as espécies
+     * que faltam continuam de pé.
+     */
+    const esperarOuPular = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const acabar = () => {
+          refRespostaIdent.current = null
+          resolve()
+        }
+        relogios.push(window.setTimeout(acabar, ms))
+        refRespostaIdent.current = acabar
+      })
+
     const sortear = (falas: string[][], audios: string[]) => {
       if (!falas?.length || !audios?.length) return null
       const i = Math.floor(Math.random() * falas.length)
@@ -1408,7 +1426,7 @@ export function Player({ roteiro, engine }: Props) {
       )
       if (cancelado) return
       // Contemplação: 4 s com o bicho nítido antes de a água sujar de novo.
-      await daqui(MS_CONTEMPLACAO)
+      await esperarOuPular(MS_CONTEMPLACAO)
       if (cancelado) return
 
       if (indice + 1 < totalEspecies) {
@@ -2116,7 +2134,14 @@ export function Player({ roteiro, engine }: Props) {
   // num efeito) garante que a tecla apertada no mesmo quadro em que a fase
   // muda já veja o valor certo.
   refCombateAtivo.current = cena.tipo === 'combate' && combate?.fase === 'investida'
-  refIdentAtiva.current = cena.tipo === 'identificacao' && ident?.fase === 'procurando'
+  // Ativa durante TODA a expedição, não só na espera.
+  //
+  // Enquanto era só na fase `procurando`, o Enter apertado depois de revelar
+  // uma espécie caía no `avancar()` genérico e PULAVA A CENA INTEIRA: acertava
+  // a tartaruga, apertava Enter de novo e a expedição ia direto pro 2B com três
+  // espécies por mostrar.
+  refIdentAtiva.current =
+    cena.tipo === 'identificacao' && ident !== null && ident.fase !== 'fim'
 
   const estadoOrbe = pane
     ? pane.fase === 'voltando'

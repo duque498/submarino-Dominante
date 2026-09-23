@@ -655,6 +655,16 @@ recompensa — e a recompensa é ver o bicho. Especificação completa em
 > incrementos que não fecha o total: sem a soma exata, o contador pararia num
 > número quebrado depois da última espécie.
 
+**Enter nunca pula a cena.** Enquanto a tecla só valia na fase de busca, um
+Enter apertado DEPOIS de revelar caía no `avancar()` genérico e mandava a
+expedição inteira pro 2B com três espécies por mostrar. Agora ela vale durante
+toda a cena: na busca confirma, na revelação encurta a contemplação e vai pra
+próxima espécie. Quem sai da cena é o laço, quando a quarta termina.
+
+**As pistas ficam na tela na revelação**, ao lado do bicho. É ali que a sala
+liga o que ouviu ao que está vendo; sumir com elas na hora do acerto jogaria
+fora justamente essa ligação.
+
 ### O animal: PNG + warp de tiras
 
 O bestiário procedural desenha bem um vulto passando no facho, mas aqui a
@@ -672,6 +682,10 @@ disso: rolagem de ±4°, respiração de ±2% e nadadeiras com seno próprio.
 > linha. As primeiras silhuetas provisórias montavam o bicho com polígonos
 > soltos, e no warp elas se separavam do corpo: a tartaruga virava um casco
 > cercado de espinhos flutuando. Nada pode se soltar porque nada é separado.
+>
+> E a pose tem que ser a que IDENTIFICA a espécie: a tartaruga é vista de cima,
+> porque de perfil ela não se reconhece — casco arredondado, cabeça saindo do
+> pescoço e quatro remos largos, não quatro espinhos.
 
 Três coisas custaram caro e valem estar escritas:
 

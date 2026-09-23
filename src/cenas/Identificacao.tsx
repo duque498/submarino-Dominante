@@ -76,6 +76,16 @@ export function Identificacao({ especie, estado, total, lerCalibracao }: Props) 
         <div className="ident__revelacao">
           <h3 className="ident__nome">{ficha?.titulo ?? especie.nome}</h3>
           {!estado.acertou && <p className="ident__sem-acerto">sem confirmação da tripulação</p>}
+          {/* As pistas continuam na tela na revelação, ao lado do bicho: é
+              aqui que a sala liga o que ouviu ao que está vendo. Sumir com
+              elas na hora do acerto jogaria fora justamente essa ligação. */}
+          {estado.pistas > 0 && (
+            <ul className="ident__pistas-ditas">
+              {especie.pistas.slice(0, estado.pistas).map((pista) => (
+                <li key={pista}>{pista}</li>
+              ))}
+            </ul>
+          )}
           {ficha && (
             <dl className="ident__ficha">
               {Object.entries(ficha.dados)
