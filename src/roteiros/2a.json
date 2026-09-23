@@ -250,6 +250,12 @@
             "./audio/2a/ident-tartaruga-pista-2.mp3",
             "./audio/2a/ident-tartaruga-pista-3.mp3"
           ],
+          "curiosidade": [
+            "Tartarugas marinhas nadam nestes mares há mais de cem milhões de anos. Já estavam aqui antes de os dinossauros desaparecerem.",
+            "Passam a vida inteira na água. Só as fêmeas voltam à terra, para enterrar os ovos na areia.",
+            "E a temperatura da areia decide quantos filhotes nascem machos e quantos nascem fêmeas."
+          ],
+          "audioCuriosidade": "./audio/2a/ident-tartaruga-sobre.mp3",
           "intervaloPistas": 7,
           "profundidade": 20,
           "ambiente": "recife",
@@ -274,6 +280,12 @@
             "./audio/2a/ident-golfinho-pista-2.mp3",
             "./audio/2a/ident-golfinho-pista-3.mp3"
           ],
+          "curiosidade": [
+            "Golfinhos enxergam com som. Soltam estalos e escutam o eco voltar.",
+            "É o mesmo princípio do sonar deste submarino. Eles chegaram primeiro.",
+            "Vivem em grupo e caçam juntos, e muitos têm um assobio próprio que funciona como um nome."
+          ],
+          "audioCuriosidade": "./audio/2a/ident-golfinho-sobre.mp3",
           "intervaloPistas": 7,
           "profundidade": 15,
           "ambiente": "aberto",
@@ -299,6 +311,12 @@
             "./audio/2a/ident-tubarao-pista-2.mp3",
             "./audio/2a/ident-tubarao-pista-3.mp3"
           ],
+          "curiosidade": [
+            "Tubarões estão nos oceanos há mais de quatrocentos milhões de anos.",
+            "O esqueleto deles não é de osso: é de cartilagem, mais leve, e por isso afundam menos.",
+            "E os dentes se repõem a vida inteira. Atrás de cada fileira já vem outra pronta."
+          ],
+          "audioCuriosidade": "./audio/2a/ident-tubarao-sobre.mp3",
           "intervaloPistas": 7,
           "profundidade": 30,
           "ambiente": "aberto",
@@ -321,6 +339,12 @@
             "./audio/2a/ident-baleia-pista-2.mp3",
             "./audio/2a/ident-baleia-pista-3.mp3"
           ],
+          "curiosidade": [
+            "Baleias são mamíferos como nós: respiram ar e amamentam os filhotes.",
+            "Os ancestrais delas viveram em terra e voltaram para o mar. É por isso que a cauda bate de cima para baixo, e não de lado como a dos peixes.",
+            "Algumas espécies fazem sons tão graves que atravessam centenas de quilômetros de oceano."
+          ],
+          "audioCuriosidade": "./audio/2a/ident-baleia-sobre.mp3",
           "intervaloPistas": 7,
           "profundidade": 40,
           "ambiente": "aberto",

@@ -27,6 +27,8 @@ type CenaIdentificacao = CenaBase & {
     aceitos: string[];       // sinônimos, referência pro operador no overlay H
     pistas: string[];        // 3 pistas, da MEDIANA pra FÁCIL; a 3ª quase entrega
     intervaloPistas: number; // segundos entre pistas (padrão 7)
+    curiosidade: string[];   // o que a IA fala sobre o bicho DEPOIS da revelação
+    audioCuriosidade: string;
     profundidade?: number;
     ambiente?: "recife" | "mangue" | "aberto";
     incrementoCache: number;
@@ -45,7 +47,7 @@ Cena com `cameras: false` (a câmera grande é o palco) e `orbe: "discreto"` at�
 2. Fala `inicio`. Barra `CALIBRAÇÃO` em 100%, caindo com o tempo.
 3. Pista 1 (mediana). 7s. Pista 2 (mais fácil). 7s. Pista 3 (quase entrega). A partir daí a barra estaciona em 33%.
 4. Operador aperta Enter quando ouvir o nome certo. X = revelar sem acerto.
-5. Acerto: turbidez limpa em 1.5s (partículas somem, contraste sobe, resolução interna 640×360), animal nítido nadando, ficha ao lado com 3–4 dados, cache pula com rolagem de dígitos, sfx ok, orbe morfa na forma. Fala `acerto`. 4s de contemplação, próxima espécie.
+5. Acerto: turbidez limpa em 1.5s (partículas somem, contraste sobe, resolução interna 640×360), animal nítido nadando, ficha ao lado com 3–4 dados, cache pula com rolagem de dígitos, sfx ok, orbe morfa na forma. Fala `acerto` e em seguida a `curiosidade` da espécie — é o momento em que a sala está olhando o bicho que acabou de nomear. 1,6s de contemplação (era 4s: a narração já segura a cena), próxima espécie. Enter corta narração e contemplação.
 6. Revelado sem acerto: mesma revelação, fala `revelado`, cache pula metade.
 7. Após a última: ident-fim.
 Sem penalidade. Sem timer visível — só a barra de calibração, suave.
@@ -67,20 +69,38 @@ com o contato; as outras duas a cada 7 s.
    - "Réptil que vive no mar e precisa subir para respirar."
    - "Põe os ovos na areia da praia."
    - "Tem casco e nada com quatro nadadeiras."
+   Narração [nova], na revelação:
+     Tartarugas marinhas nadam nestes mares há mais de cem milhões de anos. Já estavam aqui antes de os dinossauros desaparecerem.
+     Passam a vida inteira na água. Só as fêmeas voltam à terra, para enterrar os ovos na areia.
+     E a temperatura da areia decide quantos filhotes nascem machos e quantos nascem fêmeas.
 2. Golfinho · aberto, 15 m · aceitos: golfinho, boto, delfim · +60.000
    - "Mamífero que vive em grupo e respira por um orifício no alto da cabeça."
    - "Usa sons para se orientar e achar comida na água escura."
    - "Tem focinho alongado e salta fora d'água."
+   Narração [nova], na revelação:
+     Golfinhos enxergam com som. Soltam estalos e escutam o eco voltar.
+     É o mesmo princípio do sonar deste submarino. Eles chegaram primeiro.
+     Vivem em grupo e caçam juntos, e muitos têm um assobio próprio que funciona como um nome.
 3. Tubarão · aberto, 30 m · aceitos: tubarão, cação · +60.112
    - "Peixe com esqueleto de cartilagem, e não de osso."
    - "Troca os dentes a vida inteira: atrás de cada fileira vem outra."
    - "Barbatana triangular nas costas cortando a superfície."
+   Narração [nova], na revelação:
+     Tubarões estão nos oceanos há mais de quatrocentos milhões de anos.
+     O esqueleto deles não é de osso: é de cartilagem, mais leve, e por isso afundam menos.
+     E os dentes se repõem a vida inteira. Atrás de cada fileira já vem outra pronta.
 4. Baleia · aberto, 40 m · aceitos: baleia · +70.000
    - "Mamífero enorme. O maior animal desta expedição."
    - "Sobe para respirar e solta um jato visível."
    - "Tem cauda horizontal e bate nela para nadar."
+   Narração [nova], na revelação:
+     Baleias são mamíferos como nós: respiram ar e amamentam os filhotes.
+     Os ancestrais delas viveram em terra e voltaram para o mar. É por isso que a cauda bate de cima para baixo, e não de lado como a dos peixes.
+     Algumas espécies fazem sons tão graves que atravessam centenas de quilômetros de oceano.
 
-Fichas correspondentes em fichas.json, também genéricas.
+Fichas correspondentes em fichas.json, também genéricas. As narrações acima
+são [nova] — texto provisório meu, pendente de revisão da professora. Todo
+dado é verificável; na dúvida, cortar a linha.
 
 ## Painel cache
 Contador grande com rolagem de dígitos (odômetro), rótulo `CACHE DE ESPÉCIES`, barra de progresso, grade de 4 slots preenchidos com a silhueta pequena de cada espécie identificada. Aberto durante toda a ident, canto superior direito da área central — medir colisão com câmera grande e legenda a 1366×768.

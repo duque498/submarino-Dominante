@@ -226,6 +226,15 @@ function conferirIdentificacao(cena: CenaIdentificacao, onde: string, erros: str
     if (!ehListaDeTextos(e?.audioPistas) || e.audioPistas.length !== e?.pistas?.length) {
       erros.push(`${ondeE}: "audioPistas" precisa ter um mp3 por pista.`)
     }
+    if (!ehListaDeTextos(e?.curiosidade)) {
+      erros.push(
+        `${ondeE}: "curiosidade" faltando — e o que a IA conta sobre o bicho ` +
+          `depois que a sala acerta, que e o pagamento da dinamica.`,
+      )
+    }
+    if (!ehTextoPreenchido(e?.audioCuriosidade)) {
+      erros.push(`${ondeE}: "audioCuriosidade" faltando (o mp3 da fala sobre a especie).`)
+    }
     if (typeof e?.intervaloPistas !== 'number' || e.intervaloPistas <= 0) {
       erros.push(`${ondeE}: "intervaloPistas" deve ser um numero de segundos.`)
     }

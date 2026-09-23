@@ -162,6 +162,10 @@ def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
             for especie in cena.get("especies") or []:
                 for n, pista in enumerate(especie.get("pistas") or [], start=1):
                     juntar(f"{cid}-{especie['id']}-pista-{n}", [pista])
+                # A fala sobre a espécie é UM mp3: ela é dita de uma vez, com a
+                # sala olhando o bicho, e cortá-la em pedaços criaria pausas
+                # onde não há motivo pra nenhuma.
+                juntar(f"{cid}-{especie['id']}-sobre", especie.get("curiosidade"))
 
     return falas
 

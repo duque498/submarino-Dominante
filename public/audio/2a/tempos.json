@@ -149,6 +149,23 @@
       }
     ]
   },
+  "ident-baleia-sobre": {
+    "duracaoMs": 19248,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4440
+      },
+      {
+        "inicio": 5040,
+        "fim": 13176
+      },
+      {
+        "inicio": 13776,
+        "fim": 19152
+      }
+    ]
+  },
   "ident-fim": {
     "duracaoMs": 5400,
     "linhas": [
@@ -186,6 +203,23 @@
       {
         "inicio": 0,
         "fim": 2736
+      }
+    ]
+  },
+  "ident-golfinho-sobre": {
+    "duracaoMs": 15096,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4248
+      },
+      {
+        "inicio": 4848,
+        "fim": 9096
+      },
+      {
+        "inicio": 9696,
+        "fim": 15000
       }
     ]
   },
@@ -278,6 +312,23 @@
       }
     ]
   },
+  "ident-tartaruga-sobre": {
+    "duracaoMs": 20040,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 7896
+      },
+      {
+        "inicio": 8496,
+        "fim": 13800
+      },
+      {
+        "inicio": 14400,
+        "fim": 19944
+      }
+    ]
+  },
   "ident-tubarao-pista-1": {
     "duracaoMs": 3120,
     "linhas": [
@@ -302,6 +353,23 @@
       {
         "inicio": 0,
         "fim": 3528
+      }
+    ]
+  },
+  "ident-tubarao-sobre": {
+    "duracaoMs": 16032,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4272
+      },
+      {
+        "inicio": 4872,
+        "fim": 10200
+      },
+      {
+        "inicio": 10800,
+        "fim": 15936
       }
     ]
   },

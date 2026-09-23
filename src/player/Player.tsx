@@ -239,8 +239,15 @@ const MS_ESTATICA_APOS_OLHO = 2200
 const MS_OLHO_CAMERA = 1500
 /** Olho, tempo 2: a silhueta cruza o facho de ponta a ponta. */
 const MS_OLHO_TRAVESSIA = 3000
-/** Identificacao: quanto o bicho nitido fica na tela antes da proxima especie. */
-const MS_CONTEMPLACAO = 4000
+/**
+ * Identificacao: quanto o bicho nitido ainda fica na tela depois que a IA
+ * termina de falar sobre ele.
+ *
+ * Eram 4 s quando a revelacao era muda. Com a fala sobre a especie por cima,
+ * quem segura a cena e ela; isto aqui e so o respiro antes de a agua sujar de
+ * novo.
+ */
+const MS_CONTEMPLACAO = 1600
 /** Olho, tempo 3: escuro e silencio antes de ele aparecer. */
 const MS_OLHO_ESCURO = 800
 /** Apagao depois de um impacto: preto, luz de emergencia, volta com glitch. */
@@ -1349,10 +1356,20 @@ export function Player({ roteiro, engine }: Props) {
       })
       quadro = requestAnimationFrame(queda)
 
-      /** A espera: as pistas saem sozinhas, o operador corta quando quiser. */
+      /**
+       * A espera: as pistas saem sozinhas, o operador corta quando quiser.
+       *
+       * `procurando` é o que desliga o laço de pistas, e não a presença do
+       * resolvedor. Enquanto era o resolvedor, o laço voltava à vida assim que
+       * a revelação rearmava a tecla — e a pista seguinte entrava por cima da
+       * fala sobre a espécie, cortando-a no meio. Medido: a revelação da
+       * tartaruga durava 4 s em vez de 18.
+       */
+      let procurando = true
       const marcado = await new Promise<boolean>((resolve) => {
         refRespostaIdent.current = (acertou) => {
           refRespostaIdent.current = null
+          procurando = false
           resolve(acertou)
         }
         const proximaPista = async () => {
@@ -1362,7 +1379,7 @@ export function Player({ roteiro, engine }: Props) {
             // sala responde em três segundos e a dinâmica acabava sem NENHUMA
             // pista ter aparecido na tela. Agora sempre há uma.
             if (n > 0) await daqui(especie.intervaloPistas * 1000)
-            if (cancelado || !refRespostaIdent.current) return
+            if (cancelado || !procurando) return
             pistas += 1
             publicar({
               fase: 'procurando',
@@ -1373,7 +1390,7 @@ export function Player({ roteiro, engine }: Props) {
             })
             const url = especie.audioPistas[pistas - 1]
             if (url) await falarAvulso(url, [pista])
-            if (cancelado || !refRespostaIdent.current) return
+            if (cancelado || !procurando) return
           }
         }
         void proximaPista()
@@ -1419,6 +1436,11 @@ export function Player({ roteiro, engine }: Props) {
               ? sortear(roteiro.falas.acerto, roteiro.audio.acerto)
               : sortear(roteiro.falas.revelado, roteiro.audio.revelado),
           )
+          // E então ela CONTA sobre o bicho. É o pagamento da dinâmica: a sala
+          // acabou de reconhecer o animal e está olhando pra ele nítido na
+          // tela — o único instante da apresentação em que ela quer ouvir
+          // sobre aquilo. A confirmação seca sozinha desperdiçava o momento.
+          await dizer({ linhas: especie.curiosidade, url: especie.audioCuriosidade })
           await daqui(MS_CONTEMPLACAO)
           return false
         })(),

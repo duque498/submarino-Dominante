@@ -310,6 +310,16 @@ export type EspecieIdentificacao = {
   pistas: string[]
   /** Um mp3 por pista, mesma ordem. */
   audioPistas: string[]
+  /**
+   * O que a IA conta sobre o bicho depois que a sala acerta.
+   *
+   * E o pagamento da dinamica. A plateia acabou de reconhecer o animal e esta
+   * olhando pra ele nitido na tela — e o unico instante da apresentacao em que
+   * ela quer ouvir sobre aquilo. Uma confirmacao seca ("identificacao
+   * confirmada") desperdica esse instante.
+   */
+  curiosidade: string[]
+  audioCuriosidade: string
   /** Segundos entre pistas. */
   intervaloPistas: number
   profundidade?: number

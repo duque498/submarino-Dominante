@@ -648,12 +648,14 @@ recompensa — e a recompensa é ver o bicho. Especificação completa em
 | `especies[].aceitos` | sinônimos que valem como acerto (referência do operador) |
 | `especies[].pistas` | exatamente 3, da mediana pra fácil |
 | `especies[].intervaloPistas` | segundos entre pistas |
+| `especies[].curiosidade` | o que a IA fala sobre o bicho na revelação |
 | `especies[].ambiente` | `recife`, `mangue` ou `aberto` — dá a cor da água |
 | `especies[].incrementoCache` | quanto o cache sobe. A soma fecha em 240.112 |
 
-> O validador recusa menos de três pistas, lista de `aceitos` vazia e soma de
-> incrementos que não fecha o total: sem a soma exata, o contador pararia num
-> número quebrado depois da última espécie.
+> O validador recusa menos de três pistas, lista de `aceitos` vazia, espécie
+> sem `curiosidade`/`audioCuriosidade` e soma de incrementos que não fecha o
+> total: sem a soma exata, o contador pararia num número quebrado depois da
+> última espécie.
 
 **Enter nunca pula a cena, e nunca fica sem efeito.** Enquanto a tecla só valia
 na fase de busca, um Enter apertado DEPOIS de revelar caía no `avancar()`
@@ -679,6 +681,27 @@ pistas e as fichas valem para o grupo inteiro.
 **As pistas ficam na tela na revelação**, ao lado do bicho. É ali que a sala
 liga o que ouviu ao que está vendo; sumir com elas na hora do acerto jogaria
 fora justamente essa ligação.
+
+**Na revelação a IA fala sobre o bicho.** Acertar o nome é o clímax da
+dinâmica, mas o nome sozinho não ensina nada — e é justamente no segundo em que
+a plateia acabou de gritar "tartaruga" e está vendo a tartaruga que ela escuta
+melhor. Campo `especies[].curiosidade` (falas) + `audioCuriosidade` (mp3),
+exigidos pelo validador: uma espécie sem narração passaria batida e a cena
+perderia o único momento de conteúdo que tem.
+
+A narração entra DEPOIS da fala de `acerto`/`revelado` e antes da
+contemplação, que caiu de 4 s pra 1,6 s — quem segura a cena agora é a fala,
+e somar os dois deixava a plateia parada olhando um bicho em silêncio. `Enter`
+corta narração e contemplação de uma vez (as duas estão dentro do mesmo
+`Promise.race`), então quem já entendeu não fica preso.
+
+> O laço de pistas precisou de uma trava própria pra isso funcionar. Ele
+> parava quando `refRespostaIdent.current` ficava nulo — mas a revelação REARMA
+> esse ref pra poder ser cortada, e o laço voltava a rodar por baixo e disparava
+> a pista seguinte por cima da narração. Medido: revelação da tartaruga durava
+> 4,0 s contra os 22,5 s do golfinho, a primeira espécie perdendo a fala
+> inteira. Agora o laço tem um `procurando` local, que a resposta desliga e
+> nada religa.
 
 ### O animal: PNG + warp de tiras
 
