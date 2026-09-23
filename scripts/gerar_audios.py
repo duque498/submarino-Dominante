@@ -61,6 +61,13 @@ KOKORO_RELEASE = (
 TURMAS = ("2a", "2b", "3a")
 PASTA_SISTEMA = "sistema"
 MS_SILENCIO = 600
+# Batida entre os pedaços de UMA fala.
+#
+# 120 ms e não 260: cada pedaço já vem com o silêncio de cabeça e de cauda que
+# o próprio sintetizador põe. Medido no dossiê, a 260 o vão real entre pedaços
+# ficava de 0,40 a 0,82 s — pausa de FRASE, não respiração de meio de frase, e
+# a cena inteira crescia cinco segundos.
+MS_BATIDA = 120
 # Parâmetros fixos do mp3: o concat com -c copy exige que todos batam.
 TAXA = 24000
 CANAIS = 1
@@ -135,15 +142,15 @@ class Fala:
         texto: str,
         prosodia: dict | None = None,
         pausa_depois: int = 0,
-        falado: str | None = None,
+        falado: list[str] | None = None,
     ):
         self.pasta = pasta
         self.grupo = grupo
         self.indice = indice
-        # `texto` é o que vai pra tela; `falado` é o que vai pro sintetizador.
-        # Quando a linha não pede grafia própria, são o mesmo.
+        # `texto` é o que vai pra tela; `pedacos` é o que vai pro sintetizador,
+        # um ou mais. Quando a linha não pede grafia própria, é o texto inteiro.
         self.texto = texto.strip()
-        self.falado = (falado or texto).strip()
+        self.pedacos = falado or [texto.strip()]
         # rate/pitch desta linha, sobrescrevendo o da turma. Genérico: vale pra
         # qualquer cena de qualquer turma.
         self.prosodia = prosodia or {}
@@ -151,6 +158,11 @@ class Fala:
         # Entra no concat e nos offsets, então a legenda respeita a pausa sem
         # precisar saber que ela existe.
         self.pausa_depois = max(0, int(pausa_depois or 0))
+
+    @property
+    def falado(self) -> str:
+        """Os pedaços juntos, só pra listagem e log."""
+        return " ".join(self.pedacos)
 
 
 def texto_da_linha(linha) -> str:
@@ -167,7 +179,7 @@ def texto_da_linha(linha) -> str:
     return str(linha or "")
 
 
-def fala_da_linha(linha) -> str | None:
+def fala_da_linha(linha) -> list[str] | None:
     """
     A grafia que vai pro sintetizador, quando ela difere da que vai pra tela.
 
@@ -179,7 +191,18 @@ def fala_da_linha(linha) -> str | None:
     if isinstance(linha, dict):
         f = linha.get("fala")
         if isinstance(f, str) and f.strip():
-            return f.strip()
+            return [f.strip()]
+        # Lista = a MESMA frase dita em pedaços, com uma batida entre eles.
+        #
+        # Nenhuma pontuação produz pausa dentro de uma frase no kokoro —
+        # medido: reticências, vírgula, travessão e ponto dão todos zero
+        # silêncio interno. A única forma de o bicho respirar no meio da frase
+        # é sintetizar os pedaços separados e emendar com silêncio, que é o
+        # que a concatenação já faz entre falas.
+        if isinstance(f, list):
+            pedacos = [str(x).strip() for x in f if str(x).strip()]
+            if pedacos:
+                return pedacos
     return None
 
 
@@ -736,7 +759,7 @@ def main() -> int:
     # 2 e 3) sintetizar linha a linha, com cache
     gerados = 0
     do_cache = 0
-    caminhos: dict[int, Path] = {}
+    caminhos: dict[int, list[Path]] = {}
 
     for (pasta, _grupo), lista in sorted(grupos.items()):
         voz, rate, pitch = voz_da_pasta(config, pasta, args)
@@ -763,34 +786,37 @@ def main() -> int:
             # ressintetizar as ~150 linhas das tres turmas a cada ajuste de
             # equalizacao. Guardando o CRU em separado, mexer no filtro passa a
             # ser so um ffmpeg por linha: segundos em vez de meia hora.
-            assinatura_crua = f"{fala.falado}|{perfil}"
-            chave_crua = hashlib.sha1(assinatura_crua.encode("utf-8")).hexdigest()
-            bruto = CACHE_DIR / f"cru-{chave_crua}.mp3"
+            pedacos: list[Path] = []
+            for pedaco in fala.pedacos:
+                assinatura_crua = f"{pedaco}|{perfil}"
+                chave_crua = hashlib.sha1(assinatura_crua.encode("utf-8")).hexdigest()
+                bruto = CACHE_DIR / f"cru-{chave_crua}.mp3"
 
-            assinatura = (
-                f"{assinatura_crua}|"
-                f"{filtro_atual(com_filtro, args.motor, pitch_extra, dinamica)}"
-            )
-            chave = hashlib.sha1(assinatura.encode("utf-8")).hexdigest()
-            destino = CACHE_DIR / f"{chave}.mp3"
+                assinatura = (
+                    f"{assinatura_crua}|"
+                    f"{filtro_atual(com_filtro, args.motor, pitch_extra, dinamica)}"
+                )
+                chave = hashlib.sha1(assinatura.encode("utf-8")).hexdigest()
+                destino = CACHE_DIR / f"{chave}.mp3"
 
-            if destino.exists() and cache.get(chave) == assinatura and not args.forcar:
-                do_cache += 1
-            else:
-                if not bruto.exists() or args.forcar:
-                    print(f"  gerando: {fala.falado[:62]}")
-                    if args.motor == "espeak":
-                        sintetizar_espeak(fala.falado, bruto, config, rate_linha)
-                    elif args.motor == "kokoro":
-                        sintetizar_kokoro(fala.falado, bruto, config, rate_linha)
-                    else:
-                        sintetizar(fala.falado, voz, rate_efetivo, pitch_efetivo, bruto)
-                    gerados += 1
+                if destino.exists() and cache.get(chave) == assinatura and not args.forcar:
+                    do_cache += 1
                 else:
-                    print(f"  refiltrando: {fala.falado[:58]}")
-                aplicar_filtro(bruto, destino, com_filtro, args.motor, pitch_extra, dinamica)
-                cache[chave] = assinatura
-            caminhos[id(fala)] = destino
+                    if not bruto.exists() or args.forcar:
+                        print(f"  gerando: {pedaco[:62]}")
+                        if args.motor == "espeak":
+                            sintetizar_espeak(pedaco, bruto, config, rate_linha)
+                        elif args.motor == "kokoro":
+                            sintetizar_kokoro(pedaco, bruto, config, rate_linha)
+                        else:
+                            sintetizar(pedaco, voz, rate_efetivo, pitch_efetivo, bruto)
+                        gerados += 1
+                    else:
+                        print(f"  refiltrando: {pedaco[:58]}")
+                    aplicar_filtro(bruto, destino, com_filtro, args.motor, pitch_extra, dinamica)
+                    cache[chave] = assinatura
+                pedacos.append(destino)
+            caminhos[id(fala)] = pedacos
 
     CACHE_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -807,7 +833,6 @@ def main() -> int:
         offsets: list[dict] = []
         acumulado = 0
         for i, fala in enumerate(lista):
-            parte = caminhos[id(fala)]
             if i > 0:
                 partes.append(silencio)
                 acumulado += MS_SILENCIO
@@ -818,10 +843,16 @@ def main() -> int:
                 if extra > 0:
                     partes.append(silencio_de(extra))
                     acumulado += extra
-            partes.append(parte)
-            duracao = duracao_ms(parte)
-            offsets.append({"inicio": acumulado, "fim": acumulado + duracao})
-            acumulado += duracao
+            # A linha pode ser dita em pedaços. O offset dela vai do começo do
+            # primeiro ao fim do último: pra a legenda é UMA linha só.
+            inicio = acumulado
+            for k, parte in enumerate(caminhos[id(fala)]):
+                if k > 0:
+                    partes.append(silencio_de(MS_BATIDA))
+                    acumulado += MS_BATIDA
+                partes.append(parte)
+                acumulado += duracao_ms(parte)
+            offsets.append({"inicio": inicio, "fim": acumulado})
 
         concatenar(partes, final)
         bytes_totais += final.stat().st_size

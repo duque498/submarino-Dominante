@@ -253,10 +253,20 @@ export type Linha =
        * ("otoDUS"); escrevendo "Otodus" na tela e "Otôdus" aqui, a plateia le
        * o nome certo e ouve o nome certo.
        *
-       * NAO serve pra reescrever a fala: e a mesma frase, na grafia que o
-       * sintetizador entende.
+       * Em LISTA, e a mesma frase dita em pedacos, com uma batida curta
+       * entre eles. Nenhuma pontuacao produz pausa dentro de uma frase no
+       * kokoro — medido: reticencias, virgula, travessao e ponto dao todos
+       * zero silencio interno. Sintetizar os pedacos separados e a unica
+       * forma de a IA respirar no meio da frase, e respirar no meio da frase
+       * e metade do que faz uma fala soar humana.
+       *
+       * A legenda continua mostrando UMA linha: o offset dela vai do comeco
+       * do primeiro pedaco ao fim do ultimo.
+       *
+       * NAO serve pra reescrever a fala: sao as mesmas palavras, na mesma
+       * ordem, na grafia que o sintetizador entende.
        */
-      fala?: string
+      fala?: string | string[]
       acoes?: Acao[]
       enfase?: EnfaseLinha
       prosodia?: { rate?: string; pitch?: string; dinamica?: 'preservada' }

@@ -168,7 +168,7 @@
     ]
   },
   "dossie": {
-    "duracaoMs": 66312,
+    "duracaoMs": 70512,
     "linhas": [
       {
         "inicio": 0,
@@ -180,63 +180,63 @@
       },
       {
         "inicio": 6720,
-        "fim": 8976
+        "fim": 9504
       },
       {
-        "inicio": 9576,
-        "fim": 11136
+        "inicio": 10104,
+        "fim": 11664
       },
       {
-        "inicio": 11736,
-        "fim": 16080
+        "inicio": 12264,
+        "fim": 16608
       },
       {
-        "inicio": 16680,
-        "fim": 19728
+        "inicio": 17208,
+        "fim": 20256
       },
       {
-        "inicio": 20328,
-        "fim": 21456
+        "inicio": 20856,
+        "fim": 21984
       },
       {
-        "inicio": 22056,
-        "fim": 27312
+        "inicio": 22584,
+        "fim": 27840
       },
       {
-        "inicio": 27912,
-        "fim": 30504
+        "inicio": 28440,
+        "fim": 31032
       },
       {
-        "inicio": 31104,
-        "fim": 32184
+        "inicio": 31632,
+        "fim": 32640
       },
       {
-        "inicio": 33984,
-        "fim": 36000
+        "inicio": 34440,
+        "fim": 36456
       },
       {
-        "inicio": 38000,
-        "fim": 42968
+        "inicio": 38456,
+        "fim": 43688
       },
       {
-        "inicio": 43568,
-        "fim": 48224
+        "inicio": 44288,
+        "fim": 50312
       },
       {
-        "inicio": 48824,
-        "fim": 52712
+        "inicio": 50912,
+        "fim": 55256
       },
       {
-        "inicio": 53312,
-        "fim": 54920
+        "inicio": 55856,
+        "fim": 57944
       },
       {
-        "inicio": 57020,
-        "fim": 62540
+        "inicio": 60044,
+        "fim": 65564
       },
       {
-        "inicio": 63140,
-        "fim": 65372
+        "inicio": 66164,
+        "fim": 69236
       }
     ]
   },

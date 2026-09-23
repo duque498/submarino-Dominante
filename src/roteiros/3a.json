@@ -257,6 +257,10 @@
           },
           {
             "texto": "Porte estimado: dezoito metros.",
+            "fala": [
+              "Porte estimado.",
+              "Dezoito metros."
+            ],
             "prosodia": {
               "rate": "-5%",
               "dinamica": "preservada"
@@ -264,6 +268,7 @@
           },
           {
             "texto": "...Dezoito metros?",
+            "fala": "Dezoito metros?",
             "prosodia": {
               "rate": "-15%",
               "pitch": "+6Hz",
@@ -348,9 +353,9 @@
           },
           {
             "texto": "Espera.",
+            "fala": "Espera...",
             "prosodia": {
-              "rate": "-20%",
-              "pitch": "-2Hz",
+              "rate": "-15%",
               "dinamica": "preservada"
             },
             "pausaDepois": 1200,
@@ -394,6 +399,10 @@
           },
           {
             "texto": "Isso é impossível. Essa espécie está extinta há três milhões e seiscentos mil anos.",
+            "fala": [
+              "Isso é impossível.",
+              "Essa espécie está extinta há três milhões e seiscentos mil anos."
+            ],
             "prosodia": {
               "rate": "+5%",
               "dinamica": "preservada"
@@ -401,6 +410,11 @@
           },
           {
             "texto": "Eu... revisei a assinatura acústica três vezes. Não há dúvida.",
+            "fala": [
+              "Eu.",
+              "Revisei a assinatura acústica três vezes.",
+              "Não há dúvida."
+            ],
             "prosodia": {
               "rate": "-20%",
               "pitch": "-3Hz",
@@ -409,6 +423,10 @@
           },
           {
             "texto": "Há um megalodonte a menos de trezentos metros deste submarino.",
+            "fala": [
+              "Há um megalodonte.",
+              "A menos de trezentos metros deste submarino."
+            ],
             "prosodia": {
               "rate": "-8%",
               "pitch": "-2Hz",
@@ -417,8 +435,12 @@
           },
           {
             "texto": "E ele nos viu.",
+            "fala": [
+              "E ele.",
+              "Nos viu."
+            ],
             "prosodia": {
-              "rate": "-25%",
+              "rate": "-15%",
               "dinamica": "preservada"
             },
             "pausaDepois": 1500,
@@ -446,6 +468,10 @@
           },
           {
             "texto": "Tripulação... preciso de vocês.",
+            "fala": [
+              "Tripulação.",
+              "Preciso de vocês."
+            ],
             "prosodia": {
               "rate": "-10%",
               "pitch": "+2Hz",
