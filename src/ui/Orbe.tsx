@@ -276,6 +276,12 @@ export function Orbe({
           Math.atan2(posY[a] - pcy, posX[a] - pcx) - Math.atan2(posY[b] - pcy, posX[b] - pcx),
       )
 
+      // Centroide dos alvos: serve SÓ pra ordenar por ângulo (o casamento
+      // partícula->alvo). NÃO entra na posição final: a amostragem já centra
+      // pela caixa da silhueta, e subtrair o centroide por cima disso desloca
+      // a figura pro lado onde ela tem mais massa. Na baleia, o corpo gordo
+      // puxava o centroide ~0,12 unidade pra direita e o focinho era cortado
+      // pela borda do canvas do orbe.
       let acx = 0
       let acy = 0
       for (const p of pontos) {
@@ -305,8 +311,8 @@ export function Orbe({
         const indiceAlvo = ordemAlvos[k % ordemAlvos.length]
         const alvo = pontos[indiceAlvo]
         const i = ordemParticulas[k]
-        formaX[i] = alvo.x - acx
-        formaY[i] = alvo.y - acy
+        formaX[i] = alvo.x
+        formaY[i] = alvo.y
         // Partícula de contorno fica no plano z=0. Com profundidade falsa cada
         // vizinha ganharia uma escala de perspectiva diferente e a polilinha
         // sairia serrilhada — justamente o que estamos tentando eliminar.

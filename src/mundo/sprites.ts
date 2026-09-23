@@ -18,19 +18,12 @@
  * bestiário procedural).
  */
 
-import { pngDaEspecie } from '../formas/especies'
+import { especieCanonica, pngDaEspecie, registroDaEspecie } from '../formas/especies'
 
-/** Uma região da imagem que bate por conta própria, em frações de 0 a 1. */
-export type Nadadeira = {
-  x: number
-  y: number
-  w: number
-  h: number
-  /** Deslocamento de fase, em radianos. Duas nadadeiras em uníssono parecem asa. */
-  fase?: number
-  /** Multiplicador de amplitude em relação ao corpo. */
-  amp?: number
-}
+// A silhueta e as nadadeiras vêm do registro único de espécies — o mesmo de
+// onde o orbe tira a nuvem de pontos. Aqui fica só o MOVIMENTO.
+export type { Nadadeira } from '../formas/especies'
+import type { Nadadeira } from '../formas/especies'
 
 export type RegistroSprite = {
   /**
@@ -81,7 +74,10 @@ export type PoseSprite = {
 type Carregada = { img: HTMLImageElement; pronta: boolean }
 const cache = new Map<string, Carregada>()
 
-export function imagemDaEspecie(chave: string): HTMLImageElement | null {
+export function imagemDaEspecie(nome: string): HTMLImageElement | null {
+  // Pela chave canônica: "cachalote" e "baleia" são o mesmo arquivo e têm que
+  // ser a mesma imagem decodificada.
+  const chave = especieCanonica(nome) ?? nome
   const guardada = cache.get(chave)
   if (guardada) return guardada.pronta ? guardada.img : null
   const url = pngDaEspecie(chave)
@@ -102,6 +98,11 @@ export function imagemDaEspecie(chave: string): HTMLImageElement | null {
 /** Existe PNG pra essa espécie? (Pra a cena decidir entre sprite e bestiário.) */
 export function temSprite(chave: string): boolean {
   return pngDaEspecie(chave) !== null
+}
+
+/** Nadadeiras da espécie, do registro único. */
+export function nadadeirasDaEspecie(chave: string): Nadadeira[] | undefined {
+  return registroDaEspecie(chave)?.nadadeiras
 }
 
 /**
@@ -321,8 +322,8 @@ export const COMPORTAMENTOS: Record<string, ComportamentoEspecie> = {
   // contrário do que a cena precisa. A 1,05 ela continua sendo de longe a
   // maior das quatro e ainda se lê como baleia.
   //
-  // A peitoral ganha um seno próprio de amplitude PEQUENA: a primeira versão
-  // usava 1,4 e a nadadeira arrancava o flanco junto.
+  // A peitoral com seno próprio vem do registro de espécies (é propriedade da
+  // silhueta, não do jeito de nadar).
   baleia: {
     cabeca: 0.3,
     onda: 0.13,
@@ -333,22 +334,54 @@ export const COMPORTAMENTOS: Record<string, ComportamentoEspecie> = {
     velocidade: 0.075,
     deriva: 0.035,
     altura: 0.52,
-    nadadeiras: [{ x: 0.17, y: 0.66, w: 0.42, h: 0.34, amp: 0.5, fase: 0.7 }],
+  },
+  // Maior que o tubarão e MUITO mais lento: um bicho desse tamanho não é
+  // nervoso. É o que vai no ícone do sonar do combate.
+  megalodonte: {
+    cabeca: 0.34,
+    onda: 0.11,
+    batida: 0.28,
+    voltas: 0.7,
+    rolagem: 2,
+    largura: 1.2,
+    velocidade: 0.05,
+    deriva: 0.03,
+    altura: 0.5,
+  },
+  orca: {
+    cabeca: 0.4,
+    onda: 0.09,
+    batida: 0.6,
+    voltas: 0.55,
+    rolagem: 4,
+    largura: 0.7,
+    velocidade: 0.07,
+    deriva: 0.05,
+    altura: 0.5,
   },
 }
 
 /** O comportamento da espécie, ou um padrão discreto pra chave desconhecida. */
-export function comportamentoDe(chave: string): ComportamentoEspecie {
-  return (
-    COMPORTAMENTOS[chave] ?? {
-      cabeca: 0.5,
-      onda: 0.1,
-      batida: 0.4,
-      voltas: 0.5,
-      largura: 0.5,
-      velocidade: 0.04,
-      deriva: 0.05,
-      altura: 0.5,
-    }
-  )
+export function comportamentoDe(nome: string): ComportamentoEspecie {
+  const chave = especieCanonica(nome) ?? nome
+  const base = COMPORTAMENTOS[chave] ?? {
+    cabeca: 0.5,
+    onda: 0.1,
+    batida: 0.4,
+    voltas: 0.5,
+    largura: 0.5,
+    velocidade: 0.04,
+    deriva: 0.05,
+    altura: 0.5,
+  }
+  // Nadadeiras e escala são da SILHUETA, então vêm do registro de espécies; o
+  // resto é do jeito de nadar e mora aqui. Uma espécie que empresta o PNG de
+  // outra herda as nadadeiras junto, que é o certo: são as do arquivo.
+  const reg = registroDaEspecie(chave)
+  if (!reg) return base
+  return {
+    ...base,
+    nadadeiras: reg.nadadeiras ?? base.nadadeiras,
+    largura: base.largura * (reg.escala ?? 1),
+  }
 }

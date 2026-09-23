@@ -1,39 +1,46 @@
 import { amostrarCanvas, amostrarImagem, type FormaAmostrada } from './amostrar'
+import {
+  CHAVES_ESPECIE,
+  especieCanonica,
+  pngDaEspecie,
+  registroDaEspecie,
+} from './especies'
 import { gerarGlifo, PRIMITIVAS } from './primitivas'
 
 /**
  * Registro central das silhuetas que o orbe sabe assumir.
  *
- * Pra adicionar uma forma nova:
- *   1. jogue o PNG em src/formas/ (silhueta preta, fundo transparente ou
- *      branco, no mínimo 256px no maior lado);
- *   2. importe e registre aqui embaixo;
- *   3. cite o nome no campo "formas" da cena, no JSON do roteiro.
+ * Duas origens, nesta ordem de prioridade:
  *
- * O import passa pelo Vite de propósito: com assetsInlineLimit alto o PNG vira
- * data URI e entra no bundle. Imagem carregada por caminho de arquivo via
- * file:// contamina o canvas e o getImageData lança SecurityError.
+ *  1. ESPÉCIE COM PNG (`src/formas/especies/`) — a mesma silhueta que o
+ *     bestiário da identificação anima. A baleia em que o orbe morfa e a
+ *     baleia que passa na câmera são o mesmo arquivo, de propósito: eram
+ *     bichos diferentes na mesma apresentação e a plateia percebia.
+ *     Adicionar espécie = um PNG na pasta + uma linha no registro de lá.
+ *  2. PRIMITIVA (`primitivas.ts`) — desenho em código, pras formas que não são
+ *     bicho (círculo, prancha, satélite) e pras espécies que ainda não têm PNG.
  *
- * TODO (Fase 4): trocar as primitivas provisórias pelas silhuetas reais —
- *   bio:  baleia, tartaruga, agua-viva, coral, peixe
- *   ef:   mergulhador, prancha, barco
- *   arte: onda, concha
- *
- * import baleia from './baleia.png'
+ * Espécie que TEM PNG nunca cai na primitiva, mesmo que exista uma homônima:
+ * o PNG é a versão que a plateia já viu na identificação.
  */
-export const IMAGENS_FORMAS: Record<string, string> = {
-  // baleia,
-}
 
 /** "esfera" não é uma silhueta: é o estado natural do orbe. */
 export const FORMA_PADRAO = 'esfera'
 
 /** Todo nome aceito no campo "formas" do JSON. */
 export const NOMES_FORMAS: string[] = [
-  FORMA_PADRAO,
-  ...Object.keys(IMAGENS_FORMAS),
-  ...Object.keys(PRIMITIVAS),
+  ...new Set([FORMA_PADRAO, ...CHAVES_ESPECIE, ...Object.keys(PRIMITIVAS)]),
 ]
+
+/**
+ * Nome sob o qual a forma é guardada no cache. Alias de espécie ("cachalote")
+ * e chave canônica ("baleia") têm que cair no MESMO cache, senão a mesma
+ * silhueta é amostrada duas vezes e o pré-carregamento da cena não cobre o
+ * nome que o JSON usou.
+ */
+function chaveDeCache(nome: string): string {
+  return especieCanonica(nome) ?? nome
+}
 
 export function formaRegistrada(nome: string): boolean {
   return NOMES_FORMAS.includes(nome)
@@ -44,7 +51,7 @@ const cache = new Map<string, FormaAmostrada>()
 
 /** Pontos já amostrados de uma forma, ou null se ela ainda não foi carregada. */
 export function obterForma(nome: string): FormaAmostrada | null {
-  return cache.get(nome) ?? null
+  return cache.get(chaveDeCache(nome)) ?? null
 }
 
 /**
@@ -53,29 +60,45 @@ export function obterForma(nome: string): FormaAmostrada | null {
  * apresentação seriam um engasgo visível.
  */
 export async function carregarFormas(nomes: string[], quantidade: number): Promise<void> {
-  const pendentes = [...new Set(nomes)].filter(
+  const pendentes = [...new Set(nomes.map(chaveDeCache))].filter(
     (nome) => nome !== FORMA_PADRAO && !cache.has(nome),
   )
 
   await Promise.all(
     pendentes.map(async (nome) => {
       try {
-        const gerada = PRIMITIVAS[nome]
-        if (gerada) {
-          cache.set(nome, amostrarCanvas(gerada(), quantidade))
+        const url = pngDaEspecie(nome)
+        if (url) {
+          const escala = registroDaEspecie(nome)?.escala ?? 1
+          cache.set(nome, escalar(await amostrarImagem(url, quantidade), escala))
           return
         }
-        const imagem = IMAGENS_FORMAS[nome]
-        if (!imagem) {
+        const gerada = PRIMITIVAS[nome]
+        if (!gerada) {
           console.warn(`[formas] "${nome}" não está registrada em src/formas/index.ts`)
           return
         }
-        cache.set(nome, await amostrarImagem(imagem, quantidade))
+        cache.set(nome, amostrarCanvas(gerada(), quantidade))
       } catch (erro) {
         console.warn(`[formas] falha ao amostrar "${nome}":`, erro)
       }
     }),
   )
+}
+
+/**
+ * Aplica a escala do registro à nuvem de pontos.
+ *
+ * A amostragem normaliza toda silhueta pro mesmo tamanho (maior dimensão = 2
+ * unidades), então sem isto a baleia-azul e o peixe-boi sairiam do mesmo
+ * tamanho na tela — e o tamanho é metade do que identifica um bicho.
+ */
+function escalar(forma: FormaAmostrada, escala: number): FormaAmostrada {
+  if (escala === 1) return forma
+  return {
+    contornos: forma.contornos,
+    pontos: forma.pontos.map((p) => ({ x: p.x * escala, y: p.y * escala, borda: p.borda })),
+  }
 }
 
 /**

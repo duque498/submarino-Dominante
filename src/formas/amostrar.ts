@@ -39,18 +39,29 @@ const MIN_PIXELS_CONTORNO = 10
 type Mascara = { cheio: Uint8Array; largura: number; altura: number }
 type Pixel = { x: number; y: number }
 
+/**
+ * Margem transparente em volta da imagem, em pixels.
+ *
+ * Sem ela, silhueta que ENCOSTA na borda do arquivo sai com o contorno ABERTO:
+ * `marcarBorda` só marca pixel cheio que tem vazio do lado, e na borda do canvas
+ * não existe "do lado". Medido: o focinho da baleia (o alpha do PNG vai até a
+ * coluna 1500 de 1500) ficava sem fechar, e o orbe desenhava uma baleia sem
+ * cabeça. Dois pixels resolvem e não custam nada.
+ */
+const MARGEM = 2
+
 /** Desenha a imagem num canvas offscreen cabendo em LADO_AMOSTRAGEM, sem distorcer. */
 function rasterizar(fonte: CanvasImageSource, largura: number, altura: number): ImageData {
-  const escala = LADO_AMOSTRAGEM / Math.max(largura, altura)
+  const escala = (LADO_AMOSTRAGEM - MARGEM * 2) / Math.max(largura, altura)
   const w = Math.max(1, Math.round(largura * escala))
   const h = Math.max(1, Math.round(altura * escala))
 
   const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
+  canvas.width = w + MARGEM * 2
+  canvas.height = h + MARGEM * 2
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!
-  ctx.drawImage(fonte, 0, 0, w, h)
-  return ctx.getImageData(0, 0, w, h)
+  ctx.drawImage(fonte, MARGEM, MARGEM, w, h)
+  return ctx.getImageData(0, 0, canvas.width, canvas.height)
 }
 
 /**
@@ -117,18 +128,48 @@ const PASSOS: Array<[number, number]> = [
  * traçado na ordem certa — inclusive em figura côncava, onde ordenar por ângulo
  * em torno do centroide erraria feio (a estrela é o caso clássico).
  */
+/** Alcance da costura, em pixels do canvas de amostragem. */
+const SALTO_MAX = 3
+
+/** Pixel de borda ainda não visitado mais perto de (x, y), dentro do alcance. */
+function vizinhoProximo(
+  borda: Uint8Array,
+  visitado: Uint8Array,
+  largura: number,
+  altura: number,
+  x: number,
+  y: number,
+  alcance: number,
+): number {
+  let melhor = -1
+  let menorDist = Infinity
+  for (let dy = -alcance; dy <= alcance; dy++) {
+    const vy = y + dy
+    if (vy < 0 || vy >= altura) continue
+    for (let dx = -alcance; dx <= alcance; dx++) {
+      const vx = x + dx
+      if (vx < 0 || vx >= largura) continue
+      const v = vy * largura + vx
+      if (!borda[v] || visitado[v]) continue
+      const dist = dx * dx + dy * dy
+      if (dist < menorDist) {
+        menorDist = dist
+        melhor = v
+      }
+    }
+  }
+  return melhor
+}
+
 function tracarContornos(borda: Uint8Array, largura: number, altura: number): Pixel[][] {
   const visitado = new Uint8Array(borda.length)
   const contornos: Pixel[][] = []
 
-  for (let inicio = 0; inicio < borda.length; inicio++) {
-    if (!borda[inicio] || visitado[inicio]) continue
-
-    const caminho: Pixel[] = []
-    let atual = inicio
+  /** Anda de `partida` até travar, marcando o que visita. Não inclui a partida. */
+  const caminhar = (partida: number): Pixel[] => {
+    const trecho: Pixel[] = []
+    let atual = partida
     let dirAnterior = 0
-    visitado[atual] = 1
-    caminho.push({ x: atual % largura, y: Math.floor(atual / largura) })
 
     for (;;) {
       const x = atual % largura
@@ -151,14 +192,52 @@ function tracarContornos(borda: Uint8Array, largura: number, altura: number): Pi
         }
       }
 
-      if (proximo < 0) break
+      if (proximo < 0) {
+        // Travou sem ter acabado a borda. Costura por cima de um vão CURTO:
+        // onde a silhueta afina pra um pixel (ponta de nadadeira, fio da
+        // caudal) a borda 4-conexa se ramifica, a caminhada entra por um ramo
+        // e o outro fica órfão — e órfão vira contorno solto, fechado com uma
+        // reta atravessando o bicho. O limite de 3 px é 0,75% do canvas de
+        // amostragem: costura a ramificação e não tem alcance pra pular de um
+        // lado da figura pro outro.
+        const salto = vizinhoProximo(borda, visitado, largura, altura, x, y, SALTO_MAX)
+        if (salto < 0) return trecho
+        atual = salto
+        dirAnterior = 0
+        visitado[atual] = 1
+        trecho.push({ x: atual % largura, y: Math.floor(atual / largura) })
+        continue
+      }
       const vx = x + PASSOS[proximo][0]
       const vy = y + PASSOS[proximo][1]
       atual = vy * largura + vx
       dirAnterior = proximo
       visitado[atual] = 1
-      caminho.push({ x: vx, y: vy })
+      trecho.push({ x: vx, y: vy })
     }
+  }
+
+  for (let inicio = 0; inicio < borda.length; inicio++) {
+    if (!borda[inicio] || visitado[inicio]) continue
+    visitado[inicio] = 1
+
+    // DUAS caminhadas a partir do mesmo pixel, uma pra cada lado.
+    //
+    // A varredura acha o pixel de cima-esquerda da borda, que quase nunca é a
+    // ponta de nada: é um ponto NO MEIO da curva. Com uma caminhada só, o
+    // traçado ia embora por um lado, travava ao reencontrar o início já
+    // visitado, e a outra metade virava um "contorno" separado — fechado com
+    // uma reta por cima da figura. Medido no tubarão: 5 contornos (112, 44,
+    // 40, 7, 139 pontos) e três cordas atravessando o bicho. A segunda
+    // caminhada sai pelo lado que sobrou e é colada de trás pra frente.
+    const frente = caminhar(inicio)
+    const tras = caminhar(inicio)
+    tras.reverse()
+    const caminho: Pixel[] = [
+      ...tras,
+      { x: inicio % largura, y: Math.floor(inicio / largura) },
+      ...frente,
+    ]
 
     if (caminho.length >= MIN_PIXELS_CONTORNO) contornos.push(caminho)
   }
