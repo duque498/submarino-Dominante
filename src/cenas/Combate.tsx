@@ -3,12 +3,16 @@ import { especiePorChave } from '../mundo/bestiario'
 import type { CenaCombate } from '../roteiros/tipos'
 import {
   atualizarRuido,
+  criarRastro,
   desenharSonar,
   semearRuido,
   tempoDeEco,
   type EstadoSonar,
   type RuidoSonar,
 } from '../paineis/sonar'
+import { carregarFormas } from '../formas'
+import { imagemDaEspecie } from '../mundo/sprites'
+import { QTD_PONTOS } from '../ui/Orbe'
 import { quadroSeguro } from '../ui/falhas'
 
 /**
@@ -370,6 +374,13 @@ function Mostrador({
     let anterior = performance.now()
     let quadro = 0
     const ruido: RuidoSonar[] = semearRuido(anterior, 10)
+    const rastro = criarRastro()
+
+    // Pede a silhueta ANTES de precisar dela: a imagem decodifica sozinha e a
+    // nuvem de pontos da dissolução leva um getImageData. Pedidos no primeiro
+    // "SINAL PERDIDO" dariam um engasgo bem no golpe da cena.
+    imagemDaEspecie(refDados.current.cena.criatura)
+    void carregarFormas([refDados.current.cena.criatura], QTD_PONTOS)
 
     const desenhar = (agora: number) => {
       quadro = requestAnimationFrame(protegido)
@@ -400,10 +411,11 @@ function Mostrador({
               desvio: sim.desvio,
               velocidade: sim.velocidade,
               estado: e.fase === 'perdido' ? 'perdido' : 'ativo',
+              especie: c.criatura,
             }
           : null,
       }
-      desenharSonar(ctx, lado, sonar, ruido, agora)
+      desenharSonar(ctx, lado, sonar, ruido, agora, rastro)
 
       // A imagem acústica acumulada, por cima do mostrador.
       if (e.revelado > 0) {

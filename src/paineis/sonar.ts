@@ -15,6 +15,9 @@
  * Função pura de desenho: recebe o estado e pinta. Quem simula é quem chama.
  */
 
+import { obterForma } from '../formas'
+import { comportamentoDe, desenharSprite, imagemDaEspecie, temSprite } from '../mundo/sprites'
+
 /** Velocidade do som na água salgada. A mesma do painel `eco` e do combate. */
 export const VELOCIDADE_SOM = 1500
 
@@ -40,6 +43,15 @@ export type ContatoSonar = {
    * que a plateia precisa existir.
    */
   rotulo?: string
+  /**
+   * Espécie do registro de silhuetas. Tendo PNG, o contato deixa de ser um
+   * blip redondo e vira a SILHUETA do bicho, articulada.
+   *
+   * É o que separa o megalodonte do ruído de fundo: no mostrador tudo é ponto
+   * redondo, e a única coisa com FORMA é ele. A plateia não precisa que
+   * ninguém explique qual dos pontos importa.
+   */
+  especie?: string
 }
 
 export type EstadoSonar = {
@@ -95,6 +107,104 @@ export function atualizarRuido(ruido: RuidoSonar[], agora: number) {
 }
 
 /**
+ * Memória do contato entre quadros.
+ *
+ * `desenharSonar` é função pura de desenho e continua sendo: o estado que
+ * SOBREVIVE de um quadro pro outro (pra onde o bicho está indo, onde ele
+ * esteve, quanto da silhueta já se desfez) mora aqui e é de quem chama, do
+ * mesmo jeito que o ruído de fundo.
+ */
+export type RastroContato = {
+  /** Posições passadas, em pixels do canvas. */
+  pontos: Array<{ x: number; y: number; em: number }>
+  /** Direção do movimento, em radianos. Suavizada. */
+  direcao: number
+  ultimoX: number
+  ultimoY: number
+  ultimoAgora: number
+  /** 1 = silhueta inteira, 0 = dissolvida em pontos e sumida. */
+  coesao: number
+}
+
+export function criarRastro(): RastroContato {
+  return { pontos: [], direcao: 0, ultimoX: NaN, ultimoY: NaN, ultimoAgora: 0, coesao: 1 }
+}
+
+/** Quantas posições passadas ficam acesas. */
+const RASTRO_MAX = 16
+/** Espaçamento entre marcas do rastro, em ms. */
+const RASTRO_MS = 110
+/** Fração do diâmetro que a silhueta ocupa: no alcance máximo e junto do centro. */
+const ICONE_LONGE = 0.09
+const ICONE_PERTO = 0.16
+
+/**
+ * Canvas de tingimento, reaproveitado entre quadros.
+ *
+ * A silhueta do arquivo é quase preta e o mostrador é âmbar. Tingir com
+ * `ctx.filter` custaria caro (medido em outra cena: 14 fps contra 60), então
+ * o sprite é desenhado uma vez num canvas pequeno e recortado com
+ * `source-in`. São ~50x50 px por quadro: não aparece na conta.
+ */
+let tinta: HTMLCanvasElement | null = null
+
+/**
+ * Fator de superamostragem.
+ *
+ * O ícone tem ~50 px de largura. Com 24 tiras isso dá 2 px por tira, e o
+ * deslocamento da onda chega a 2,6 px: o bicho aparecia RASGADO em faixas,
+ * que é o contrário de "articulado". Desenhando a 3x e reduzindo na hora de
+ * colar, o degrau cai pra menos de um pixel e a interpolação do navegador
+ * costura o resto. Custa um canvas de 150x150 por quadro.
+ */
+const SUPER = 3
+
+function silhuetaTingida(
+  img: HTMLImageElement,
+  especie: string,
+  largura: number,
+  t: number,
+  fase: number,
+  cor: string,
+): HTMLCanvasElement | null {
+  const lado = Math.max(8, Math.ceil(largura * 1.5) * SUPER)
+  if (!tinta) tinta = document.createElement('canvas')
+  if (tinta.width !== lado || tinta.height !== lado) {
+    tinta.width = lado
+    tinta.height = lado
+  }
+  const ctx = tinta.getContext('2d')
+  if (!ctx) return null
+  ctx.clearRect(0, 0, lado, lado)
+  const base = comportamentoDe(especie)
+  // Batida mais lenta e onda menor que na câmera: de longe, no mostrador, o
+  // que se lê é um corpo grande se movendo, não um peixe agitado.
+  const comp = { ...base, onda: base.onda * 0.75, batida: Math.min(base.batida, 0.3) }
+  desenharSprite(ctx, img, comp, {
+    x: lado / 2,
+    y: lado / 2,
+    largura: largura * SUPER,
+    t,
+    fase,
+    direcao: 1,
+    nitidez: 1,
+    alpha: 1,
+  })
+  ctx.globalCompositeOperation = 'source-in'
+  ctx.fillStyle = `rgb(${cor})`
+  ctx.fillRect(0, 0, lado, lado)
+  ctx.globalCompositeOperation = 'source-over'
+  return tinta
+}
+
+/** Direção de espalhamento de cada caco, fixa por índice. */
+function sopro(i: number): [number, number] {
+  const a = Math.sin(i * 12.9898) * 43758.5453
+  const ang = (a - Math.floor(a)) * Math.PI * 2
+  return [Math.cos(ang), Math.sin(ang)]
+}
+
+/**
  * Desenha o mostrador inteiro. `lado` é o canvas quadrado.
  *
  * A ordem importa e é de fora pra dentro: cunhas, anéis, azimute, rastro,
@@ -107,6 +217,7 @@ export function desenharSonar(
   estado: EstadoSonar,
   ruido: RuidoSonar[],
   agora: number,
+  rastro?: RastroContato,
 ) {
   const c = lado / 2
   const raio = lado * 0.42
@@ -286,18 +397,141 @@ export function desenharSonar(
     const perdido = alvo.estado === 'perdido'
     // Perdido pisca em blocos: é sinal intermitente, não fade.
     const piscando = perdido ? (Math.floor(agora / 130) % 2 === 0 ? 1 : 0.15) : 1
-    const cor = perdido ? CIANO : VERMELHO
+    const cor = AMBAR
 
-    // halo pulsante
+    // --- 8a) memória entre quadros: direção, rastro e coesão ---------------
+    const img = alvo.especie ? imagemDaEspecie(alvo.especie) : null
+    const comSilhueta = img !== null && alvo.especie !== undefined && temSprite(alvo.especie)
+
+    if (rastro) {
+      const dt = rastro.ultimoAgora ? Math.min(0.1, (agora - rastro.ultimoAgora) / 1000) : 0
+      rastro.ultimoAgora = agora
+
+      // Direção do MOVIMENTO, não do setor: enquanto ele avança a cabeça
+      // aponta pro centro; quando o pulso o empurra pra fora ele vira, e a
+      // virada é a informação — é como a plateia vê que o tiro acertou.
+      // A referência é a posição de ~1,7 s atrás, não a do quadro anterior: o
+      // desvio lateral é um seno de período curto, e quadro a quadro ele
+      // domina a direção — o bicho ficava de lado enquanto avançava. Na janela
+      // longa o zigue-zague se cancela e sobra o movimento LÍQUIDO, que é o
+      // que a plateia precisa ler.
+      const antigo = rastro.pontos[0]
+      if (antigo) {
+        const dx = bx - antigo.x
+        const dy = by - antigo.y
+        if (dx * dx + dy * dy > 1) {
+          const alvoDir = Math.atan2(dy, dx)
+          // Diferença pelo caminho curto, senão ele dá a volta inteira ao
+          // cruzar +-pi.
+          let delta = ((alvoDir - rastro.direcao + Math.PI * 3) % (Math.PI * 2)) - Math.PI
+          rastro.direcao += delta * Math.min(1, dt * 6)
+        }
+      } else if (!Number.isFinite(rastro.ultimoX)) {
+        // Primeiro quadro: ainda não há de onde tirar direção. Aponta pro
+        // centro, que é pra onde ele vem.
+        rastro.direcao = ang + Math.PI
+      }
+      rastro.ultimoX = bx
+      rastro.ultimoY = by
+
+      const ultimo = rastro.pontos[rastro.pontos.length - 1]
+      if (!ultimo || agora - ultimo.em > RASTRO_MS) {
+        rastro.pontos.push({ x: bx, y: by, em: agora })
+        if (rastro.pontos.length > RASTRO_MAX) rastro.pontos.shift()
+      }
+
+      // A coesão cai quando o sinal se perde e volta quando ele reaparece.
+      const destino = perdido ? 0 : 1
+      rastro.coesao += (destino - rastro.coesao) * Math.min(1, dt * 2.6)
+    }
+
+    const direcao = rastro?.direcao ?? ang + Math.PI
+    const coesao = rastro ? rastro.coesao : perdido ? 0 : 1
+
+    // --- 8b) rastro: pontos apagando, nunca linha --------------------------
+    // Linha ligando as posições vira trajetória desenhada, e sonar não desenha
+    // trajetória: ele guarda ecos que vão apagando.
+    if (rastro && rastro.pontos.length > 1) {
+      for (let i = 0; i < rastro.pontos.length - 1; i++) {
+        const marca = rastro.pontos[i]
+        const idade = (agora - marca.em) / (RASTRO_MAX * RASTRO_MS)
+        if (idade >= 1) continue
+        const forca = (1 - idade) ** 2
+        ctx.beginPath()
+        ctx.arc(marca.x, marca.y, lado * (0.0025 + forca * 0.0035), 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(${cor}, ${forca * 0.3 * piscando})`
+        ctx.fill()
+      }
+    }
+
+    // --- 8c) halo pulsante --------------------------------------------------
+    const proximidade = 1 - Math.min(1, r / raio)
+    const tamanho = raio * 2 * (ICONE_LONGE + (ICONE_PERTO - ICONE_LONGE) * proximidade)
+    const haloBase = comSilhueta ? tamanho * 0.42 : lado * 0.026
     ctx.beginPath()
-    ctx.arc(bx, by, lado * (0.026 + pulsa * 0.018), 0, Math.PI * 2)
-    ctx.strokeStyle = `rgba(${cor}, ${(0.5 - pulsa * 0.3) * piscando})`
+    ctx.arc(bx, by, haloBase + pulsa * lado * 0.018, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(${cor}, ${(0.5 - pulsa * 0.3) * piscando * Math.max(0.25, coesao)})`
     ctx.lineWidth = 1.5
     ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(bx, by, lado * 0.0135, 0, Math.PI * 2)
-    ctx.fillStyle = `rgba(${cor}, ${(0.75 + pulsa * 0.25) * piscando})`
-    ctx.fill()
+
+    // --- 8d) o bicho --------------------------------------------------------
+    if (!comSilhueta) {
+      // Sem PNG registrado é blip redondo, como sempre foi.
+      ctx.beginPath()
+      ctx.arc(bx, by, lado * 0.0135, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(${cor}, ${(0.75 + pulsa * 0.25) * piscando})`
+      ctx.fill()
+    } else if (coesao > 0.02) {
+      ctx.save()
+      ctx.translate(bx, by)
+      ctx.rotate(direcao)
+      // Virado pra esquerda, o bicho rotacionado fica de barriga pra cima.
+      // Espelhar em y no referencial JÁ girado devolve o dorso pra cima sem
+      // mexer no sentido da cabeça.
+      if (Math.cos(direcao) < 0) ctx.scale(1, -1)
+
+      // A silhueta inteira, batendo devagar.
+      const pintado = silhuetaTingida(
+        img,
+        alvo.especie as string,
+        tamanho,
+        agora / 1000,
+        0,
+        cor,
+      )
+      if (pintado) {
+        const w = pintado.width / SUPER
+        ctx.globalAlpha = coesao * coesao * piscando
+        ctx.drawImage(pintado, -w / 2, -w / 2, w, w)
+        ctx.globalAlpha = 1
+      }
+
+      // Dissolução: a MESMA nuvem de pontos que o orbe usa pra morfar nesta
+      // espécie, espalhando. É o morph ao contrário, e é o que faz o
+      // "SINAL PERDIDO" ser uma coisa que acontece com o bicho, não um texto.
+      const forma = obterForma(alvo.especie as string)
+      const espalhando = (1 - coesao) * coesao * 4
+      if (forma && espalhando > 0.01) {
+        const escala = tamanho / 2
+        // Espalhamento CURTO: a 1,1x o tamanho do bicho os pontos cobriam um
+        // terço do mostrador e o que se via era confete, não uma silhueta se
+        // desfazendo. A leitura precisa continuar sendo "aquilo ali é o
+        // bicho" até o último quadro.
+        const fuga = tamanho * 0.5 * (1 - coesao)
+        ctx.fillStyle = `rgba(${cor}, ${Math.min(1, espalhando) * 0.85 * piscando})`
+        for (let i = 0; i < forma.pontos.length; i += 3) {
+          const ponto = forma.pontos[i]
+          const [sx, sy] = sopro(i)
+          ctx.fillRect(
+            ponto.x * escala + sx * fuga - 0.7,
+            ponto.y * escala + sy * fuga - 0.7,
+            1.4,
+            1.4,
+          )
+        }
+      }
+      ctx.restore()
+    }
 
     // vetor de velocidade: aponta pra onde ele VAI (o centro), e o tamanho diz
     // quão rápido. É o que transforma um ponto num objeto com intenção.
@@ -336,6 +570,12 @@ export function desenharSonar(
     // meio nenhum dos dois lados cabe — aí ela sobe (ou desce), que é o único
     // lugar onde ela não tapa nem a borda nem o centro.
     const folga = lado * 0.03
+    // Afastamento da etiqueta: o contato deixou de ser um ponto. Com o
+    // afastamento antigo (fixo) a tarja caía em cima do bicho justamente
+    // quando ele chega perto e fica maior — tapando a única coisa da tela que
+    // a cena inteira existe pra mostrar.
+    const afasta = Math.max(lado * 0.022, (comSilhueta ? tamanho : 0) * 0.58)
+    const afastaY = Math.max(lado * 0.05, (comSilhueta ? tamanho : 0) * 0.42)
     const cabeNaDireita = bx + larg + folga <= lado
     const cabeNaEsquerda = bx - larg - folga >= 0
     const deLado = bx < c ? cabeNaEsquerda || cabeNaDireita : cabeNaDireita || cabeNaEsquerda
@@ -345,14 +585,14 @@ export function desenharSonar(
     const paraCima = by > c
     const ex = deLado
       ? paraEsquerda
-        ? bx - larg - lado * 0.022
-        : bx + lado * 0.022
+        ? bx - larg - afasta
+        : bx + afasta
       : Math.max(folga, Math.min(lado - larg - folga, bx - larg / 2))
     const ey = deLado
       ? by - alt / 2
       : paraCima
-        ? by - lado * 0.05 - alt
-        : by + lado * 0.05
+        ? by - afastaY - alt
+        : by + afastaY
     ctx.fillStyle = 'rgba(4, 16, 20, 0.88)'
     ctx.fillRect(ex, ey, larg, alt)
     ctx.strokeStyle = `rgba(${cor}, ${0.45 * piscando})`

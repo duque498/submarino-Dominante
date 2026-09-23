@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import {
   atualizarRuido,
+  criarRastro,
   desenharSonar,
   semearRuido,
   type ContatoSonar,
@@ -8,6 +9,7 @@ import {
   type RuidoSonar,
 } from './sonar'
 import { quadroSeguro } from '../ui/falhas'
+import { imagemDaEspecie } from '../mundo/sprites'
 
 /** Anéis do mostrador do console. Mesma régua do combate. */
 const ANEIS = [150, 300, 450, 600, 900]
@@ -140,9 +142,15 @@ export function PainelSonar({
     // Aproximação: o próximo ping sai quando o relógio passa deste instante.
     let proximoPing = nascimento
     const ruido: RuidoSonar[] = semearRuido(nascimento, 11)
+    const rastro = criarRastro()
 
     /** O contato nomeado, quando ele já apareceu. */
-    let achado: { angulo: number; distancia: number; rotulo?: string } | null = null
+    let achado: {
+      angulo: number
+      distancia: number
+      rotulo?: string
+      especie?: string
+    } | null = null
     let despediuEm = 0
 
     const desenhar = (agora: number) => {
@@ -188,7 +196,12 @@ export function PainelSonar({
             rotulo: refContato.current
               ? (ROTULO_CONTATO[refContato.current] ?? refContato.current.toUpperCase())
               : undefined,
+            // Tendo PNG registrado, o contato nomeado aparece com a silhueta
+            // do bicho; senão continua blip. A IA diz CETÁCEO e o mostrador
+            // mostra um cetáceo — é a mesma baleia da identificação.
+            especie: refContato.current,
           }
+          if (refContato.current) imagemDaEspecie(refContato.current)
           refPing.current?.()
         }
         // Despedida: ping final, o contato pisca como perdido e some. Só
@@ -206,6 +219,7 @@ export function PainelSonar({
             velocidade: 0,
             estado: despediuEm > 0 ? 'perdido' : 'ativo',
             rotulo: achado.rotulo,
+            especie: achado.especie,
           }
         }
       }
@@ -221,7 +235,7 @@ export function PainelSonar({
         pulso: null,
         contato: alvo,
       }
-      desenharSonar(ctx, lado, estado, ruido, agora)
+      desenharSonar(ctx, lado, estado, ruido, agora, rastro)
     }
 
     const passo = quadroSeguro('sonar do console', desenhar)
