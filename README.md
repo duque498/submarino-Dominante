@@ -724,6 +724,20 @@ disso: rolagem de ±4°, respiração de ±2% e nadadeiras com seno próprio.
 > E a pose tem que ser a que IDENTIFICA a espécie: a tartaruga é vista de cima,
 > porque de perfil ela não se reconhece — casco arredondado, cabeça saindo do
 > pescoço e quatro remos largos, não quatro espinhos.
+>
+> **E o contorno é CURVO, não um polígono de poucos pontos.** As silhuetas de
+> golfinho e tubarão saíam com uma cunha afiada no lugar da cabeça: com poucos
+> vértices todo trecho vira reta, e a cabeça era onde isso aparecia. Agora o
+> contorno passa por uma spline (Catmull-Rom) e um ponto repetido três vezes
+> vira canto vivo — a ponta de nadadeira continua ponta enquanto o corpo e a
+> cabeça ficam redondos.
+>
+> Duas regras de desenho valeram mais que a curva:
+> **a cabeça ocupa os últimos ~15% do bicho**, não um terço (enquanto o corpo
+> começava a afunilar no meio, qualquer cabeça virava cone), e **cada espécie
+> tem UM detalhe que a entrega**: no golfinho o vinco entre o melão redondo e
+> o bico curto e rombudo; no tubarão o focinho cônico curto com a boca recuada
+> por baixo e a caudal assimétrica, com o lóbulo de cima bem maior.
 
 Três coisas custaram caro e valem estar escritas:
 
