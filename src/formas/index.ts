@@ -87,17 +87,20 @@ export async function carregarFormas(nomes: string[], quantidade: number): Promi
 }
 
 /**
- * Aplica a escala do registro à nuvem de pontos.
+ * Aplica a escala do registro à nuvem de pontos, sem nunca passar da borda.
  *
- * A amostragem normaliza toda silhueta pro mesmo tamanho (maior dimensão = 2
- * unidades), então sem isto a baleia-azul e o peixe-boi sairiam do mesmo
- * tamanho na tela — e o tamanho é metade do que identifica um bicho.
+ * A amostragem normaliza a silhueta pra maior dimensão = 2 unidades, e o orbe
+ * projeta 1 unidade exatamente na borda do canvas. Então ESTICAR aqui só
+ * corta: o megalodonte, que no sprite é 1,3x o tubarão porque ali os bichos
+ * se comparam entre si, saía sem focinho e sem cauda no orbe, onde só existe
+ * uma forma por vez. Encolher continua valendo.
  */
 function escalar(forma: FormaAmostrada, escala: number): FormaAmostrada {
-  if (escala === 1) return forma
+  const fator = Math.min(1, escala)
+  if (fator === 1) return forma
   return {
     contornos: forma.contornos,
-    pontos: forma.pontos.map((p) => ({ x: p.x * escala, y: p.y * escala, borda: p.borda })),
+    pontos: forma.pontos.map((p) => ({ x: p.x * fator, y: p.y * fator, borda: p.borda })),
   }
 }
 
