@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { FORMA_PADRAO, obterForma } from '../formas'
+import type { EstadoOrbe } from '../roteiros/tipos'
 
-export type EstadoOrbe = 'ocioso' | 'falando' | 'processando' | 'pane'
+// A definicao mora em roteiros/tipos.ts porque o JSON tambem a nomeia (acao
+// `orbe`). Reexportada aqui pra quem ja importava daqui.
+export type { EstadoOrbe }
 
 type Props = {
   estado: EstadoOrbe
@@ -29,6 +32,15 @@ type Props = {
    * durar três cenas): é o mesmo ocioso, com menos energia.
    */
   avariado?: boolean
+  /**
+   * Ritmo da rotacao, pros momentos marcados no roteiro.
+   *
+   * "parado" congela o giro sem congelar a respiracao nem o brilho: a IA
+   * parou de PROCESSAR, nao de existir. "lento" arrasta. Os dois voltam
+   * sozinhos — quem conta o tempo e o Player, porque e o roteiro que sabe
+   * quanto dura.
+   */
+  ritmo?: 'normal' | 'parado' | 'lento'
 }
 
 const QTD_PONTOS = 760
@@ -175,6 +187,7 @@ export function Orbe({
   pulso = false,
   compacto = false,
   avariado = false,
+  ritmo = 'normal',
 }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
   // Tudo em refs: o loop de animação monta uma vez e vive a sessão inteira.
@@ -186,6 +199,8 @@ export function Orbe({
   const refCompacto = useRef(compacto)
   const refEscala = useRef(escala)
   const refForma = useRef(forma)
+  const refRitmo = useRef(ritmo)
+  refRitmo.current = ritmo
   refEstado.current = estado
   refNivel.current = lerNivel
   refAvariado.current = avariado
@@ -428,6 +443,14 @@ export function Orbe({
           break
       }
 
+      // Ritmo pedido pelo roteiro. Multiplica a rotacao e as particulas, e nao
+      // o brilho nem a respiracao: parada, a IA continua acesa.
+      if (refRitmo.current !== 'normal') {
+        const fator = refRitmo.current === 'parado' ? 0 : 0.25
+        velocidade *= fator
+        velParticulas *= fator
+      }
+
       if (refAvariado.current) {
         velocidade *= 0.45
         // Praticamente sem escurecer: agora quem conta a avaria é a COR.
@@ -639,7 +662,10 @@ export function Orbe({
     refCanvas.current?.classList.toggle('orbe--pulso', pulso)
   }, [pulso])
 
-  return <canvas className="orbe" ref={refCanvas} aria-hidden="true" />
+  // `data-ritmo` não é decoração: o ritmo vive dentro do rAF, em ref, e sem
+  // isto não há como conferir de fora que o "parar" da fala 4 e o "lento" da
+  // fala 15 realmente aconteceram.
+  return <canvas className="orbe" ref={refCanvas} data-ritmo={ritmo} aria-hidden="true" />
 }
 
 export { QTD_PONTOS }

@@ -171,12 +171,74 @@ export type Acao =
   | { tipo: 'camera'; qual: 1 | 2; quando?: Quando; ate: Prazo }
   | { tipo: 'sfx'; nome: string; quando?: Quando }
   | { tipo: 'mergulho'; para: number; quando?: Quando }
+  /**
+   * Rajada no log de sistemas, na frente da fila.
+   *
+   * Linha terminada em "..." ganha barra de progresso, do mesmo jeito que as
+   * do pool generico. `nivel` forca a cor quando o texto nao a denuncia
+   * sozinho (o painel ja pinta ERR e WARN pelo prefixo).
+   */
+  | { tipo: 'log'; linhas: string[]; nivel?: 'err' | 'warn' | 'ok'; quando?: Quando }
+  /**
+   * Mexe no orbe durante a fala.
+   *
+   * `estado` troca a paleta e o comportamento ('processando' pulsa, por
+   * exemplo). `efeito` e momentaneo e volta sozinho: 'parar' congela a
+   * rotacao, 'tremor' da um solavanco curto, 'lento' arrasta.
+   */
+  | {
+      tipo: 'orbe'
+      estado?: EstadoOrbe
+      efeito?: 'parar' | 'tremor' | 'lento'
+      /** Duracao do efeito em ms. Padrao 1000. */
+      ms?: number
+      quando?: Quando
+    }
+  /**
+   * Nivel da trilha, em dB relativos ao volume de repouso dela.
+   *
+   * 0 e o normal, -12 e um fundo que mal se nota, `null` para a trilha. Serve
+   * pras cenas em que a musica entra por baixo da fala e sobe num ponto
+   * marcado do texto.
+   */
+  | { tipo: 'trilha'; db: number | null; ms?: number; quando?: Quando }
+
+/** Paleta e comportamento do orbe. */
+export type EstadoOrbe = 'ocioso' | 'falando' | 'processando' | 'pane'
+
+/**
+ * Destaque visual de uma linha na legenda.
+ *
+ * Existe pras falas em que o TEXTO e o acontecimento — o nome que a IA acabou
+ * de achar, a pergunta que ela faz a si mesma. Sem isto essas linhas passam
+ * com o mesmo peso do resto e a plateia nao percebe que algo mudou.
+ */
+export type EnfaseLinha = {
+  /** Multiplicador do tamanho da fonte. 1.4 = 140%. */
+  escala?: number
+  /** `false` desliga a materializacao letra a letra nesta linha. */
+  glitch?: boolean
+  /** Milissegundos a mais que a linha fica na tela depois da fala acabar. */
+  segurarMs?: number
+}
 
 /**
  * Uma linha de fala. String simples continua valendo — a maioria das linhas
  * nao manda em nada e nao precisa virar objeto.
+ *
+ * `prosodia` e `pausaDepois` sao lidos pelo gerar_audios.py: a primeira muda
+ * ritmo e tom so desta fala, a segunda insere silencio depois dela. A pausa
+ * entra nos offsets do tempos.json, entao a legenda a respeita sozinha.
  */
-export type Linha = string | { texto: string; acoes?: Acao[] }
+export type Linha =
+  | string
+  | {
+      texto: string
+      acoes?: Acao[]
+      enfase?: EnfaseLinha
+      prosodia?: { rate?: string; pitch?: string }
+      pausaDepois?: number
+    }
 
 /** O texto de uma linha, seja ela string ou objeto. */
 export function textoDaLinha(linha: Linha): string {
@@ -186,6 +248,11 @@ export function textoDaLinha(linha: Linha): string {
 /** As acoes explicitas de uma linha, ou lista vazia. */
 export function acoesDaLinha(linha: Linha): Acao[] {
   return typeof linha === 'string' ? [] : (linha.acoes ?? [])
+}
+
+/** O destaque de uma linha, ou null. */
+export function enfaseDaLinha(linha: Linha): EnfaseLinha | null {
+  return typeof linha === 'string' ? null : (linha.enfase ?? null)
 }
 
 export type CenaFala = CenaBase & {

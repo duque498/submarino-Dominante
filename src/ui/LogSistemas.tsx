@@ -3,6 +3,13 @@ import { sortearErro, sortearGenerico, type EntradaLog } from './logPool'
 
 export type ModoLog = 'normal' | 'rapido' | 'erro'
 
+/**
+ * Uma rajada pedida por fora. `nivel` força a cor quando o texto não a
+ * denuncia sozinho — o painel pinta ERR e WARN pelo prefixo, mas uma linha
+ * que diz `CONSULTA: registros paleontológicos` não tem como ser adivinhada.
+ */
+export type RajadaLog = { linhas: string[]; nivel?: 'err' | 'warn' | 'ok' }
+
 type Props = {
   /** Linhas da cena atual (campo `log` do JSON), intercaladas com as genéricas. */
   especificas?: string[]
@@ -16,7 +23,7 @@ type Props = {
    * Linhas pra emitir em rajada, na frente da fila. Trocar a identidade do
    * array dispara a rajada — é assim que o console mostra o sistema "pensando".
    */
-  rajada?: string[] | null
+  rajada?: RajadaLog | null
   /** Para tudo: na pane o log congela junto com o resto da tela. */
   congelado?: boolean
 }
@@ -50,6 +57,8 @@ type Valor = {
 }
 
 type LinhaViva = {
+  /** Classe de cor forçada por quem pediu a linha, no lugar da inferida. */
+  classeForcada?: string
   el: HTMLLIElement
   elTexto: HTMLSpanElement
   elSufixo: HTMLSpanElement
@@ -103,8 +112,8 @@ export function LogSistemas({
   const refNivel = useRef(lerNivel)
   const refFalando = useRef(falando)
   const refCongelado = useRef(congelado)
-  const refPrioritarias = useRef<string[]>([])
-  const refUltimaRajada = useRef<string[] | null | undefined>(null)
+  const refPrioritarias = useRef<Array<{ texto: string; nivel?: string }>>([])
+  const refUltimaRajada = useRef<RajadaLog | null | undefined>(null)
   refModo.current = modo
   refNivel.current = lerNivel
   refFalando.current = falando
@@ -118,7 +127,9 @@ export function LogSistemas({
   // Rajada do console entra na frente da fila normal.
   useEffect(() => {
     if (rajada && rajada !== refUltimaRajada.current) {
-      refPrioritarias.current.push(...rajada)
+      for (const texto of rajada.linhas) {
+        refPrioritarias.current.push({ texto, nivel: rajada.nivel })
+      }
     }
     refUltimaRajada.current = rajada
   }, [rajada])
@@ -184,8 +195,28 @@ export function LogSistemas({
       }
     }
 
-    const emitirTexto = (texto: string, agora: number) => {
-      vivas.push(criarLinha(texto, {}, agora))
+    const emitirTexto = (texto: string, agora: number, nivel?: string) => {
+      // Linha terminada em "..." ganha barra de progresso, exatamente como as
+      // do pool genérico (que se formatam `${rotulo}...`). É a regra que deixa
+      // o roteiro pedir "Recalibrando array de sensores..." e receber a barra
+      // sem precisar de um tipo novo no JSON.
+      const comBarra = /\.\.\.$/.test(texto)
+      const viva = criarLinha(
+        texto,
+        comBarra
+          ? {
+              progresso: {
+                atual: 0,
+                alvo: sorteio(78, 100),
+                inicio: agora,
+                duracao: sorteio(1400, 2600),
+              },
+            }
+          : {},
+        agora,
+      )
+      if (nivel) viva.classeForcada = `log__linha--${nivel}`
+      vivas.push(viva)
     }
 
     const emitirEntrada = (entrada: EntradaLog, agora: number) => {
@@ -236,7 +267,7 @@ export function LogSistemas({
       const modoAtual = refModo.current
 
       const prioritaria = refPrioritarias.current.shift()
-      if (prioritaria) return emitirTexto(prioritaria, agora)
+      if (prioritaria) return emitirTexto(prioritaria.texto, agora, prioritaria.nivel)
 
       const usarEspecifica =
         refFila.current.length > 0 && modoAtual !== 'erro' && Math.random() < CHANCE_ESPECIFICA
@@ -311,7 +342,7 @@ export function LogSistemas({
           linha.concluida = true
           linha.elTexto.textContent = linha.prefixo
           linha.elCursor.remove()
-          const classe = destaqueDe(linha.prefixo)
+          const classe = linha.classeForcada ?? destaqueDe(linha.prefixo)
           if (classe) linha.el.classList.add(classe)
         }
 

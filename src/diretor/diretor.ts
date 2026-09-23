@@ -3,6 +3,7 @@ import {
   textoDaLinha,
   type Acao,
   type Cena,
+  type EstadoOrbe,
   type Linha,
   type Prazo,
   type Quando,
@@ -59,7 +60,15 @@ export type Saida = {
   forma: (nome: string | null) => void
   sfx: (nome: string) => void
   mergulho: (para: number) => void
-  log: (linhas: string[]) => void
+  log: (linhas: string[], nivel?: 'err' | 'warn' | 'ok') => void
+  /** Estado e efeito momentâneo do orbe, pedidos pelo roteiro. */
+  orbe: (pedido: {
+    estado?: EstadoOrbe
+    efeito?: 'parar' | 'tremor' | 'lento'
+    ms?: number
+  }) => void
+  /** Nível da trilha em dB relativos ao repouso; `null` para. */
+  trilha: (db: number | null, ms?: number) => void
 }
 
 /** Sobrevida da forma disparada por gatilho, depois que a linha termina. */
@@ -370,6 +379,15 @@ export class Diretor {
         break
       case 'mergulho':
         this.saida.mergulho(acao.para)
+        break
+      case 'log':
+        this.saida.log(acao.linhas, acao.nivel)
+        break
+      case 'orbe':
+        this.saida.orbe({ estado: acao.estado, efeito: acao.efeito, ms: acao.ms })
+        break
+      case 'trilha':
+        this.saida.trilha(acao.db, acao.ms)
         break
     }
   }

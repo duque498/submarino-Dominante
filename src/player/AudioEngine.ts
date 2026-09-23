@@ -222,6 +222,8 @@ export class AudioEngine {
   private trilhaOk: boolean | null = null
   private trilhaAbafada = false
   private trilhaAlvo = 0
+  /** Multiplicador pedido pelo roteiro (ação `trilha`). 1 = volume de repouso. */
+  private trilhaGanho = 1
   private fadeTrilha = 0
   /** Duração do fade em curso. A saída do combate pede uma mais longa. */
   private msFade = MS_FADE_TRILHA
@@ -707,6 +709,9 @@ export class AudioEngine {
     if (!trilha) return
     try {
       this.trilhaAlvo = TRILHA_VOLUME
+      // Quem chama isto quer a trilha no volume de cena. Um ganho que sobrou
+      // de uma cena anterior deixaria o combate tocando a -12 dB.
+      this.trilhaGanho = 1
       this.msFade = MS_FADE_TRILHA
       if (trilha.paused) {
         trilha.currentTime = 0
@@ -745,6 +750,33 @@ export class AudioEngine {
     this.rodarFadeTrilha()
   }
 
+  /**
+   * Nível da trilha em dB relativos ao volume de repouso, pro roteiro.
+   *
+   * `null` para a trilha. Existe porque há cena em que a música entra POR
+   * BAIXO da fala e sobe num ponto marcado do texto — e isso é diferente de
+   * entrar e sair, que é o que `iniciarTrilha`/`pararTrilha` fazem.
+   */
+  nivelDaTrilha(db: number | null, ms = MS_FADE_TRILHA): void {
+    const trilha = this.trilha
+    if (!trilha) return
+    if (db === null) {
+      this.pararTrilha(false, ms)
+      return
+    }
+    this.trilhaGanho = Math.max(0, Math.min(1, 10 ** (db / 20)))
+    this.trilhaAlvo = TRILHA_VOLUME
+    this.msFade = Math.max(40, ms)
+    if (trilha.paused) {
+      trilha.volume = 0
+      void trilha.play().catch(() => {
+        this.trilhaOk = false
+        this.trilha = null
+      })
+    }
+    this.rodarFadeTrilha()
+  }
+
   /** A voz da IA tem prioridade: a trilha recua 9 dB enquanto ela fala. */
   abafarTrilha(sim: boolean): void {
     if (this.trilhaAbafada === sim) return
@@ -769,7 +801,7 @@ export class AudioEngine {
         this.fadeTrilha = 0
         return
       }
-      const alvo = this.trilhaAlvo * (this.trilhaAbafada ? TRILHA_DUCK : 1)
+      const alvo = this.trilhaAlvo * this.trilhaGanho * (this.trilhaAbafada ? TRILHA_DUCK : 1)
       const delta = (TRILHA_VOLUME * passo) / this.msFade
       const resta = alvo - trilha.volume
       trilha.volume = Math.max(

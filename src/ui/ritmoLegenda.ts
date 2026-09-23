@@ -23,6 +23,12 @@ export type LinhaPlanejada = {
   duracao: number
   palavras: string[]
   tempos: number[]
+  /**
+   * Quando a VOZ desta linha acaba — que é diferente de quando a linha sai da
+   * tela. O que há entre os dois é silêncio, e é só dentro desse silêncio que
+   * uma linha pode ser segurada sem passar por cima da fala seguinte.
+   */
+  fimFala: number
 }
 
 const somar = (numeros: number[]) => numeros.reduce((a, b) => a + b, 0)
@@ -81,6 +87,7 @@ export function planejar(
         duracao: Math.max(proximo - inicio, janela),
         palavras,
         tempos: temposPalavra,
+        fimFala: fimDaFala,
       }
     })
   }
@@ -119,7 +126,7 @@ export function planejar(
       return quando
     })
 
-    return { inicio, duracao, palavras, tempos }
+    return { inicio, duracao, palavras, tempos, fimFala: inicio + janela }
   })
 }
 

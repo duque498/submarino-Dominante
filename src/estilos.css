@@ -2832,6 +2832,22 @@ body {
      como render de videogame, e o painel inteiro perde a autoridade que os
      dados dele têm. */
   animation: foto-entrar 400ms ease-out both;
+  /* O fade da revelação em dois tempos passa por aqui. 800 ms: tempo de a
+     plateia ver a foto ACONTECENDO, e não de ela já estar lá. */
+  transition: filter 800ms ease-out;
+}
+
+/* Primeiro tempo: a mesma foto, preta. É a silhueta que a IA compilou dos
+   sensores antes de aceitar de quem ela é. `brightness(0)` zera o pixel e o
+   alfa continua valendo, então o que sobra é o recorte — sem precisar de um
+   segundo arquivo.
+
+   O seletor precisa do `.dossie__foto` na frente: a regra de cor lá em cima é
+   `.dossie__foto img`, que tem elemento na conta e ganharia de uma classe
+   sozinha. Medido na tela: com `.dossie__img--escura` puro a foto aparecia
+   inteira no primeiro tempo e a cena entregava o bicho duas falas antes. */
+.dossie__foto img.dossie__img--escura {
+  filter: brightness(0) saturate(0);
 }
 
 @keyframes foto-entrar {

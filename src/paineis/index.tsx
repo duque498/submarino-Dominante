@@ -150,7 +150,12 @@ export function Painel({
         (painel ? '' : ' painel--saindo') +
         (visivel.despedindo ? ' painel--encerrando' : '')
       }
-      key={`${visivel.nome}:${visivel.argumento ?? ''}`}
+      // MODIFICADORES depois do `+` não entram na chave: eles mudam o ESTADO
+      // do painel, não o que ele mostra. A revelação em dois tempos do dossiê
+      // (`megalodonte+escuro` -> `megalodonte`) precisa do mesmo elemento nos
+      // dois momentos: remontando, o navegador decodifica a imagem de novo e a
+      // transição de 800 ms nem chega a começar.
+      key={`${visivel.nome}:${(visivel.argumento ?? '').split('+')[0]}`}
     >
       <div className="painel__moldura">
         <header className="painel__cabecalho">

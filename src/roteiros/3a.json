@@ -219,30 +219,181 @@
       "tipo": "fala",
       "avanco": "auto",
       "audio": "./audio/3a/dossie.mp3",
-      "log": [
-        "Visor externo: DESTRUÍDO",
-        "Compilando leituras residuais",
-        "Cruzando com catálogo paleontológico",
-        "Classificação: AMEAÇA DIRETA"
-      ],
       "tela": {
         "linhas": [
-          "Visor externo destruído. Câmeras: offline.",
+          {
+            "texto": "Visor externo destruído. Câmeras: offline.",
+            "acoes": [
+              {
+                "tipo": "trilha",
+                "db": -12,
+                "ms": 3000
+              }
+            ]
+          },
           {
             "texto": "Compilando últimas leituras dos sensores.",
             "acoes": [
               {
+                "tipo": "orbe",
+                "estado": "processando"
+              },
+              {
+                "tipo": "log",
+                "linhas": [
+                  "Reprocessando amostra 1/3...",
+                  "Assinatura acústica: capturada"
+                ]
+              }
+            ]
+          },
+          "Porte estimado: dezoito metros.",
+          {
+            "texto": "...Dezoito metros?",
+            "prosodia": {
+              "rate": "-15%"
+            },
+            "enfase": {
+              "escala": 1.2
+            },
+            "acoes": [
+              {
+                "tipo": "orbe",
+                "efeito": "parar",
+                "ms": 1000
+              },
+              {
+                "tipo": "log",
+                "linhas": [
+                  "WARN: dado fora de qualquer faixa conhecida"
+                ]
+              }
+            ]
+          },
+          {
+            "texto": "Isso é um erro. Nenhum animal vivo tem esse tamanho. Recalibrando sensores.",
+            "acoes": [
+              {
+                "tipo": "log",
+                "linhas": [
+                  "Recalibrando array de sensores..."
+                ]
+              }
+            ]
+          },
+          {
+            "texto": "Recalibrado. Nova leitura: dezoito metros.",
+            "prosodia": {
+              "rate": "-10%"
+            }
+          },
+          {
+            "texto": "Não é erro.",
+            "acoes": [
+              {
+                "tipo": "orbe",
+                "efeito": "tremor"
+              }
+            ]
+          },
+          {
+            "texto": "Cruzando padrão morfológico com o banco de dados completo... incluindo registros fósseis.",
+            "acoes": [
+              {
                 "tipo": "painel",
                 "nome": "dossie",
-                "args": "megalodonte",
+                "args": "megalodonte+escuro",
                 "quando": "fim",
                 "ate": "fimCena"
               }
             ]
           },
-          "Porte estimado: dezoito metros. Incompatível com qualquer espécie catalogada.",
-          "Padrão morfológico compatível com Otodus megalodon. Registro: extinto há três milhões e seiscentos mil anos.",
-          "Classificação: ameaça direta ao casco."
+          "Correspondência encontrada. Otodus...",
+          {
+            "texto": "Espera.",
+            "prosodia": {
+              "rate": "-20%"
+            },
+            "pausaDepois": 1200,
+            "acoes": [
+              {
+                "tipo": "log",
+                "linhas": [
+                  "CONSULTA: registros paleontológicos"
+                ],
+                "nivel": "err"
+              }
+            ]
+          },
+          {
+            "texto": "Otodus megalodon.",
+            "prosodia": {
+              "rate": "-20%",
+              "pitch": "-4Hz"
+            },
+            "enfase": {
+              "escala": 1.4,
+              "glitch": false,
+              "segurarMs": 2000
+            },
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "dossie",
+                "args": "megalodonte",
+                "ate": "fimCena"
+              },
+              {
+                "tipo": "log",
+                "linhas": [
+                  "ERR: correspondência com registro extinto"
+                ]
+              }
+            ]
+          },
+          "Isso é impossível. Essa espécie está extinta há três milhões e seiscentos mil anos.",
+          {
+            "texto": "Eu... revisei a assinatura acústica três vezes. Não há dúvida.",
+            "prosodia": {
+              "rate": "-20%",
+              "pitch": "-3Hz"
+            }
+          },
+          "Há um megalodonte a menos de trezentos metros deste submarino.",
+          {
+            "texto": "E ele nos viu.",
+            "prosodia": {
+              "rate": "-25%"
+            },
+            "pausaDepois": 1500,
+            "acoes": [
+              {
+                "tipo": "orbe",
+                "efeito": "lento",
+                "ms": 4000
+              },
+              {
+                "tipo": "trilha",
+                "db": -6,
+                "ms": 2000
+              }
+            ]
+          },
+          {
+            "texto": "Classificação: ameaça direta ao casco. Protocolos de defesa não previstos para este caso.",
+            "acoes": [
+              {
+                "tipo": "orbe",
+                "estado": "falando"
+              }
+            ]
+          },
+          {
+            "texto": "Tripulação... preciso de vocês.",
+            "prosodia": {
+              "rate": "-10%"
+            }
+          }
         ]
       }
     },

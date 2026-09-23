@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import type { EnfaseLinha } from '../roteiros/tipos'
 import { planejar, type TemposReais } from './ritmoLegenda'
 
 type Props = {
@@ -20,6 +21,11 @@ type Props = {
    * ela manda em tudo: a legenda troca junto com a fala, não por relógio.
    */
   linhaGuiada?: number | null
+  /**
+   * Destaque por linha, na mesma ordem de `linhas`. Serve pras falas em que o
+   * texto É o acontecimento.
+   */
+  enfases?: Array<EnfaseLinha | null> | null
 }
 
 /** Cada palavra passa por caracteres aleatórios antes de assentar no texto real. */
@@ -49,16 +55,37 @@ export function Legenda({
   cena,
   tempos,
   linhaGuiada,
+  enfases,
 }: Props) {
   const plano = useMemo(
     () => planejar(linhas, duracaoTotalMs, tempos),
     [linhas, duracaoTotalMs, tempos],
   )
+  /**
+   * Quanto a entrada de cada linha atrasa por causa do `segurarMs` da
+   * anterior.
+   *
+   * Limitado ao SILÊNCIO que existe entre uma fala e a seguinte: segurar além
+   * disso poria a legenda de uma linha por cima do áudio da outra, e uma
+   * legenda que mente sobre o que está sendo dito é pior que uma legenda que
+   * passa rápido.
+   */
+  const atrasos = useMemo(() => {
+    return plano.map((_, i) => {
+      if (i === 0) return 0
+      const pedido = enfases?.[i - 1]?.segurarMs ?? 0
+      if (pedido <= 0) return 0
+      return Math.min(pedido, Math.max(0, plano[i].inicio - plano[i - 1].fimFala))
+    })
+  }, [plano, enfases])
+
   const refCaixa = useRef<HTMLDivElement>(null)
   const refContador = useRef<HTMLSpanElement>(null)
   const refFalando = useRef(falando)
   const refNivel = useRef(lerNivel)
   const refGuiada = useRef(linhaGuiada)
+  const refEnfases = useRef(enfases)
+  refEnfases.current = enfases
   refFalando.current = falando
   refNivel.current = lerNivel
   refGuiada.current = linhaGuiada
@@ -89,13 +116,22 @@ export function Legenda({
     let inicioLinha = 0
     /** Fração do tempo da linha em que cada palavra aparece. */
     let fracoes: number[] = []
+    /** A linha atual pediu pra não ser decifrada letra a letra. */
+    let semDecifrar = false
 
     const montarLinha = (indice: number, comGlitch: boolean) => {
       if (elLinha) removerLinha(elLinha)
 
+      const enfase = refEnfases.current?.[indice] ?? null
+      // `glitch: false` desliga TUDO que decifra: a classe de entrada e a
+      // sujeira palavra a palavra. Um nome que a IA acabou de encontrar não
+      // pode chegar tremendo — a linha inteira é o achado.
+      const decifrando = enfase?.glitch !== false
       const el = document.createElement('div')
       el.className = 'legenda__linha legenda__linha--entrando'
-      if (comGlitch) el.classList.add('legenda__linha--glitch')
+      if (comGlitch && decifrando) el.classList.add('legenda__linha--glitch')
+      // Em `em`, então é fração do tamanho que o CSS já deu à legenda.
+      if (enfase?.escala) el.style.fontSize = `${enfase.escala}em`
 
       palavras = plano[indice].palavras.map((texto) => {
         const span = document.createElement('span')
@@ -125,7 +161,9 @@ export function Legenda({
         return inicio
       })
 
-      if (comGlitch) {
+      semDecifrar = !decifrando
+
+      if (comGlitch && decifrando) {
         setTimeout(() => el.classList.remove('legenda__linha--glitch'), MS_GLITCH)
       }
     }
@@ -141,7 +179,7 @@ export function Legenda({
         alvo = Math.max(0, Math.min(guiada, plano.length - 1))
       } else {
         for (let i = 0; i < plano.length; i++) {
-          if (plano[i].inicio <= decorrido) alvo = i
+          if (plano[i].inicio + atrasos[i] <= decorrido) alvo = i
         }
       }
       if (alvo !== linhaAtual) {
@@ -171,7 +209,7 @@ export function Legenda({
           palavra.el.classList.add('legenda__palavra--visivel')
         }
 
-        if (tempo - palavra.revelada < MS_DECODIFICANDO) {
+        if (!semDecifrar && tempo - palavra.revelada < MS_DECODIFICANDO) {
           palavra.el.textContent = sujeira(palavra.texto.length)
         } else {
           palavra.el.textContent = palavra.texto
@@ -197,7 +235,7 @@ export function Legenda({
     }
     // `cena` entra nas dependências pra o glitch de entrada rodar de novo a
     // cada cena, mesmo que o plano por acaso seja igual.
-  }, [plano, ativa, cena])
+  }, [plano, atrasos, ativa, cena])
 
   // O <div class="legenda"> é território do efeito abaixo, que monta e remove
   // as linhas na mão. Ele NÃO pode ter filho vindo do React: os dois brigariam

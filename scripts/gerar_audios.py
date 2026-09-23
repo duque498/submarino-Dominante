@@ -7,11 +7,17 @@ Fluxo:
      que a IA fala;
   2. sintetiza UMA linha por vez com o motor escolhido (cacheado por hash);
   3. aplica o filtro de intercomunicador com ffmpeg;
-  4. concatena as linhas de cada cena com 600 ms de silêncio entre elas,
-     virando public/audio/<turma>/<id>.mp3;
+  4. concatena as linhas de cada cena com 600 ms de silêncio entre elas (mais
+     o `pausaDepois` da linha, quando ela pedir), virando
+     public/audio/<turma>/<id>.mp3;
   5. escreve public/audio/<turma>/tempos.json com o offset real de cada linha
      dentro do mp3 — é o que deixa a legenda trocar de linha na hora exata;
   6. chama embutir_audios.py, que monta a camada A (public/audios.js).
+
+Duas coisas são declaradas por LINHA no roteiro e valem pra qualquer cena:
+`prosodia: { rate, pitch }`, que muda ritmo e tom só daquela fala, e
+`pausaDepois`, silêncio em ms depois dela. A pausa entra no concat E nos
+offsets do tempos.json, então a legenda a respeita sem saber que ela existe.
 
 Precisa de ffmpeg no PATH. O motor padrão (kokoro) roda a rede neural na
 própria máquina: só baixa o modelo na primeira vez, depois funciona sem
@@ -105,11 +111,26 @@ FILTRO_RADIO_LEVE = (
 class Fala:
     """Uma linha que a IA diz. `grupo` é o mp3 final em que ela vai parar."""
 
-    def __init__(self, pasta: str, grupo: str, indice: int, texto: str):
+    def __init__(
+        self,
+        pasta: str,
+        grupo: str,
+        indice: int,
+        texto: str,
+        prosodia: dict | None = None,
+        pausa_depois: int = 0,
+    ):
         self.pasta = pasta
         self.grupo = grupo
         self.indice = indice
         self.texto = texto.strip()
+        # rate/pitch desta linha, sobrescrevendo o da turma. Genérico: vale pra
+        # qualquer cena de qualquer turma.
+        self.prosodia = prosodia or {}
+        # Silêncio extra DEPOIS desta linha, em ms, somado aos 600 de sempre.
+        # Entra no concat e nos offsets, então a legenda respeita a pausa sem
+        # precisar saber que ela existe.
+        self.pausa_depois = max(0, int(pausa_depois or 0))
 
 
 def texto_da_linha(linha) -> str:
@@ -126,6 +147,25 @@ def texto_da_linha(linha) -> str:
     return str(linha or "")
 
 
+def prosodia_da_linha(linha) -> dict:
+    """`{ "rate": "-15%", "pitch": "-4Hz" }` de uma linha, ou vazio."""
+    if isinstance(linha, dict):
+        p = linha.get("prosodia")
+        if isinstance(p, dict):
+            return p
+    return {}
+
+
+def pausa_da_linha(linha) -> int:
+    """`pausaDepois` em ms, ou 0."""
+    if isinstance(linha, dict):
+        try:
+            return int(linha.get("pausaDepois") or 0)
+        except (TypeError, ValueError):
+            return 0
+    return 0
+
+
 def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
     falas: list[Fala] = []
 
@@ -135,7 +175,16 @@ def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
         for i, linha in enumerate(linhas):
             texto = texto_da_linha(linha)
             if texto.strip():
-                falas.append(Fala(turma, grupo, i, texto))
+                falas.append(
+                    Fala(
+                        turma,
+                        grupo,
+                        i,
+                        texto,
+                        prosodia_da_linha(linha),
+                        pausa_da_linha(linha),
+                    )
+                )
 
     for cena in roteiro.get("cenas", []):
         cid = cena.get("id", "?")
@@ -283,6 +332,62 @@ def baixar_modelos_kokoro():
         parcial.replace(caminho)
 
 
+# --- prosódia por linha ----------------------------------------------------
+#
+# `prosodia: { rate, pitch }` no JSON vale pra QUALQUER linha de qualquer cena.
+# A regra é uma só, e os três motores a aplicam nas unidades deles:
+#
+#   `rate` é RELATIVO AO RITMO NORMAL daquela voz. "-15%" é quinze por cento
+#   mais devagar que o normal, tanto no edge (que tem parâmetro de rate e
+#   recebe o valor direto, substituindo o da turma) quanto no kokoro e no
+#   espeak (onde vira multiplicador da velocidade configurada).
+#
+#   `pitch` vem em Hz, que é a unidade do edge-tts. O edge recebe direto; o
+#   kokoro e o espeak não têm parâmetro de tom, então o deslocamento vira uma
+#   RAZÃO de frequência aplicada no ffmpeg.
+
+# F0 mediana da voz do kokoro (pf_dora), medida por autocorrelação em 1535
+# janelas com energia dos mp3 já gerados: 175 Hz (p25 160, p75 195). É o que
+# converte "-4Hz" numa razão — sem uma base medida, o número em Hz não
+# significa nada fora do edge.
+F0_BASE_HZ = 175.0
+
+
+def fator_de_rate(rate: str | None) -> float:
+    """'-15%' -> 0.85. Sem valor, 1.0."""
+    if not rate:
+        return 1.0
+    achado = re.fullmatch(r"\s*([+-]?\d+(?:\.\d+)?)\s*%\s*", str(rate))
+    if not achado:
+        print(f"aviso: rate {rate!r} não entendido, ignorando.", file=sys.stderr)
+        return 1.0
+    return max(0.3, 1 + float(achado.group(1)) / 100)
+
+
+def razao_de_pitch(pitch: str | None) -> float:
+    """'-4Hz' -> 0.977, em cima da F0 medida. Sem valor, 1.0."""
+    if not pitch:
+        return 1.0
+    achado = re.fullmatch(r"\s*([+-]?\d+(?:\.\d+)?)\s*[Hh][Zz]\s*", str(pitch))
+    if not achado:
+        print(f"aviso: pitch {pitch!r} não entendido, ignorando.", file=sys.stderr)
+        return 1.0
+    return max(0.5, min(2.0, (F0_BASE_HZ + float(achado.group(1))) / F0_BASE_HZ))
+
+
+def filtro_de_pitch(razao: float) -> str:
+    """
+    Desloca o tom sem mexer na duração.
+
+    `asetrate` reamostra (muda tom E duração juntos) e o `atempo` desfaz a
+    parte da duração. É o truque clássico; pra um deslocamento pequeno como
+    -4 Hz numa voz de 175 Hz (-0,4 semitom) ele não deixa artefato audível.
+    """
+    if abs(razao - 1) < 0.001:
+        return ""
+    return f"asetrate={TAXA}*{razao:.6f},aresample={TAXA},atempo={1 / razao:.6f}"
+
+
 def carregar_kokoro():
     global _kokoro
     if _kokoro is None:
@@ -294,7 +399,7 @@ def carregar_kokoro():
     return _kokoro
 
 
-def sintetizar_kokoro(texto: str, destino: Path, config: dict):
+def sintetizar_kokoro(texto: str, destino: Path, config: dict, rate: str | None = None):
     """
     Motor padrão: rede neural rodando localmente. Voz natural sem depender de
     serviço nenhum — o que importa aqui, porque quem apresenta não tem terminal
@@ -311,13 +416,13 @@ def sintetizar_kokoro(texto: str, destino: Path, config: dict):
     amostras, taxa = kokoro.create(
         texto,
         voice=cfg.get("voz", "pf_dora"),
-        speed=float(cfg.get("velocidade", 0.95)),
+        speed=float(cfg.get("velocidade", 0.95)) * fator_de_rate(rate),
         lang=cfg.get("idioma", "pt-br"),
     )
     sf.write(str(destino), amostras, taxa, format="WAV")
 
 
-def sintetizar_espeak(texto: str, destino: Path, config: dict):
+def sintetizar_espeak(texto: str, destino: Path, config: dict, rate: str | None = None):
     """
     Motor offline, de emergência. O espeak-ng é síntese por formantes: soa
     robótico perto de uma voz neural. Existe aqui por um motivo prático — quem
@@ -332,7 +437,7 @@ def sintetizar_espeak(texto: str, destino: Path, config: dict):
     comando = [
         "espeak-ng",
         "-v", espeak.get("voz", "pt-br+f3"),
-        "-s", str(espeak.get("velocidade", 148)),
+        "-s", str(int(espeak.get("velocidade", 148) * fator_de_rate(rate))),
         "-p", str(espeak.get("tom", 42)),
         "-a", str(espeak.get("amplitude", 190)),
         "-g", str(espeak.get("pausa", 8)),
@@ -373,34 +478,54 @@ def sintetizar(texto: str, voz: str, rate: str, pitch: str, destino: Path):
         raise SystemExit(1)
 
 
-def filtro_atual(com_filtro: bool, motor: str) -> str:
+def filtro_atual(com_filtro: bool, motor: str, pitch_extra: str = "") -> str:
     """A cadeia de filtros que vai ser aplicada. Entra na chave do cache."""
-    if not com_filtro:
-        return "sem-filtro"
-    return FILTRO_RADIO if motor == "edge" else FILTRO_RADIO_LEVE
+    base = "sem-filtro" if not com_filtro else (
+        FILTRO_RADIO if motor == "edge" else FILTRO_RADIO_LEVE
+    )
+    return f"{pitch_extra},{base}" if pitch_extra else base
 
 
-def aplicar_filtro(origem: Path, destino: Path, com_filtro: bool, motor: str = "kokoro"):
+def aplicar_filtro(
+    origem: Path,
+    destino: Path,
+    com_filtro: bool,
+    motor: str = "kokoro",
+    pitch_extra: str = "",
+):
     """Normaliza taxa/canais/bitrate — sem isso o concat com -c copy falha."""
     comando = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(origem)]
-    if com_filtro:
-        comando += ["-af", FILTRO_RADIO if motor == "edge" else FILTRO_RADIO_LEVE]
+    # O deslocamento de tom vem ANTES do filtro de rádio: reamostrar depois da
+    # equalização moveria junto as bandas que o filtro acabou de posicionar.
+    cadeia = [p for p in (pitch_extra, FILTRO_RADIO if motor == "edge" else FILTRO_RADIO_LEVE) if p]
+    if not com_filtro:
+        cadeia = [p for p in (pitch_extra,) if p]
+    if cadeia:
+        comando += ["-af", ",".join(cadeia)]
     comando += ["-ar", str(TAXA), "-ac", str(CANAIS), "-b:a", BITRATE, str(destino)]
     rodar(comando, "filtro de intercomunicador")
 
 
-def gerar_silencio(destino: Path):
+def gerar_silencio(destino: Path, ms: int = MS_SILENCIO):
     rodar(
         [
             "ffmpeg", "-y", "-loglevel", "error",
             "-f", "lavfi",
             "-i", f"anullsrc=r={TAXA}:cl=mono",
-            "-t", str(MS_SILENCIO / 1000),
+            "-t", str(ms / 1000),
             "-ar", str(TAXA), "-ac", str(CANAIS), "-b:a", BITRATE,
             str(destino),
         ],
         "geração do silêncio",
     )
+
+
+def silencio_de(ms: int) -> Path:
+    """Um mp3 de silêncio por duração, cacheado. `pausaDepois` usa isto."""
+    arquivo = CACHE_DIR / f"_silencio-{int(ms)}.mp3"
+    if not arquivo.exists():
+        gerar_silencio(arquivo, ms)
+    return arquivo
 
 
 def concatenar(partes: list[Path], destino: Path):
@@ -544,7 +669,19 @@ def main() -> int:
     for (pasta, _grupo), lista in sorted(grupos.items()):
         voz, rate, pitch = voz_da_pasta(config, pasta, args)
         for fala in lista:
-            perfil = perfil_do_motor(args.motor, config, voz, rate, pitch)
+            # Prosódia da LINHA sobrescreve a da turma. No edge os dois
+            # parâmetros vão direto pro sintetizador; nos outros dois motores o
+            # rate vira multiplicador de velocidade e o pitch vira um filtro.
+            rate_linha = fala.prosodia.get("rate") or None
+            pitch_linha = fala.prosodia.get("pitch") or None
+            rate_efetivo = rate_linha or rate
+            pitch_efetivo = pitch_linha or pitch
+            pitch_extra = (
+                "" if args.motor == "edge" else filtro_de_pitch(razao_de_pitch(pitch_linha))
+            )
+            perfil = perfil_do_motor(args.motor, config, voz, rate_efetivo, pitch_efetivo)
+            if args.motor != "edge" and rate_linha:
+                perfil += f"|rate:{rate_linha}"
             # DUAS assinaturas: a da sintese e a do filtro.
             #
             # Antes havia uma so, e ela nem citava o filtro — mexer no filtro
@@ -557,7 +694,7 @@ def main() -> int:
             chave_crua = hashlib.sha1(assinatura_crua.encode("utf-8")).hexdigest()
             bruto = CACHE_DIR / f"cru-{chave_crua}.mp3"
 
-            assinatura = f"{assinatura_crua}|{filtro_atual(com_filtro, args.motor)}"
+            assinatura = f"{assinatura_crua}|{filtro_atual(com_filtro, args.motor, pitch_extra)}"
             chave = hashlib.sha1(assinatura.encode("utf-8")).hexdigest()
             destino = CACHE_DIR / f"{chave}.mp3"
 
@@ -567,15 +704,15 @@ def main() -> int:
                 if not bruto.exists() or args.forcar:
                     print(f"  gerando: {fala.texto[:62]}")
                     if args.motor == "espeak":
-                        sintetizar_espeak(fala.texto, bruto, config)
+                        sintetizar_espeak(fala.texto, bruto, config, rate_linha)
                     elif args.motor == "kokoro":
-                        sintetizar_kokoro(fala.texto, bruto, config)
+                        sintetizar_kokoro(fala.texto, bruto, config, rate_linha)
                     else:
-                        sintetizar(fala.texto, voz, rate, pitch, bruto)
+                        sintetizar(fala.texto, voz, rate_efetivo, pitch_efetivo, bruto)
                     gerados += 1
                 else:
                     print(f"  refiltrando: {fala.texto[:58]}")
-                aplicar_filtro(bruto, destino, com_filtro, args.motor)
+                aplicar_filtro(bruto, destino, com_filtro, args.motor, pitch_extra)
                 cache[chave] = assinatura
             caminhos[id(fala)] = destino
 
@@ -598,6 +735,13 @@ def main() -> int:
             if i > 0:
                 partes.append(silencio)
                 acumulado += MS_SILENCIO
+                # Pausa extra pedida pela linha ANTERIOR. Entra aqui e não logo
+                # depois dela porque o silêncio só faz sentido ENTRE duas
+                # linhas: depois da última ele seria rabo morto no fim do mp3.
+                extra = lista[i - 1].pausa_depois
+                if extra > 0:
+                    partes.append(silencio_de(extra))
+                    acumulado += extra
             partes.append(parte)
             duracao = duracao_ms(parte)
             offsets.append({"inicio": acumulado, "fim": acumulado + duracao})

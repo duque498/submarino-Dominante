@@ -35,20 +35,39 @@ const MS_TRACO = 600
 /**
  * Intervalo entre uma linha de dado e a seguinte.
  *
- * Calibrado contra o `tempos.json` da cena `dossie`: o painel abre aos ~6,4 s e
- * a fala vai até os 23 s, então cinco linhas a cada 2,8 s enchem o painel no
- * ritmo em que ela lê. Se o texto da cena mudar de tamanho, este é o número a
- * reconferir — ele é ritmo, não regra.
+ * Calibrado contra o `tempos.json` da cena `dossie`, e RECALIBRADO quando ela
+ * passou de 5 pra 17 falas: a revelação agora acontece aos 35 s e a cena vai
+ * até os 64 s, então são 29 s pra cinco linhas. A 2,8 s (o número antigo) elas
+ * acabavam aos 49 s e o painel ficava quinze segundos parado justamente
+ * enquanto a IA diz as falas mais pesadas.
+ *
+ * Se o texto da cena mudar de tamanho de novo, este é o número a reconferir —
+ * ele é ritmo, não regra.
  */
-const MS_ENTRE_LINHAS = 2800
+const MS_ENTRE_LINHAS = 5600
+
+// O fade da silhueta preta pra foto (800 ms) é do CSS, em `.dossie__img`:
+// é transição de filtro, e transição de filtro é do navegador, não daqui.
 
 type Props = {
-  /** Chave da ficha e da silhueta. Sem ela, o painel diz que não tem nada. */
+  /**
+   * Chave da ficha, opcionalmente com `+escuro`.
+   *
+   * `escuro` é o primeiro tempo da revelação: o painel abre com a imagem
+   * PRETA e os dados vazios, porque a IA já achou o registro e ainda não
+   * aceitou o que leu. Reabrir sem o modificador revela. Sem ele, o painel se
+   * comporta como sempre se comportou — abre revelado.
+   *
+   * O separador é `+` e não espaço porque o dispatcher tira dali pra montar a
+   * chave do React: assim o painel NÃO remonta ao revelar.
+   */
   argumento?: string
 }
 
 export function PainelDossie({ argumento }: Props) {
-  const nome = argumento ?? ''
+  const partes = (argumento ?? '').split('+').map((p) => p.trim()).filter(Boolean)
+  const nome = partes[0] ?? ''
+  const escuro = partes.includes('escuro')
   const ficha = FICHAS[nome]
   const refCanvas = useRef<HTMLCanvasElement>(null)
   const [linhasVisiveis, setLinhasVisiveis] = useState(0)
@@ -58,13 +77,16 @@ export function PainelDossie({ argumento }: Props) {
   // Os dados entram um a um, no ritmo da fala da IA. Sincronizado por tempo e
   // não por linha de legenda de propósito: o painel é aberto por ação e não
   // sabe em que linha da cena está.
+  //
+  // Enquanto a imagem está escura eles NÃO entram: o painel aberto e vazio é
+  // o que mostra a IA parada em cima de um resultado que ela não quer ler.
   useEffect(() => {
-    if (total === 0) return
+    if (total === 0 || escuro) return
     const timers = Array.from({ length: total }, (_, i) =>
       window.setTimeout(() => setLinhasVisiveis(i + 1), MS_TRACO + i * MS_ENTRE_LINHAS),
     )
     return () => timers.forEach((t) => window.clearTimeout(t))
-  }, [total, nome])
+  }, [total, nome, escuro])
 
   useEffect(() => {
     const canvas = refCanvas.current
@@ -183,8 +205,17 @@ export function PainelDossie({ argumento }: Props) {
       <div className="dossie__visual">
         {imagem && (
           <figure className="dossie__foto">
-            <img src={imagem} alt="" />
-            <figcaption className="dossie__rotulo-foto">reconstrução dos sensores</figcaption>
+            {/* A imagem é sempre a mesma, e a revelação é só o filtro saindo:
+                trocar de elemento faria o navegador decodificar de novo bem no
+                meio da frase que a cena existe pra entregar. */}
+            <img
+              src={imagem}
+              alt=""
+              className={escuro ? 'dossie__img dossie__img--escura' : 'dossie__img'}
+            />
+            <figcaption className="dossie__rotulo-foto">
+              {escuro ? 'reconstrução: em curso' : 'reconstrução dos sensores'}
+            </figcaption>
           </figure>
         )}
         {/* A silhueta desenhada é a reserva pra quando NÃO há foto. Com foto
@@ -198,7 +229,10 @@ export function PainelDossie({ argumento }: Props) {
         )}
       </div>
       <div className="dossie__dados">
-        <h3 className="dossie__titulo">{ficha.titulo}</h3>
+        {/* O nome é a fala 11, não o painel. Enquanto a imagem está preta ele
+            fica de fora: aparecendo antes, o dossiê entrega a resposta duas
+            falas antes de a IA conseguir dizê-la. */}
+        <h3 className="dossie__titulo">{escuro ? '' : ficha.titulo}</h3>
         <dl className="dossie__lista">
           {Object.entries(ficha.dados).map(([rotulo, valor], i) => (
             <div

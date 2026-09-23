@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { textoDaLinha, type CenaFala } from '../roteiros/tipos'
+import { enfaseDaLinha, textoDaLinha, type CenaFala } from '../roteiros/tipos'
 import { Legenda } from '../ui/Legenda'
 import type { TemposReais } from '../ui/ritmoLegenda'
 
@@ -18,6 +18,7 @@ export function Fala({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaG
   // desta lista e reinicia quando ela muda de identidade — um `.map()` solto
   // no JSX faria a legenda recomeçar da primeira linha a cada render.
   const linhas = useMemo(() => cena.tela.linhas.map(textoDaLinha), [cena])
+  const enfases = useMemo(() => cena.tela.linhas.map(enfaseDaLinha), [cena])
   return (
     <>
       {cena.tela.titulo && <p className="palco__rotulo">{cena.tela.titulo}</p>}
@@ -30,6 +31,7 @@ export function Fala({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaG
         cena={cena.id}
         tempos={tempos}
         linhaGuiada={linhaGuiada}
+        enfases={enfases}
       />
       {cena.tela.status && <p className="palco__status">{cena.tela.status}</p>}
     </>

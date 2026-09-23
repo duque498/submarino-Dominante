@@ -173,14 +173,53 @@ function conferirAcoes(linha: Linha, total: number, onde: string, erros: string[
         }
         break
       }
+      case 'log': {
+        const linhas = (acao as { linhas?: unknown }).linhas
+        if (!Array.isArray(linhas) || linhas.length === 0 || !linhas.every(ehTextoPreenchido)) {
+          erros.push(`${rotulo}: "linhas" deve ser uma lista de textos.`)
+        }
+        const nivel = (acao as { nivel?: unknown }).nivel
+        if (nivel !== undefined && nivel !== 'err' && nivel !== 'warn' && nivel !== 'ok') {
+          erros.push(`${rotulo}: "nivel" deve ser "err", "warn" ou "ok".`)
+        }
+        break
+      }
+      case 'orbe': {
+        const estado = (acao as { estado?: unknown }).estado
+        if (estado !== undefined && !ESTADOS_ORBE.includes(String(estado))) {
+          erros.push(`${rotulo}: "estado" deve ser ${ESTADOS_ORBE.join(', ')}.`)
+        }
+        const efeito = (acao as { efeito?: unknown }).efeito
+        if (efeito !== undefined && !EFEITOS_ORBE.includes(String(efeito))) {
+          erros.push(`${rotulo}: "efeito" deve ser ${EFEITOS_ORBE.join(', ')}.`)
+        }
+        if (estado === undefined && efeito === undefined) {
+          erros.push(`${rotulo}: a acao "orbe" precisa de "estado" ou "efeito".`)
+        }
+        const ms = (acao as { ms?: unknown }).ms
+        if (ms !== undefined && (typeof ms !== 'number' || ms <= 0)) {
+          erros.push(`${rotulo}: "ms" deve ser um numero de milissegundos.`)
+        }
+        break
+      }
+      case 'trilha': {
+        const db = (acao as { db?: unknown }).db
+        if (db !== null && (typeof db !== 'number' || db > 0 || db < -60)) {
+          erros.push(`${rotulo}: "db" deve ser de -60 a 0, ou null pra parar.`)
+        }
+        break
+      }
       default:
         erros.push(
           `${rotulo}: tipo "${String(acao?.tipo)}" desconhecido. ` +
-            `Use: painel, forma, fechar, mapa, camera, sfx ou mergulho.`,
+            `Use: painel, forma, fechar, mapa, camera, sfx, mergulho, log, orbe ou trilha.`,
         )
     }
   })
 }
+
+const ESTADOS_ORBE = ['ocioso', 'falando', 'processando', 'pane']
+const EFEITOS_ORBE = ['parar', 'tremor', 'lento']
 
 /** Roda a conferencia de acoes em todas as linhas da cena. */
 function conferirLinhas(linhas: unknown, onde: string, erros: string[]) {

@@ -63,7 +63,7 @@ import { VF } from '../cenas/VF'
 import { Ajuda } from '../ui/Ajuda'
 import { Hud } from '../ui/Hud'
 import { Legenda } from '../ui/Legenda'
-import { LogSistemas, type ModoLog } from '../ui/LogSistemas'
+import { LogSistemas, type ModoLog, type RajadaLog } from '../ui/LogSistemas'
 import { POOL_COMANDO } from '../ui/logPool'
 import { duracaoDaLegenda, type TemposReais } from '../ui/ritmoLegenda'
 import { Orbe, QTD_PONTOS, type EstadoOrbe } from '../ui/Orbe'
@@ -505,7 +505,21 @@ export function Player({ roteiro, engine }: Props) {
   )
   /** Fala avulsa da IA: resposta de comando, feedback de quiz ou alerta da pane. */
   const [fala, setFala] = useState<Fala | null>(null)
-  const [rajadaLog, setRajadaLog] = useState<string[] | null>(null)
+  const [rajadaLog, setRajadaBruta] = useState<RajadaLog | null>(null)
+  /**
+   * Mantém a assinatura antiga (`setRajadaLog([...])`) porque ela é chamada de
+   * duas dúzias de lugares; o nível é opcional e só o roteiro usa.
+   */
+  const setRajadaLog = useCallback(
+    (linhas: string[], nivel?: 'err' | 'warn' | 'ok') => setRajadaBruta({ linhas, nivel }),
+    [],
+  )
+  /**
+   * Ritmo do orbe pedido pelo roteiro. Volta sozinho ao normal: quem conta o
+   * tempo é aqui, porque é o roteiro que sabe quanto o momento dura.
+   */
+  const [ritmoOrbe, setRitmoOrbe] = useState<'normal' | 'parado' | 'lento'>('normal')
+  const refRitmoTimer = useRef(0)
   const [orbeForcado, setOrbeForcado] = useState<EstadoOrbe | null>(null)
   const [tremor, setTremor] = useState(false)
   const [pulso, setPulso] = useState(false)
@@ -1915,8 +1929,33 @@ export function Player({ roteiro, engine }: Props) {
     mergulho: (para: number) => refSaidas.current.aoMergulhar(para),
     /** Preenchido logo abaixo: o callback só existe depois do useCallback. */
     aoMergulhar: (_para: number) => {},
-    log: (linhas: string[]) => setRajadaLog(linhas),
+    log: (linhas: string[], nivel?: 'err' | 'warn' | 'ok') => setRajadaLog(linhas, nivel),
+    orbe: (pedido: { estado?: EstadoOrbe; efeito?: 'parar' | 'tremor' | 'lento'; ms?: number }) => {
+      if (pedido.estado) setOrbeForcado(pedido.estado)
+      if (!pedido.efeito) return
+      const ms = pedido.ms ?? 1000
+      if (pedido.efeito === 'tremor') {
+        // O tremor já existe e se apaga sozinho — é o mesmo de comando não
+        // reconhecido, e é exatamente o solavanco que a cena quer.
+        setTremor(true)
+        window.setTimeout(() => setTremor(false), Math.min(600, ms))
+        return
+      }
+      window.clearTimeout(refRitmoTimer.current)
+      setRitmoOrbe(pedido.efeito === 'parar' ? 'parado' : 'lento')
+      refRitmoTimer.current = window.setTimeout(() => setRitmoOrbe('normal'), ms)
+    },
+    trilha: (db: number | null, ms?: number) => engine.nivelDaTrilha(db, ms),
   })
+
+  // O que o roteiro forçou no orbe morre com a cena. Sem isto, um
+  // `estado: "processando"` pedido numa linha atravessaria pra cena seguinte,
+  // que nao pediu nada e nao tem como desfazer.
+  useEffect(() => {
+    setOrbeForcado(null)
+    setRitmoOrbe('normal')
+    window.clearTimeout(refRitmoTimer.current)
+  }, [cena?.id])
 
   const refDiretor = useRef<Diretor | null>(null)
   if (!refDiretor.current) {
@@ -1926,7 +1965,9 @@ export function Player({ roteiro, engine }: Props) {
       forma: (f) => refSaidas.current.forma(f),
       sfx: (n) => refSaidas.current.sfx(n),
       mergulho: (m) => refSaidas.current.mergulho(m),
-      log: (l) => refSaidas.current.log(l),
+      log: (l, nivel) => refSaidas.current.log(l, nivel),
+      orbe: (p) => refSaidas.current.orbe(p),
+      trilha: (db, ms) => refSaidas.current.trilha(db, ms),
     })
   }
   const diretor = refDiretor.current
@@ -2713,6 +2754,7 @@ export function Player({ roteiro, engine }: Props) {
             pulso={pulso}
             compacto={modo === 'canto'}
             avariado={emergencia !== null && !emergencia.encerrando}
+            ritmo={ritmoOrbe}
           />
           <div className="palco__texto">
             {conteudoDaCena(cena, sinc, modo, falando, lerNivel, linhaGuiada)}
