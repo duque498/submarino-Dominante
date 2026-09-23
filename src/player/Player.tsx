@@ -415,6 +415,8 @@ export function Player({ roteiro, engine }: Props) {
   const [falando, setFalando] = useState(false)
   /** Linha que a voz do navegador está dizendo agora; null = manda o relógio. */
   const [linhaGuiada, setLinhaGuiada] = useState<number | null>(null)
+  /** Até que caractere da linha a voz do navegador chegou. Ver Legenda. */
+  const [charGuiado, setCharGuiado] = useState<number | null>(null)
   const [indiceForma, setIndiceForma] = useState(SEM_FORMA)
   const [formaForcada, setFormaForcada] = useState<string | null>(null)
   const [escala, setEscala] = useState(1)
@@ -2488,11 +2490,19 @@ export function Player({ roteiro, engine }: Props) {
       } else if (legenda && legenda.length > 0) {
         // Sem mp3: a voz do navegador lê a legenda, e a troca de linha passa a
         // ser comandada por ela em vez de por relógio.
-        const falou = await engine.falarComNavegador(legenda, ({ indice: i }) =>
-          setLinhaGuiada(i),
+        const falou = await engine.falarComNavegador(
+          legenda,
+          ({ indice: i }) => {
+            setLinhaGuiada(i)
+            // Zera ao trocar de linha: o charIndex é DENTRO da linha, e
+            // carregar o da anterior revelaria a nova inteira de cara.
+            setCharGuiado(null)
+          },
+          ({ caractere }) => setCharGuiado(caractere),
         )
         if (cancelado) return
         setLinhaGuiada(null)
+        setCharGuiado(null)
         if (!falou) {
           engine.simularVoz(naTela)
           await esperar(naTela)
@@ -2827,7 +2837,7 @@ export function Player({ roteiro, engine }: Props) {
             ritmo={ritmoOrbe}
           />
           <div className="palco__texto">
-            {conteudoDaCena(cena, sinc, modo, falando, lerNivel, linhaGuiada)}
+            {conteudoDaCena(cena, sinc, modo, falando, lerNivel, linhaGuiada, charGuiado)}
           </div>
           {fala && (
             <div className={pane ? 'palco__resposta palco__resposta--alerta' : 'palco__resposta'}>
@@ -3122,6 +3132,7 @@ function conteudoDaCena(
   falando: boolean,
   lerNivel: () => number,
   linhaGuiada: number | null,
+  charGuiado: number | null,
 ) {
   switch (cena.tipo) {
     case 'fala':
@@ -3135,6 +3146,7 @@ function conteudoDaCena(
           lerNivel={lerNivel}
           tempos={sinc.tempos}
           linhaGuiada={linhaGuiada}
+          charGuiado={charGuiado}
         />
       )
     case 'apresentacao':
@@ -3152,6 +3164,7 @@ function conteudoDaCena(
           lerNivel={lerNivel}
           tempos={sinc.tempos}
           linhaGuiada={linhaGuiada}
+          charGuiado={charGuiado}
         />
       )
     default:

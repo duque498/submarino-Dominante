@@ -11,9 +11,10 @@ type Props = {
   lerNivel: () => number
   tempos?: TemposReais | null
   linhaGuiada?: number | null
+  charGuiado?: number | null
 }
 
-export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaGuiada }: Props) {
+export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaGuiada, charGuiado }: Props) {
   // Ver o comentário em Fala.tsx: identidade de array nova a cada render faz a
   // legenda recomeçar da primeira linha.
   const linhas = useMemo(() => cena.tela.linhas.map(textoDaLinha), [cena])
@@ -28,6 +29,7 @@ export function Transicao({ cena, duracaoMs, ativa, falando, lerNivel, tempos, l
         cena={cena.id}
         tempos={tempos}
         linhaGuiada={linhaGuiada}
+        charGuiado={charGuiado}
       />
       <p className="transicao__destino">destino: {cena.destino}</p>
       <div className="transicao__trilho" />

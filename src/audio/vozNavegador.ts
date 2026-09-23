@@ -14,6 +14,16 @@
  */
 
 export type LinhaFalada = { indice: number; texto: string }
+/**
+ * Onde a voz está DENTRO da linha, em caracteres.
+ *
+ * O navegador avisa a cada palavra (`boundary`), e é esse aviso que deixa a
+ * legenda materializar a palavra no instante em que ela é dita. Sem ele só
+ * resta estimar por caractere, e estimativa erra — a 0,92 de `rate` a voz faz
+ * ~72 ms por caractere e a legenda chutava 82, o que atrasa quase um segundo
+ * no fim de uma linha longa.
+ */
+export type PosicaoNaLinha = { indice: number; caractere: number }
 
 const MARCA = 'submarino-domi'
 
@@ -125,6 +135,7 @@ export class VozNavegador {
     linhas: string[],
     aoComecarLinha?: (linha: LinhaFalada) => void,
     opcoes: { taxa?: number; tom?: number; volume?: number } = {},
+    aoAvancar?: (posicao: PosicaoNaLinha) => void,
   ): Promise<boolean> {
     if (!vozDoNavegadorExiste() || linhas.length === 0) return false
     this.cancelado = false
@@ -135,7 +146,9 @@ export class VozNavegador {
       const texto = linhas[i].trim()
       if (!texto) continue
       aoComecarLinha?.({ indice: i, texto })
-      await this.falarUma(texto, voz, opcoes)
+      await this.falarUma(texto, voz, opcoes, (caractere) =>
+        aoAvancar?.({ indice: i, caractere }),
+      )
     }
     return true
   }
@@ -144,6 +157,7 @@ export class VozNavegador {
     texto: string,
     voz: SpeechSynthesisVoice | null,
     opcoes: { taxa?: number; tom?: number; volume?: number },
+    aoAvancar?: (caractere: number) => void,
   ): Promise<void> {
     return new Promise((resolve) => {
       const fala = new SpeechSynthesisUtterance(texto)
@@ -164,6 +178,13 @@ export class VozNavegador {
       }
       fala.onend = encerrar
       fala.onerror = encerrar
+      // Nem todo motor de voz dispara `boundary`. Quem não dispara continua
+      // caindo na estimativa da legenda — por isso o evento AVISA em vez de a
+      // legenda perguntar.
+      fala.onboundary = (evento) => {
+        if (evento.name && evento.name !== 'word') return
+        aoAvancar?.(evento.charIndex)
+      }
 
       // Rede de segurança: se a fala travar (acontece em alguns sistemas), o
       // roteiro não pode ficar preso esperando pra sempre.

@@ -22,6 +22,14 @@ type Props = {
    */
   linhaGuiada?: number | null
   /**
+   * Até que caractere da linha a voz do navegador já chegou.
+   *
+   * Quando vem preenchido, ele manda na revelação das palavras: elas aparecem
+   * no instante em que são ditas, em vez de num ritmo estimado. `null` quando
+   * o motor de voz não avisa (nem todos avisam), e aí vale a estimativa.
+   */
+  charGuiado?: number | null
+  /**
    * Destaque por linha, na mesma ordem de `linhas`. Serve pras falas em que o
    * texto É o acontecimento.
    */
@@ -55,6 +63,7 @@ export function Legenda({
   cena,
   tempos,
   linhaGuiada,
+  charGuiado,
   enfases,
 }: Props) {
   const plano = useMemo(
@@ -66,6 +75,8 @@ export function Legenda({
   const refFalando = useRef(falando)
   const refNivel = useRef(lerNivel)
   const refGuiada = useRef(linhaGuiada)
+  const refChar = useRef(charGuiado)
+  refChar.current = charGuiado
   const refEnfases = useRef(enfases)
   refEnfases.current = enfases
   refFalando.current = falando
@@ -100,6 +111,8 @@ export function Legenda({
     let fracoes: number[] = []
     /** A linha atual pediu pra não ser decifrada letra a letra. */
     let semDecifrar = false
+    /** Caractere em que cada palavra da linha atual começa. */
+    let inicios: number[] = []
 
     const montarLinha = (indice: number, comGlitch: boolean) => {
       if (elLinha) removerLinha(elLinha)
@@ -132,8 +145,18 @@ export function Legenda({
       linhaAtual = indice
       inicioLinha = performance.now()
 
-      // No modo guiado não há linha do tempo: as palavras se distribuem pelo
-      // tamanho delas dentro da estimativa de duração da frase.
+      // Onde cada palavra começa, em caracteres. É com isto que o aviso de
+      // `boundary` da voz do navegador (que vem em charIndex) vira "revele até
+      // aqui".
+      let andado = 0
+      inicios = plano[indice].palavras.map((p) => {
+        const onde = andado
+        andado += p.length + 1
+        return onde
+      })
+
+      // No modo guiado sem `boundary` não há linha do tempo: as palavras se
+      // distribuem pelo tamanho delas dentro da estimativa de duração da frase.
       const pesos = plano[indice].palavras.map((p) => p.length + 1.6)
       const total = pesos.reduce((a, b) => a + b, 0) || 1
       let acumulado = 0
@@ -182,10 +205,19 @@ export function Legenda({
         if (palavra.pronta) continue
 
         if (!palavra.revelada) {
-          const pronto =
-            guiada !== null && guiada !== undefined
-              ? naLinha >= (fracoes[i] ?? 0) * janelaGuiada
-              : decorrido >= tempos[i]
+          let pronto: boolean
+          if (guiada !== null && guiada !== undefined) {
+            const ate = refChar.current
+            pronto =
+              ate !== null && ate !== undefined
+                ? // A voz avisou onde está: revela tudo até ali. O `+ 1` cobre
+                  // a palavra que ESTÁ sendo dita — o aviso chega no começo
+                  // dela, e escondê-la até acabar seria o atraso de novo.
+                  (inicios[i] ?? 0) <= ate + 1
+                : naLinha >= (fracoes[i] ?? 0) * janelaGuiada
+          } else {
+            pronto = decorrido >= tempos[i]
+          }
           if (!pronto) continue
           palavra.revelada = tempo
           palavra.el.classList.add('legenda__palavra--visivel')

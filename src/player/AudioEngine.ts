@@ -8,6 +8,7 @@ import {
   VozNavegador,
   vozDoNavegadorExiste,
   type LinhaFalada,
+  type PosicaoNaLinha,
 } from '../audio/vozNavegador'
 import { tocarSintetico, tocarTesteDeSom, type NomeSfx } from '../audio/sfx'
 import { tocarSomDoHidrofone, type SomTocando } from '../audio/hidrofone'
@@ -592,10 +593,11 @@ export class AudioEngine {
   async falarComNavegador(
     linhas: string[],
     aoComecarLinha?: (linha: LinhaFalada) => void,
+    aoAvancar?: (posicao: PosicaoNaLinha) => void,
   ): Promise<boolean> {
     if (!vozDoNavegadorExiste()) return false
     this.iniciarLoopNivel('sintetico')
-    const falou = await this.voz.falar(linhas, aoComecarLinha)
+    const falou = await this.voz.falar(linhas, aoComecarLinha, {}, aoAvancar)
     this.pararLoopNivel()
     return falou
   }

@@ -11,9 +11,10 @@ type Props = {
   lerNivel: () => number
   tempos?: TemposReais | null
   linhaGuiada?: number | null
+  charGuiado?: number | null
 }
 
-export function Fala({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaGuiada }: Props) {
+export function Fala({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaGuiada, charGuiado }: Props) {
   // Memorizado por CENA, não por render. A legenda planeja o ritmo a partir
   // desta lista e reinicia quando ela muda de identidade — um `.map()` solto
   // no JSX faria a legenda recomeçar da primeira linha a cada render.
@@ -31,6 +32,7 @@ export function Fala({ cena, duracaoMs, ativa, falando, lerNivel, tempos, linhaG
         cena={cena.id}
         tempos={tempos}
         linhaGuiada={linhaGuiada}
+        charGuiado={charGuiado}
         enfases={enfases}
       />
       {cena.tela.status && <p className="palco__status">{cena.tela.status}</p>}
