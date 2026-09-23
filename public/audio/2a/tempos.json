@@ -1,106 +1,106 @@
 {
   "arte-intro": {
-    "duracaoMs": 25128,
+    "duracaoMs": 25008,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3072
+        "fim": 3048
       },
       {
-        "inicio": 3672,
-        "fim": 9648
+        "inicio": 3648,
+        "fim": 9600
       },
       {
-        "inicio": 10248,
-        "fim": 12552
+        "inicio": 10200,
+        "fim": 12480
       },
       {
-        "inicio": 13152,
-        "fim": 19968
+        "inicio": 13080,
+        "fim": 19872
       },
       {
-        "inicio": 20568,
-        "fim": 22296
+        "inicio": 20472,
+        "fim": 22176
       },
       {
-        "inicio": 22896,
-        "fim": 24888
+        "inicio": 22776,
+        "fim": 24768
       }
     ]
   },
   "bio-intro": {
-    "duracaoMs": 8592,
+    "duracaoMs": 8544,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2592
+        "fim": 2568
       },
       {
-        "inicio": 3192,
-        "fim": 5184
+        "inicio": 3168,
+        "fim": 5160
       },
       {
-        "inicio": 5784,
-        "fim": 8496
+        "inicio": 5760,
+        "fim": 8448
       }
     ]
   },
   "ef-intro": {
-    "duracaoMs": 11040,
+    "duracaoMs": 10968,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1560
+        "fim": 1536
       },
       {
-        "inicio": 2160,
-        "fim": 8784
+        "inicio": 2136,
+        "fim": 8736
       },
       {
-        "inicio": 9384,
-        "fim": 10944
+        "inicio": 9336,
+        "fim": 10872
       }
     ]
   },
   "entrada": {
-    "duracaoMs": 30216,
+    "duracaoMs": 30096,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2208
+        "fim": 2184
       },
       {
-        "inicio": 2808,
-        "fim": 4224
+        "inicio": 2784,
+        "fim": 4200
       },
       {
-        "inicio": 4824,
-        "fim": 6144
+        "inicio": 4800,
+        "fim": 6096
       },
       {
-        "inicio": 6744,
-        "fim": 8880
+        "inicio": 6696,
+        "fim": 8808
       },
       {
-        "inicio": 9480,
-        "fim": 21480
+        "inicio": 9408,
+        "fim": 21384
       },
       {
-        "inicio": 22080,
-        "fim": 25632
+        "inicio": 21984,
+        "fim": 25512
       },
       {
-        "inicio": 26232,
-        "fim": 29928
+        "inicio": 26112,
+        "fim": 29808
       }
     ]
   },
   "ident-acerto-1": {
-    "duracaoMs": 2040,
+    "duracaoMs": 2016,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2040
+        "fim": 2016
       }
     ]
   },
@@ -123,20 +123,20 @@
     ]
   },
   "ident-baleia-pista-1": {
-    "duracaoMs": 3168,
+    "duracaoMs": 3144,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3168
+        "fim": 3144
       }
     ]
   },
   "ident-baleia-pista-2": {
-    "duracaoMs": 2904,
+    "duracaoMs": 2880,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2904
+        "fim": 2880
       }
     ]
   },
@@ -150,7 +150,7 @@
     ]
   },
   "ident-baleia-sobre": {
-    "duracaoMs": 19248,
+    "duracaoMs": 19224,
     "linhas": [
       {
         "inicio": 0,
@@ -162,29 +162,29 @@
       },
       {
         "inicio": 13776,
-        "fim": 19152
+        "fim": 19128
       }
     ]
   },
   "ident-fim": {
-    "duracaoMs": 5400,
+    "duracaoMs": 5352,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2088
+        "fim": 2064
       },
       {
-        "inicio": 2688,
-        "fim": 5352
+        "inicio": 2664,
+        "fim": 5304
       }
     ]
   },
   "ident-golfinho-pista-1": {
-    "duracaoMs": 4224,
+    "duracaoMs": 4200,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 4224
+        "fim": 4200
       }
     ]
   },
@@ -207,7 +207,7 @@
     ]
   },
   "ident-golfinho-sobre": {
-    "duracaoMs": 15096,
+    "duracaoMs": 15048,
     "linhas": [
       {
         "inicio": 0,
@@ -215,11 +215,11 @@
       },
       {
         "inicio": 4848,
-        "fim": 9096
+        "fim": 9072
       },
       {
-        "inicio": 9696,
-        "fim": 15000
+        "inicio": 9672,
+        "fim": 14952
       }
     ]
   },
@@ -233,25 +233,25 @@
     ]
   },
   "ident-inicio-2": {
-    "duracaoMs": 2832,
+    "duracaoMs": 2808,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2832
+        "fim": 2808
       }
     ]
   },
   "ident-inicio-3": {
-    "duracaoMs": 3168,
+    "duracaoMs": 3144,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3168
+        "fim": 3144
       }
     ]
   },
   "ident-intro": {
-    "duracaoMs": 13800,
+    "duracaoMs": 13776,
     "linhas": [
       {
         "inicio": 0,
@@ -259,11 +259,11 @@
       },
       {
         "inicio": 4128,
-        "fim": 6912
+        "fim": 6888
       },
       {
-        "inicio": 7512,
-        "fim": 13704
+        "inicio": 7488,
+        "fim": 13680
       }
     ]
   },
@@ -313,7 +313,7 @@
     ]
   },
   "ident-tartaruga-sobre": {
-    "duracaoMs": 20040,
+    "duracaoMs": 19992,
     "linhas": [
       {
         "inicio": 0,
@@ -321,11 +321,11 @@
       },
       {
         "inicio": 8496,
-        "fim": 13800
+        "fim": 13776
       },
       {
-        "inicio": 14400,
-        "fim": 19944
+        "inicio": 14376,
+        "fim": 19896
       }
     ]
   },
@@ -339,11 +339,11 @@
     ]
   },
   "ident-tubarao-pista-2": {
-    "duracaoMs": 4176,
+    "duracaoMs": 4152,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 4176
+        "fim": 4152
       }
     ]
   },
@@ -357,7 +357,7 @@
     ]
   },
   "ident-tubarao-sobre": {
-    "duracaoMs": 16032,
+    "duracaoMs": 15984,
     "linhas": [
       {
         "inicio": 0,
@@ -365,90 +365,90 @@
       },
       {
         "inicio": 4872,
-        "fim": 10200
+        "fim": 10176
       },
       {
-        "inicio": 10800,
-        "fim": 15936
+        "inicio": 10776,
+        "fim": 15888
       }
     ]
   },
   "pane-entrada": {
-    "duracaoMs": 17952,
+    "duracaoMs": 17784,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1824
+        "fim": 1800
       },
       {
-        "inicio": 2424,
-        "fim": 5520
+        "inicio": 2400,
+        "fim": 5472
       },
       {
-        "inicio": 6120,
-        "fim": 7176
+        "inicio": 6072,
+        "fim": 7104
       },
       {
-        "inicio": 7776,
-        "fim": 9144
+        "inicio": 7704,
+        "fim": 9048
       },
       {
-        "inicio": 9744,
-        "fim": 11688
+        "inicio": 9648,
+        "fim": 11568
       },
       {
-        "inicio": 12288,
-        "fim": 14808
+        "inicio": 12168,
+        "fim": 14664
       },
       {
-        "inicio": 15408,
-        "fim": 17664
+        "inicio": 15264,
+        "fim": 17496
       }
     ]
   },
   "pane-retorno": {
-    "duracaoMs": 10896,
+    "duracaoMs": 10776,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1632
+        "fim": 1608
       },
       {
-        "inicio": 2232,
-        "fim": 3744
+        "inicio": 2208,
+        "fim": 3696
       },
       {
-        "inicio": 4344,
-        "fim": 6240
+        "inicio": 4296,
+        "fim": 6168
       },
       {
-        "inicio": 6840,
-        "fim": 8400
+        "inicio": 6768,
+        "fim": 8304
       },
       {
-        "inicio": 9000,
-        "fim": 10704
+        "inicio": 8904,
+        "fim": 10584
       }
     ]
   },
   "transicao-2b": {
-    "duracaoMs": 10728,
+    "duracaoMs": 10704,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3072
+        "fim": 3048
       },
       {
-        "inicio": 3672,
-        "fim": 5040
+        "inicio": 3648,
+        "fim": 5016
       },
       {
-        "inicio": 5640,
-        "fim": 7416
+        "inicio": 5616,
+        "fim": 7392
       },
       {
-        "inicio": 8016,
-        "fim": 10584
+        "inicio": 7992,
+        "fim": 10560
       }
     ]
   }

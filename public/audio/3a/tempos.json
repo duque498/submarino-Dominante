@@ -17,11 +17,11 @@
     ]
   },
   "combate-acerto-1": {
-    "duracaoMs": 2448,
+    "duracaoMs": 2424,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2448
+        "fim": 2424
       }
     ]
   },
@@ -44,6 +44,15 @@
     ]
   },
   "combate-critico": {
+    "duracaoMs": 2280,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2280
+      }
+    ]
+  },
+  "combate-erro-1": {
     "duracaoMs": 2304,
     "linhas": [
       {
@@ -52,34 +61,16 @@
       }
     ]
   },
-  "combate-erro-1": {
-    "duracaoMs": 2328,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 2328
-      }
-    ]
-  },
   "combate-erro-2": {
-    "duracaoMs": 2400,
+    "duracaoMs": 2376,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2400
+        "fim": 2376
       }
     ]
   },
   "combate-perdido-1": {
-    "duracaoMs": 1920,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 1920
-      }
-    ]
-  },
-  "combate-perdido-2": {
     "duracaoMs": 1896,
     "linhas": [
       {
@@ -88,21 +79,30 @@
       }
     ]
   },
-  "combate-retorno-1": {
-    "duracaoMs": 1320,
+  "combate-perdido-2": {
+    "duracaoMs": 1872,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1320
+        "fim": 1872
+      }
+    ]
+  },
+  "combate-retorno-1": {
+    "duracaoMs": 1296,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1296
       }
     ]
   },
   "combate-retorno-2": {
-    "duracaoMs": 1680,
+    "duracaoMs": 1656,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1680
+        "fim": 1656
       }
     ]
   },
@@ -125,16 +125,16 @@
     ]
   },
   "combate-rodada-3": {
-    "duracaoMs": 2448,
+    "duracaoMs": 2424,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2448
+        "fim": 2424
       }
     ]
   },
   "contato": {
-    "duracaoMs": 6360,
+    "duracaoMs": 6336,
     "linhas": [
       {
         "inicio": 0,
@@ -142,100 +142,100 @@
       },
       {
         "inicio": 4296,
-        "fim": 6312
+        "fim": 6288
       }
     ]
   },
   "descida": {
-    "duracaoMs": 12288,
+    "duracaoMs": 12216,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1464
+        "fim": 1440
       },
       {
-        "inicio": 2064,
-        "fim": 4392
+        "inicio": 2040,
+        "fim": 4368
       },
       {
-        "inicio": 4992,
-        "fim": 6552
+        "inicio": 4968,
+        "fim": 6504
       },
       {
-        "inicio": 7152,
-        "fim": 12144
+        "inicio": 7104,
+        "fim": 12072
       }
     ]
   },
   "dossie": {
-    "duracaoMs": 23016,
+    "duracaoMs": 22896,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2880
+        "fim": 2856
       },
       {
-        "inicio": 3480,
-        "fim": 6288
+        "inicio": 3456,
+        "fim": 6240
       },
       {
-        "inicio": 6888,
-        "fim": 11880
+        "inicio": 6840,
+        "fim": 11808
       },
       {
-        "inicio": 12480,
-        "fim": 19560
+        "inicio": 12408,
+        "fim": 19464
       },
       {
-        "inicio": 20160,
-        "fim": 22824
+        "inicio": 20064,
+        "fim": 22704
       }
     ]
   },
   "encerramento": {
-    "duracaoMs": 31728,
+    "duracaoMs": 31608,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 9816
+        "fim": 9792
       },
       {
-        "inicio": 10416,
-        "fim": 18984
+        "inicio": 10392,
+        "fim": 18936
       },
       {
-        "inicio": 19584,
-        "fim": 21480
+        "inicio": 19536,
+        "fim": 21408
       },
       {
-        "inicio": 22080,
-        "fim": 25176
+        "inicio": 22008,
+        "fim": 25104
       },
       {
-        "inicio": 25776,
-        "fim": 29016
+        "inicio": 25704,
+        "fim": 28920
       },
       {
-        "inicio": 29616,
-        "fim": 31488
+        "inicio": 29520,
+        "fim": 31368
       }
     ]
   },
   "grupo1-intro": {
-    "duracaoMs": 2040,
+    "duracaoMs": 2016,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2040
+        "fim": 2016
       }
     ]
   },
   "grupo2-intro": {
-    "duracaoMs": 3792,
+    "duracaoMs": 3768,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3792
+        "fim": 3768
       }
     ]
   },
@@ -249,50 +249,50 @@
     ]
   },
   "grupo4-intro": {
-    "duracaoMs": 3360,
+    "duracaoMs": 3336,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3360
+        "fim": 3336
       }
     ]
   },
   "instrucoes": {
-    "duracaoMs": 21072,
+    "duracaoMs": 21024,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3840
+        "fim": 3816
       },
       {
-        "inicio": 4440,
-        "fim": 11520
+        "inicio": 4416,
+        "fim": 11472
       },
       {
-        "inicio": 12120,
-        "fim": 18336
+        "inicio": 12072,
+        "fim": 18288
       },
       {
-        "inicio": 18936,
-        "fim": 20928
+        "inicio": 18888,
+        "fim": 20880
       }
     ]
   },
   "neutralizado": {
-    "duracaoMs": 7896,
+    "duracaoMs": 7848,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2712
+        "fim": 2688
       },
       {
-        "inicio": 3312,
-        "fim": 7848
+        "inicio": 3288,
+        "fim": 7800
       }
     ]
   },
   "subida": {
-    "duracaoMs": 8208,
+    "duracaoMs": 8160,
     "linhas": [
       {
         "inicio": 0,
@@ -300,11 +300,11 @@
       },
       {
         "inicio": 3168,
-        "fim": 5256
+        "fim": 5232
       },
       {
-        "inicio": 5856,
-        "fim": 8112
+        "inicio": 5832,
+        "fim": 8064
       }
     ]
   }

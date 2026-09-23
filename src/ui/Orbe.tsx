@@ -147,6 +147,25 @@ const PALETAS: Record<EstadoOrbe, Paleta> = {
   pane: { linha: '255, 77, 94', ponto: '255, 194, 77', particula: '255, 77, 94' },
 }
 
+/**
+ * A IA avariada, no modo reduzido do 2B.
+ *
+ * Vermelha e não ciano, do momento em que ela quebra até a plateia devolver a
+ * comunicação no hidrofone. O orbe É a IA na tela — deixá-la da mesma cor de
+ * sempre, só um pouco mais escura, contava a avaria só pra quem estivesse
+ * olhando as luzinhas do canto.
+ *
+ * Mais contida que a paleta de `pane`: lá o âmbar entra junto e a coisa toda
+ * pisca, o que é certo num alarme de dez segundos e insuportável num estado
+ * que fica no ar durante duas apresentações inteiras. Aqui é só vermelho, e a
+ * agitação vem da lentidão, não do tremor.
+ */
+const PALETA_AVARIADA: Paleta = {
+  linha: '186, 58, 72',
+  ponto: '255, 104, 118',
+  particula: '255, 138, 104',
+}
+
 export function Orbe({
   estado,
   lerNivel,
@@ -405,7 +424,13 @@ export function Orbe({
 
       if (refAvariado.current) {
         velocidade *= 0.45
-        brilho *= 0.6
+        // Praticamente sem escurecer: agora quem conta a avaria é a COR.
+        //
+        // Com a paleta vermelha e os 60% de brilho do plano original o orbe
+        // sumia no fundo escuro — vermelho é a cor que o olho menos enxerga no
+        // escuro, e o que estava indo pro projetor era uma malha quase
+        // invisível. A avaria fica por conta da cor e da lentidão.
+        brilho *= 0.95
         velParticulas *= 0.5
       }
 
@@ -477,7 +502,7 @@ export function Orbe({
       const fatorForma = emForma ? avanco : 1 - avanco
       const raioBase = menorLado * (0.33 + 0.13 * fatorForma) * refEscala.current
       const raioParticulas = menorLado * 0.33 * refEscala.current
-      const paleta = PALETAS[estadoAtual]
+      const paleta = refAvariado.current ? PALETA_AVARIADA : PALETAS[estadoAtual]
 
       for (let i = 0; i < total; i++) {
         const zr = posZ[i]

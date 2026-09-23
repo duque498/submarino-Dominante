@@ -698,11 +698,18 @@ Enquanto o modo reduzido está ligado, em QUALQUER cena:
 | moldura pulsando vermelho (2 s) | classe `hud--emergencia` |
 | câmeras dessaturadas, retículo off | CSS sobre o `.feed__canvas` |
 | grão triplicado nas câmeras | `motor.avaria` |
-| orbe 45% mais lento e 40% mais escuro | prop `avariado` do orbe |
+| **orbe VERMELHO**, 45% mais lento | prop `avariado` do orbe |
 | uma linha de erro a cada ~20 s | efeito no Player |
 
 **Nada disso faz som.** Os grupos 3 e 4 apresentam por cima, e um alarme
 tocando por dez minutos atrás de alunos falando deixa de ser cenário.
+
+> **O orbe fica vermelho até o hidrofone.** Ele É a IA na tela: deixá-lo da cor
+> de sempre, só um pouco mais escuro, contava a avaria apenas pra quem
+> estivesse olhando as luzinhas do canto. A paleta é mais escura que a da pane
+> global, que é um alarme de dez segundos — esta fica no ar durante duas
+> apresentações inteiras. E o escurecimento caiu de 40% pra 20%, porque agora
+> quem conta a avaria é a cor, não a falta de luz.
 
 As luzes NÃO são um painel do Diretor: painel tem prazo e fecha com `Esc`, e a
 avaria não tem prazo. A janela de vida delas é derivada da estrutura, como a da
@@ -772,6 +779,27 @@ Se existir `public/audio/sfx/hidro-<id>.mp3`, o motor prefere o arquivo. O
 sintetizado é o plano que funciona sem ninguém baixar nada — e o validador
 recusa um som cujo `id` não tenha sintetizador nem mp3, porque isso deixaria a
 plateia olhando um espectrograma mudo.
+
+> **Os três foram medidos, não ouvidos por cima.** Renderizando cada um por 6 s
+> num `OfflineAudioContext`, com o mesmo compressor da saída de efeitos:
+>
+> | som | rms | pico | crista | modulação | silêncio |
+> |---|---|---|---|---|---|
+> | chuva | 0,160 | 0,97 | 6,1 | 1,4 | 0% |
+> | navio | 0,169 | 0,89 | 5,3 | 7,0 | 4% |
+> | baleia | 0,281 | 0,67 | 2,4 | 34,3 | 20% |
+>
+> Cada coluna é o traço do bicho. A **crista** alta da chuva são as gotas
+> saltando acima da média — é o crepitar. A **modulação** do navio é a hélice
+> batendo. O **silêncio** da baleia são as pausas entre as frases.
+>
+> Duas coisas só apareceram na medição. A chuva **estourava**: as gotas são
+> somadas no buffer e o pico batia em 1,53, e o compressor da saída ataca em
+> 3 ms enquanto a gota dura 1 a 4 ms — ele não pegava esses picos. Agora o
+> buffer passa por uma saturação suave e é normalizado na origem. E a hélice do
+> navio **não batia**: a modulação medida era 1,4, porque o tom do motor
+> entrava por fora do modulador e preenchia justamente os vales entre as pás.
+> Passando o motor por dentro, foi pra 7,0.
 
 ### O que vale como acerto
 

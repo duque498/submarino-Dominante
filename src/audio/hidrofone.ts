@@ -20,9 +20,16 @@ export type SomTocando = {
   parar(): void
 }
 
-const CHUVA_MS = 2200
+/**
+ * Tamanho do laco da chuva.
+ *
+ * Quatro segundos e nao dois: com gotas esparsas e sorteadas, um laco curto
+ * repete o MESMO desenho de gotas e o ouvido pega o loop em poucos ciclos.
+ */
+const CHUVA_MS = 4000
 const NAVIO_HZ_HELICE = 1.5
-const BALEIA_PAUSA = 1.1
+/** Silencio entre frases. Parte do som: sem ele o canto vira sirene. */
+const BALEIA_PAUSA = 0.8
 
 function ruidoBranco(ctx: AudioContext, segundos: number): AudioBuffer {
   const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * segundos), ctx.sampleRate)
@@ -43,30 +50,75 @@ function chuva(ctx: AudioContext, destino: AudioNode): SomTocando {
   const segundos = CHUVA_MS / 1000
   const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * segundos), ctx.sampleRate)
   const dados = buffer.getChannelData(0)
-  for (let i = 0; i < dados.length; i++) dados[i] = Math.random() * 2 - 1
-  // Micro-pulsos: uma gota a cada ~1,2 ms, com queda exponencial propria.
-  const passo = Math.floor(ctx.sampleRate * 0.0012)
-  for (let inicio = 0; inicio < dados.length; inicio += passo) {
-    const forca = 0.35 + Math.random() * 0.65
-    const decaimento = 1 / (passo * (0.4 + Math.random() * 0.8))
-    for (let i = 0; i < passo && inicio + i < dados.length; i++) {
-      dados[inicio + i] *= forca * Math.exp(-i * decaimento)
+
+  // Gotas ESPARSAS e sorteadas, não um pulso a cada 1,2 ms fixo.
+  //
+  // A primeira versão soava como chiado de rádio: os pulsos eram tão juntos e
+  // tão regulares que se fundiam numa parede de ruído. Chuva se reconhece pelo
+  // CREPITAR — impactos separados, de tamanhos diferentes, chegando fora de
+  // compasso. Agora cada gota tem início sorteado, força própria e cauda
+  // própria, e entre elas há silêncio de verdade.
+  const gotas = Math.floor(ctx.sampleRate * segundos * 0.02)
+  for (let n = 0; n < gotas; n++) {
+    const inicio = Math.floor(Math.random() * dados.length)
+    const forca = 0.25 + Math.random() * 0.75
+    const tamanho = Math.floor(ctx.sampleRate * (0.0008 + Math.random() * 0.004))
+    for (let i = 0; i < tamanho && inicio + i < dados.length; i++) {
+      dados[inicio + i] += (Math.random() * 2 - 1) * forca * Math.exp((-i / tamanho) * 5)
     }
+  }
+  // Um fundo baixo de chuva distante, pra as gotas não flutuarem no vazio.
+  for (let i = 0; i < dados.length; i++) {
+    dados[i] += (Math.random() * 2 - 1) * 0.12
+  }
+
+  // Saturação suave e depois normalização, em vez de cortar em ±1.
+  //
+  // As gotas são SOMADAS no buffer, e onde duas caem juntas o valor passa de
+  // 1: medido, o pico chegava a 1,53. Ceifar transformaria justamente as gotas
+  // mais fortes — as que fazem o som ser reconhecível — em estalo de
+  // distorção.
+  //
+  // E só normalizar não bastava: chuva tem fator de crista alto (medido: 10),
+  // então baixar o pico pra 0,95 deixava a MÉDIA em 0,09 e o som sumia ao lado
+  // dos outros dois. A tangente hiperbólica arredonda as gotas fora de série e
+  // sobe o corpo sem tocar no crepitar.
+  let pico = 0
+  for (let i = 0; i < dados.length; i++) {
+    dados[i] = Math.tanh(dados[i] * 2.1)
+    pico = Math.max(pico, Math.abs(dados[i]))
+  }
+  if (pico > 0) {
+    const escala = 0.95 / pico
+    for (let i = 0; i < dados.length; i++) dados[i] *= escala
   }
 
   const fonte = ctx.createBufferSource()
   fonte.buffer = buffer
   fonte.loop = true
 
-  const passaBanda = ctx.createBiquadFilter()
-  passaBanda.type = 'bandpass'
-  passaBanda.frequency.value = 4200
-  passaBanda.Q.value = 0.7
+  // Passa-alta em vez de passa-banda: a gota tem energia de 2 kHz pra cima, e
+  // o passa-banda estreito de antes tirava justamente o estalo do impacto.
+  const agudos = ctx.createBiquadFilter()
+  agudos.type = 'highpass'
+  agudos.frequency.value = 1800
+  agudos.Q.value = 0.7
 
+  const teto = ctx.createBiquadFilter()
+  teto.type = 'lowpass'
+  teto.frequency.value = 9000
+  // Butterworth: o Q padrão de 1 põe uma ressonância bem em cima da faixa onde
+  // a gota tem mais energia, e ela sozinha empurrava o pico acima de 1.
+  teto.Q.value = 0.707
+
+  // Ganho baixo de propósito. O compressor da saída de efeitos ataca em 3 ms e
+  // a gota dura 1 a 4 ms: ele NÃO pega esses picos (medido: com ganho alto o
+  // pico ficava em 1,37 mesmo depois do compressor, ou seja, ceifado na saída).
+  // Quem segura a chuva é o ganho na fonte.
   const ganho = ctx.createGain()
-  ganho.gain.value = 0.9
+  ganho.gain.value = 0.62
 
-  fonte.connect(passaBanda).connect(ganho).connect(destino)
+  fonte.connect(agudos).connect(teto).connect(ganho).connect(destino)
   fonte.start()
   return {
     saida: ganho,
@@ -76,9 +128,7 @@ function chuva(ctx: AudioContext, destino: AudioNode): SomTocando {
       } catch {
         /* ja parou */
       }
-      fonte.disconnect()
-      passaBanda.disconnect()
-      ganho.disconnect()
+      for (const no of [fonte, agudos, teto, ganho]) no.disconnect()
     },
   }
 }
@@ -96,49 +146,76 @@ function navio(ctx: AudioContext, destino: AudioNode): SomTocando {
   fonte.buffer = ruidoBranco(ctx, 3)
   fonte.loop = true
 
-  const grave = ctx.createBiquadFilter()
-  grave.type = 'lowpass'
-  grave.frequency.value = 200
-  grave.Q.value = 1.2
+  // Passa-banda estreito no lugar do passa-baixa: o ruido de casco vira uma
+  // FAIXA grave definida em vez de um rumor sem altura, e e essa altura que o
+  // ouvido lê como "motor grande" e não como "vento".
+  const casco = ctx.createBiquadFilter()
+  casco.type = 'lowpass'
+  casco.frequency.value = 260
+  casco.Q.value = 3
 
+  // Batida da hélice quase até o silêncio entre as pás.
+  //
+  // Antes ela oscilava de 0,13 a 0,97 do nível e o resultado era um zumbido
+  // ondulado. O que entrega um navio é o CHOP: cada pá bate, e entre uma e
+  // outra o som cai de verdade. Modulação quase total, e um oscilador exato —
+  // bicho nenhum bate tão certo.
   const helice = ctx.createGain()
-  helice.gain.value = 0.55
+  helice.gain.value = 0.5
   const lfo = ctx.createOscillator()
+  lfo.type = 'triangle'
   lfo.frequency.value = NAVIO_HZ_HELICE
   const profundidade = ctx.createGain()
-  profundidade.gain.value = 0.42
+  profundidade.gain.value = 0.46
   lfo.connect(profundidade).connect(helice.gain)
 
-  const motor = ctx.createOscillator()
-  motor.type = 'sawtooth'
-  motor.frequency.value = 60
-  const ganhoMotor = ctx.createGain()
-  ganhoMotor.gain.value = 0.16
-  const corteMotor = ctx.createBiquadFilter()
-  corteMotor.type = 'lowpass'
-  corteMotor.frequency.value = 420
-
+  // Motor: fundamental e dois harmônicos, que é o que faz soar maquinário e
+  // não nota de sintetizador.
   const ganho = ctx.createGain()
-  ganho.gain.value = 1
+  ganho.gain.value = 1.92
+  const osciladores: OscillatorNode[] = []
+  const nos: AudioNode[] = []
+  for (const [hz, pico] of [
+    [55, 0.22],
+    [110, 0.12],
+    [165, 0.05],
+  ] as const) {
+    const osc = ctx.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.value = hz
+    const corte = ctx.createBiquadFilter()
+    corte.type = 'lowpass'
+    corte.frequency.value = 600
+    const g = ctx.createGain()
+    g.gain.value = pico
+    // Pelo MODULADOR, não direto na saída.
+    //
+    // Medido: com o motor entrando por fora, a modulação do envelope de 20 ms
+    // ficava em 1,4 — ou seja, não havia batida nenhuma. O tom contínuo
+    // preenchia exatamente os vales entre as pás, que são o que identifica uma
+    // hélice. Passando por dentro, o som inteiro pulsa.
+    osc.connect(corte).connect(g).connect(helice)
+    osc.start()
+    osciladores.push(osc)
+    nos.push(corte, g)
+  }
 
-  fonte.connect(grave).connect(helice).connect(ganho)
-  motor.connect(corteMotor).connect(ganhoMotor).connect(ganho)
+  fonte.connect(casco).connect(helice).connect(ganho)
   ganho.connect(destino)
 
   fonte.start()
   lfo.start()
-  motor.start()
   return {
     saida: ganho,
     parar: () => {
-      for (const no of [fonte, lfo, motor]) {
+      for (const no of [fonte, lfo, ...osciladores]) {
         try {
           no.stop()
         } catch {
           /* ja parou */
         }
       }
-      for (const no of [fonte, grave, helice, lfo, profundidade, motor, corteMotor, ganhoMotor, ganho]) {
+      for (const no of [fonte, casco, helice, lfo, profundidade, ganho, ...osciladores, ...nos]) {
         no.disconnect()
       }
     },
@@ -166,14 +243,17 @@ function cauda(ctx: AudioContext, segundos: number): AudioBuffer {
  */
 function baleia(ctx: AudioContext, destino: AudioNode): SomTocando {
   const ganho = ctx.createGain()
-  ganho.gain.value = 0.9
+  ganho.gain.value = 0.78
 
+  // Reverberação MENOR que antes (70% molhado virava sopa: a cauda de uma
+  // frase cobria o ataque da seguinte, e o glissando — que é o traço que
+  // identifica o canto — se perdia no meio).
   const reverb = ctx.createConvolver()
-  reverb.buffer = cauda(ctx, 3.2)
+  reverb.buffer = cauda(ctx, 2.4)
   const molhado = ctx.createGain()
-  molhado.gain.value = 0.7
+  molhado.gain.value = 0.32
   const seco = ctx.createGain()
-  seco.gain.value = 0.75
+  seco.gain.value = 1
   ganho.connect(seco).connect(destino)
   ganho.connect(reverb).connect(molhado).connect(destino)
 
@@ -181,29 +261,37 @@ function baleia(ctx: AudioContext, destino: AudioNode): SomTocando {
   let agendado = 0
   const nos: AudioScheduledSourceNode[] = []
 
-  /** Uma frase: fundamental subindo e caindo, mais dois harmonicos. */
+  /**
+   * Uma frase: sobe, segura no topo e cai.
+   *
+   * O patamar no topo é novo e é o que faz soar canto em vez de sirene: um
+   * glissando que sobe e desce sem parar é um varrimento eletrônico. A baleia
+   * SUSTENTA a nota lá em cima.
+   */
   const frase = (quando: number): number => {
-    const base = 180 + Math.random() * 90
-    const topo = base * (2.6 + Math.random() * 1.2)
-    const subida = 1.6 + Math.random() * 0.8
-    const queda = 1.1 + Math.random() * 0.6
-    const total = subida + queda
+    const base = 150 + Math.random() * 60
+    const topo = base * (3.2 + Math.random() * 1.2)
+    const subida = 1.1 + Math.random() * 0.4
+    const patamar = 0.5 + Math.random() * 0.5
+    const queda = 0.9 + Math.random() * 0.4
+    const total = subida + patamar + queda
 
     for (const [mult, pico] of [
-      [1, 0.5],
-      [2, 0.16],
-      [3, 0.07],
+      [1, 0.52],
+      [2, 0.2],
+      [3, 0.08],
     ] as const) {
       const osc = ctx.createOscillator()
       osc.type = 'sine'
       osc.frequency.setValueAtTime(base * mult, quando)
       osc.frequency.exponentialRampToValueAtTime(topo * mult, quando + subida)
-      osc.frequency.exponentialRampToValueAtTime(base * 0.85 * mult, quando + total)
+      osc.frequency.setValueAtTime(topo * mult, quando + subida + patamar)
+      osc.frequency.exponentialRampToValueAtTime(base * 0.8 * mult, quando + total)
 
       const env = ctx.createGain()
       env.gain.setValueAtTime(0.0001, quando)
-      env.gain.exponentialRampToValueAtTime(pico, quando + 0.25)
-      env.gain.setValueAtTime(pico, quando + total - 0.4)
+      env.gain.exponentialRampToValueAtTime(pico, quando + 0.18)
+      env.gain.setValueAtTime(pico, quando + total - 0.35)
       env.gain.exponentialRampToValueAtTime(0.0001, quando + total)
 
       osc.connect(env).connect(ganho)

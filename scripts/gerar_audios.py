@@ -75,8 +75,25 @@ FILTRO_RADIO = "highpass=f=300,lowpass=f=3400,aecho=0.8:0.9:60:0.3,volume=1.4"
 # sai cortado (flat factor 0), mas o decodificador estoura na saída, e isso
 # vira distorção em DAC de Chromebook no volume máximo. A 0.89 o pior pico é
 # -0,14 dBFS e a média ficou em -14,4 dB — folga de graça, sem perder volume.
+#
+# CLAREZA (revisao): tres coisas estavam comendo a inteligibilidade numa caixa
+# de som de quadra, e as tres eram do filtro, nao da voz.
+#
+#   1. lowpass em 5200 Hz cortava a faixa do "s", do "ch" e do "t". Subiu pra
+#      7400: ainda soa radio, mas a consoante volta. E a consoante que diz a
+#      PALAVRA — a vogal so diz a melodia.
+#   2. o eco de 38 ms com 16% de mistura era um slapback curto demais pra ser
+#      ouvido como eco e longo demais pra nao borrar o ataque de cada silaba.
+#      Caiu pra 24 ms e 9%: sobra a impressao de cabine, sai o borrao.
+#   3. faltava presenca. Um realce de 3 dB em 2,8 kHz e um corte de 2,5 dB em
+#      330 Hz tiram o abafado e poem a voz na frente do ruido da sala, sem
+#      mexer no volume.
 FILTRO_RADIO_LEVE = (
-    "highpass=f=170,lowpass=f=5200,aecho=0.9:0.85:38:0.16,"
+    "highpass=f=170,"
+    "equalizer=f=330:t=q:w=1.1:g=-2.5,"
+    "equalizer=f=2800:t=q:w=1.4:g=3,"
+    "lowpass=f=7400,"
+    "aecho=0.92:0.85:24:0.09,"
     "acompressor=threshold=-14dB:ratio=3:attack=8:release=200:makeup=6,"
     "alimiter=limit=0.89:level=disabled"
 )
@@ -356,6 +373,13 @@ def sintetizar(texto: str, voz: str, rate: str, pitch: str, destino: Path):
         raise SystemExit(1)
 
 
+def filtro_atual(com_filtro: bool, motor: str) -> str:
+    """A cadeia de filtros que vai ser aplicada. Entra na chave do cache."""
+    if not com_filtro:
+        return "sem-filtro"
+    return FILTRO_RADIO if motor == "edge" else FILTRO_RADIO_LEVE
+
+
 def aplicar_filtro(origem: Path, destino: Path, com_filtro: bool, motor: str = "kokoro"):
     """Normaliza taxa/canais/bitrate — sem isso o concat com -c copy falha."""
     comando = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(origem)]
@@ -520,25 +544,39 @@ def main() -> int:
     for (pasta, _grupo), lista in sorted(grupos.items()):
         voz, rate, pitch = voz_da_pasta(config, pasta, args)
         for fala in lista:
-            assinatura = f"{fala.texto}|{perfil_do_motor(args.motor, config, voz, rate, pitch)}|{com_filtro}"
+            perfil = perfil_do_motor(args.motor, config, voz, rate, pitch)
+            # DUAS assinaturas: a da sintese e a do filtro.
+            #
+            # Antes havia uma so, e ela nem citava o filtro — mexer no filtro
+            # nao invalidava nada e o ajuste simplesmente nao saia. Citar o
+            # filtro numa assinatura unica resolveria isso ao custo de
+            # ressintetizar as ~150 linhas das tres turmas a cada ajuste de
+            # equalizacao. Guardando o CRU em separado, mexer no filtro passa a
+            # ser so um ffmpeg por linha: segundos em vez de meia hora.
+            assinatura_crua = f"{fala.texto}|{perfil}"
+            chave_crua = hashlib.sha1(assinatura_crua.encode("utf-8")).hexdigest()
+            bruto = CACHE_DIR / f"cru-{chave_crua}.mp3"
+
+            assinatura = f"{assinatura_crua}|{filtro_atual(com_filtro, args.motor)}"
             chave = hashlib.sha1(assinatura.encode("utf-8")).hexdigest()
             destino = CACHE_DIR / f"{chave}.mp3"
 
             if destino.exists() and cache.get(chave) == assinatura and not args.forcar:
                 do_cache += 1
             else:
-                print(f"  gerando: {fala.texto[:62]}")
-                with tempfile.TemporaryDirectory() as tmp:
-                    cru = Path(tmp) / "cru.mp3"
+                if not bruto.exists() or args.forcar:
+                    print(f"  gerando: {fala.texto[:62]}")
                     if args.motor == "espeak":
-                        sintetizar_espeak(fala.texto, cru, config)
+                        sintetizar_espeak(fala.texto, bruto, config)
                     elif args.motor == "kokoro":
-                        sintetizar_kokoro(fala.texto, cru, config)
+                        sintetizar_kokoro(fala.texto, bruto, config)
                     else:
-                        sintetizar(fala.texto, voz, rate, pitch, cru)
-                    aplicar_filtro(cru, destino, com_filtro, args.motor)
+                        sintetizar(fala.texto, voz, rate, pitch, bruto)
+                    gerados += 1
+                else:
+                    print(f"  refiltrando: {fala.texto[:58]}")
+                aplicar_filtro(bruto, destino, com_filtro, args.motor)
                 cache[chave] = assinatura
-                gerados += 1
             caminhos[id(fala)] = destino
 
     CACHE_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")

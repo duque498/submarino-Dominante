@@ -240,7 +240,7 @@
             "tempestade",
             "água caindo"
           ],
-          "pista": "Origem: superfície. Milhões de gotas.",
+          "pista": "Vem lá de cima, da superfície. São milhões de gotinhas de água caindo no mar.",
           "audioPista": "./audio/2b/hidro-chuva-pista.mp3",
           "distanciaKm": 1.8,
           "origem": "superficie"
@@ -255,7 +255,7 @@
             "hélice",
             "embarcação"
           ],
-          "pista": "Origem: mecânica. Hélice em rotação.",
+          "pista": "Isso é máquina, não é bicho. Tem motor, e uma hélice girando embaixo d'água.",
           "audioPista": "./audio/2b/hidro-navio-pista.mp3",
           "distanciaKm": 12,
           "origem": "navio"
@@ -269,7 +269,7 @@
             "jubarte",
             "cachalote"
           ],
-          "pista": "Origem: biológica. O maior mamífero do planeta.",
+          "pista": "Esse é um animal, e é o maior do mar inteiro. Ele está cantando.",
           "audioPista": "./audio/2b/hidro-baleia-pista.mp3",
           "distanciaKm": 800,
           "origem": "animal"
