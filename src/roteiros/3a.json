@@ -270,7 +270,6 @@
             "texto": "...Dezoito metros?",
             "fala": "Dezoito metros?",
             "prosodia": {
-              "rate": "-15%",
               "pitch": "+6Hz",
               "dinamica": "preservada"
             },
@@ -316,8 +315,6 @@
           {
             "texto": "Não é erro.",
             "prosodia": {
-              "rate": "-12%",
-              "pitch": "-2Hz",
               "dinamica": "preservada"
             },
             "acoes": [
@@ -415,8 +412,6 @@
               "Não há dúvida."
             ],
             "prosodia": {
-              "rate": "-20%",
-              "pitch": "-3Hz",
               "dinamica": "preservada"
             }
           },
@@ -427,7 +422,6 @@
               "A menos de trezentos metros deste submarino."
             ],
             "prosodia": {
-              "rate": "-8%",
               "pitch": "-2Hz",
               "dinamica": "preservada"
             }
@@ -439,10 +433,9 @@
               "Nos viu."
             ],
             "prosodia": {
-              "rate": "-15%",
               "dinamica": "preservada"
             },
-            "pausaDepois": 1500,
+            "pausaDepois": 700,
             "acoes": [
               {
                 "tipo": "orbe",
@@ -472,8 +465,6 @@
               "Preciso de vocês."
             ],
             "prosodia": {
-              "rate": "-10%",
-              "pitch": "+2Hz",
               "dinamica": "preservada"
             }
           }
