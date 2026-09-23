@@ -20,3 +20,7 @@ public/audios.js
 # gerado por scripts/embutir_audios.py (camada A) — pesa dezenas de MB
 public/audios.js
 scripts/__pycache__/
+
+# zip do build, gerado so pra entregar a pasta pronta a quem vai apresentar.
+# E o dist/ compactado: conteudo gerado, e dist ja esta ignorado acima.
+*.zip
