@@ -245,9 +245,21 @@ export type Linha =
   | string
   | {
       texto: string
+      /**
+       * O que a VOZ diz, quando difere do que a legenda mostra.
+       *
+       * Existe pro nome que se escreve de um jeito e se fala de outro. O
+       * fonemizador do TTS le "Otodus" com acento na ultima silaba
+       * ("otoDUS"); escrevendo "Otodus" na tela e "Otôdus" aqui, a plateia le
+       * o nome certo e ouve o nome certo.
+       *
+       * NAO serve pra reescrever a fala: e a mesma frase, na grafia que o
+       * sintetizador entende.
+       */
+      fala?: string
       acoes?: Acao[]
       enfase?: EnfaseLinha
-      prosodia?: { rate?: string; pitch?: string }
+      prosodia?: { rate?: string; pitch?: string; dinamica?: 'preservada' }
       pausaDepois?: number
     }
 

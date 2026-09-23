@@ -340,6 +340,7 @@
           },
           {
             "texto": "Correspondência encontrada. Otodus...",
+            "fala": "Correspondência encontrada. Otôdus...",
             "prosodia": {
               "rate": "-3%",
               "dinamica": "preservada"
@@ -365,6 +366,7 @@
           },
           {
             "texto": "Otodus megalodon.",
+            "fala": "Otôdus megalodôn.",
             "prosodia": {
               "rate": "-20%",
               "pitch": "-4Hz",

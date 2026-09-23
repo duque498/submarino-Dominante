@@ -135,11 +135,15 @@ class Fala:
         texto: str,
         prosodia: dict | None = None,
         pausa_depois: int = 0,
+        falado: str | None = None,
     ):
         self.pasta = pasta
         self.grupo = grupo
         self.indice = indice
+        # `texto` é o que vai pra tela; `falado` é o que vai pro sintetizador.
+        # Quando a linha não pede grafia própria, são o mesmo.
         self.texto = texto.strip()
+        self.falado = (falado or texto).strip()
         # rate/pitch desta linha, sobrescrevendo o da turma. Genérico: vale pra
         # qualquer cena de qualquer turma.
         self.prosodia = prosodia or {}
@@ -161,6 +165,22 @@ def texto_da_linha(linha) -> str:
     if isinstance(linha, dict):
         return str(linha.get("texto") or "")
     return str(linha or "")
+
+
+def fala_da_linha(linha) -> str | None:
+    """
+    A grafia que vai pro sintetizador, quando ela difere da que vai pra tela.
+
+    O fonemizador do kokoro é o espeak-ng, e ele lê "Otodus megalodon" como
+    `ˌotodˈuz` — acento na última sílaba. Com "Otôdus" sai `ˌotˈoduz`, que é o
+    nome certo. A legenda continua escrevendo "Otodus": quem lê vê o nome como
+    ele se escreve, quem ouve ouve como ele se fala.
+    """
+    if isinstance(linha, dict):
+        f = linha.get("fala")
+        if isinstance(f, str) and f.strip():
+            return f.strip()
+    return None
 
 
 def prosodia_da_linha(linha) -> dict:
@@ -199,6 +219,7 @@ def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
                         texto,
                         prosodia_da_linha(linha),
                         pausa_da_linha(linha),
+                        fala_da_linha(linha),
                     )
                 )
 
@@ -678,7 +699,8 @@ def main() -> int:
         for (pasta, grupo), lista in sorted(grupos.items()):
             print(f"{pasta}/{grupo}.mp3  ({len(lista)} linha(s))")
             for fala in lista:
-                print(f"    {fala.texto}")
+                marca = f"   (falado: {fala.falado})" if fala.falado != fala.texto else ""
+                print(f"    {fala.texto}{marca}")
         print(f"\ntotal: {len(falas)} linhas em {len(grupos)} arquivos")
         return 0
 
@@ -741,7 +763,7 @@ def main() -> int:
             # ressintetizar as ~150 linhas das tres turmas a cada ajuste de
             # equalizacao. Guardando o CRU em separado, mexer no filtro passa a
             # ser so um ffmpeg por linha: segundos em vez de meia hora.
-            assinatura_crua = f"{fala.texto}|{perfil}"
+            assinatura_crua = f"{fala.falado}|{perfil}"
             chave_crua = hashlib.sha1(assinatura_crua.encode("utf-8")).hexdigest()
             bruto = CACHE_DIR / f"cru-{chave_crua}.mp3"
 
@@ -756,16 +778,16 @@ def main() -> int:
                 do_cache += 1
             else:
                 if not bruto.exists() or args.forcar:
-                    print(f"  gerando: {fala.texto[:62]}")
+                    print(f"  gerando: {fala.falado[:62]}")
                     if args.motor == "espeak":
-                        sintetizar_espeak(fala.texto, bruto, config, rate_linha)
+                        sintetizar_espeak(fala.falado, bruto, config, rate_linha)
                     elif args.motor == "kokoro":
-                        sintetizar_kokoro(fala.texto, bruto, config, rate_linha)
+                        sintetizar_kokoro(fala.falado, bruto, config, rate_linha)
                     else:
-                        sintetizar(fala.texto, voz, rate_efetivo, pitch_efetivo, bruto)
+                        sintetizar(fala.falado, voz, rate_efetivo, pitch_efetivo, bruto)
                     gerados += 1
                 else:
-                    print(f"  refiltrando: {fala.texto[:58]}")
+                    print(f"  refiltrando: {fala.falado[:58]}")
                 aplicar_filtro(bruto, destino, com_filtro, args.motor, pitch_extra, dinamica)
                 cache[chave] = assinatura
             caminhos[id(fala)] = destino
