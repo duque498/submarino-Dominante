@@ -90,53 +90,6 @@
       "profundidade": 120
     },
     {
-      "id": "ef-intro",
-      "tipo": "fala",
-      "avanco": "auto",
-      "audio": "./audio/2a/ef-intro.mp3",
-      "tela": {
-        "titulo": "PRÓXIMO SETOR",
-        "status": "INICIANDO EXPLORAÇÃO",
-        "linhas": [
-          "Exploração concluída.",
-          {
-            "texto": "O próximo setor nos leva a uma relação diferente entre o ser humano e o ambiente marinho. Educação Física.",
-            "acoes": [
-              {
-                "tipo": "painel",
-                "nome": "mapa",
-                "args": "abrolhos",
-                "ate": "fimCena"
-              }
-            ]
-          },
-          "Iniciando exploração."
-        ]
-      },
-      "log": [
-        "Setor BIOLOGIA arquivado",
-        "Carregando setor: EDUCAÇÃO FÍSICA",
-        "Medindo resistência da corrente...",
-        "Monitorando sinais vitais da tripulação"
-      ]
-    },
-    {
-      "id": "ef",
-      "tipo": "apresentacao",
-      "avanco": "manual",
-      "tela": {
-        "titulo": "SETOR: EDUCAÇÃO FÍSICA",
-        "status": "EXPLORAÇÃO EM CURSO"
-      },
-      "orbe": "palco",
-      "formas": [
-        "esfera",
-        "triangulo",
-        "circulo"
-      ],
-      "profundidade": 300
-    },
-    {
       "id": "arte-intro",
       "tipo": "fala",
       "avanco": "auto",
@@ -145,7 +98,7 @@
         "titulo": "PRÓXIMO SETOR",
         "status": "PREPARANDO NOVA EXPLORAÇÃO",
         "linhas": [
-          "Setor Educação Física explorado com sucesso.",
+          "Exploração concluída.",
           "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
           {
             "texto": "Mas nem toda cor chega ao fundo.",
@@ -164,7 +117,7 @@
         ]
       },
       "log": [
-        "Setor EDUCAÇÃO FÍSICA arquivado",
+        "Setor BIOLOGIA arquivado",
         "Carregando setor: ARTE",
         "Indexando registros visuais da expedição...",
         "Calibrando câmeras de documentação"
@@ -179,7 +132,7 @@
         "status": "EXPLORAÇÃO EM CURSO"
       },
       "orbe": "palco",
-      "profundidade": 450,
+      "profundidade": 300,
       "formas": [
         "esfera",
         "peixe",
@@ -194,7 +147,7 @@
       "tipo": "fala",
       "avanco": "auto",
       "audio": "./audio/2a/ident-intro.mp3",
-      "profundidade": 600,
+      "profundidade": 450,
       "tela": {
         "titulo": "BANCO DE ESPÉCIES",
         "status": "INTEGRIDADE COMPROMETIDA",
@@ -407,13 +360,13 @@
       ]
     },
     {
-      "id": "ident-fim",
+      "id": "ef-intro",
       "tipo": "fala",
       "avanco": "auto",
-      "audio": "./audio/2a/ident-fim.mp3",
+      "audio": "./audio/2a/ef-intro.mp3",
       "tela": {
-        "titulo": "BANCO DE ESPÉCIES",
-        "status": "RECALIBRADO",
+        "titulo": "PRÓXIMO SETOR",
+        "status": "INICIANDO EXPLORAÇÃO",
         "linhas": [
           {
             "texto": "Banco de espécies recalibrado.",
@@ -425,13 +378,49 @@
               }
             ]
           },
-          "Sonar operando com referência completa."
+          "Nossa expedição continua.",
+          {
+            "texto": "O próximo setor nos leva a uma relação diferente entre o ser humano e o ambiente marinho. Educação Física.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "mapa",
+                "args": "abrolhos",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "Iniciando exploração."
         ]
       },
       "log": [
         "Catálogo de espécies restaurado",
         "Registros: 240.112 de 240.112",
-        "Sonar com referência completa"
+        "Carregando setor: EDUCAÇÃO FÍSICA",
+        "Monitorando sinais vitais da tripulação"
+      ]
+    },
+    {
+      "id": "ef",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": {
+        "titulo": "SETOR: EDUCAÇÃO FÍSICA",
+        "status": "EXPLORAÇÃO EM CURSO"
+      },
+      "orbe": "palco",
+      "formas": [
+        "esfera",
+        "mergulhador",
+        "prancha",
+        "onda",
+        "barco"
+      ],
+      "profundidade": 600,
+      "log": [
+        "Medindo resistência da corrente...",
+        "Coluna de água: estável",
+        "Reserva de oxigênio: nominal"
       ]
     },
     {

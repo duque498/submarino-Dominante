@@ -27,6 +27,11 @@ export const PAINEIS: Array<{
   { nome: 'zonas', aliases: ['camadas', 'zona', 'coluna', 'profundidades'] },
   { nome: 'cache', aliases: ['banco', 'registros', 'especies'] },
   { nome: 'eco', aliases: ['ecolocalizacao', 'ecolocalização', 'distancia', 'pulso'], capturaTeclado: true },
+  // Generico: recebe os segundos no argumento ("cronometro 20"). Nao captura o
+  // teclado — o operador continua com as setas enquanto o tempo corre.
+  { nome: 'cronometro', aliases: ['cronômetro', 'tempo', 'timer', 'contagem'] },
+  // Captura: ele usa 1-4 pras dicas e Enter pra armar o relogio.
+  { nome: 'enigma', aliases: ['scape', 'escape', 'descontaminacao', 'descontaminação'], capturaTeclado: true },
 ]
 
 /** O painel toma conta do teclado enquanto estiver aberto? */

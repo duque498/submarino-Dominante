@@ -3667,3 +3667,154 @@ body {
   color: var(--verde);
   font-size: 0.95rem;
 }
+
+/* ==========================================================================
+   2A — cronômetro e enigma da Educação Física
+   ========================================================================== */
+
+.crono {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 0;
+}
+
+/* Grande de verdade: quem lê isso está no fundo da sala tentando acompanhar um
+   exercício, não olhando o painel de perto. */
+.crono__numero {
+  margin: 0;
+  font-size: clamp(3.5rem, 11vw, 7rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ciano);
+  text-shadow: 0 0 24px rgba(56, 232, 255, 0.35);
+}
+
+.crono--fim .crono__numero {
+  color: var(--ambar);
+  text-shadow: 0 0 24px rgba(255, 194, 77, 0.4);
+}
+
+.crono__unidade {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.45);
+}
+
+.crono__trilho {
+  margin-top: 0.4rem;
+  width: min(22rem, 70%);
+  height: 3px;
+  background: rgba(27, 106, 120, 0.4);
+}
+
+.crono__nivel {
+  display: block;
+  height: 100%;
+  background: var(--ciano);
+  transition: width 200ms linear;
+}
+
+.crono--fim .crono__nivel {
+  background: var(--ambar);
+}
+
+/* --- enigma --------------------------------------------------------------- */
+
+.enigma {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.enigma__slots {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.enigma__slot {
+  display: grid;
+  grid-template-columns: 1.7rem 1fr;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(27, 106, 120, 0.5);
+  background: rgba(4, 22, 26, 0.6);
+}
+
+.enigma__numero {
+  font-size: 1.1rem;
+  color: rgba(189, 255, 240, 0.4);
+  text-align: center;
+}
+
+.enigma__texto {
+  color: rgba(189, 255, 240, 0.28);
+  letter-spacing: 0.3em;
+}
+
+.enigma__slot--cheio {
+  border-color: rgba(56, 232, 255, 0.55);
+  background: rgba(56, 232, 255, 0.07);
+}
+
+.enigma__slot--cheio .enigma__numero {
+  color: var(--ciano);
+}
+
+.enigma__slot--cheio .enigma__texto {
+  color: var(--texto);
+  letter-spacing: normal;
+}
+
+.enigma__rodape {
+  display: flex;
+  justify-content: center;
+  min-height: 2.4rem;
+  align-items: center;
+}
+
+.enigma__dica {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: rgba(189, 255, 240, 0.4);
+  text-transform: uppercase;
+}
+
+.enigma__relogio {
+  font-size: 2.4rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ciano);
+}
+
+.enigma__encerrado {
+  font-size: 1.3rem;
+  letter-spacing: 0.24em;
+  color: var(--ambar);
+}
+
+/* Piscam juntos no fim: é o sinal de que o tempo acabou pra todos os quatro,
+   não de que algum estava errado — quem julga o resultado são os alunos. */
+.enigma--encerrado .enigma__slot {
+  animation: enigma-fim 420ms steps(2) 4;
+}
+
+@keyframes enigma-fim {
+  0%,
+  100% {
+    border-color: rgba(255, 194, 77, 0.7);
+  }
+  50% {
+    border-color: rgba(27, 106, 120, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enigma--encerrado .enigma__slot {
+    animation: none;
+  }
+}

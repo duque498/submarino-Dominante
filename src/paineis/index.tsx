@@ -6,6 +6,8 @@ import { PainelEspectro } from './PainelEspectro'
 import { PainelFicha } from './PainelFicha'
 import { PainelMapa } from './PainelMapa'
 import { PainelCache, type EstadoCache } from './PainelCache'
+import { PainelCronometro } from './PainelCronometro'
+import { PainelEnigma } from './PainelEnigma'
 import { PainelSonar } from './PainelSonar'
 import { PainelStatus, type Queda } from './PainelStatus'
 import { PainelTraco } from './PainelTraco'
@@ -57,6 +59,8 @@ const TITULOS: Record<string, string> = {
   eco: 'medição por eco',
   dossie: 'dossiê · contato não catalogado',
   cache: 'cache de espécies',
+  cronometro: 'cronômetro',
+  enigma: 'protocolo de descontaminação',
 }
 
 /** Quanto o painel que está saindo fica na tela antes de sumir. */
@@ -89,6 +93,8 @@ type Props = {
   cache?: EstadoCache
   /** Estado do visor: a câmera em painel também racha. */
   visor?: 'ok' | 'rachado' | 'parcial'
+  /** Painel que captura o teclado e precisa devolver o `H` pro operador. */
+  aoAjuda?: () => void
 }
 
 /**
@@ -117,6 +123,7 @@ export function Painel({
   aproximacao,
   cache,
   visor = 'ok',
+  aoAjuda,
 }: Props) {
   const [saindo, setSaindo] = useState<PainelAberto | null>(null)
   const refAnterior = useRef<PainelAberto | null>(null)
@@ -161,6 +168,7 @@ export function Painel({
             aproximacao,
             cache,
             visor,
+            aoAjuda,
             contato: visivel.contato,
             despedindo: visivel.despedindo,
             // Painel que o Diretor abriu é painel aberto pela fala.
@@ -173,6 +181,7 @@ export function Painel({
 }
 
 type Extras = {
+  aoAjuda?: () => void
   visor?: 'ok' | 'rachado' | 'parcial'
   aoPingGrave?: (altura: number) => void
   aproximacao?: number
@@ -223,6 +232,27 @@ function corpoDoPainel(
       )
     case 'eco':
       return <PainelEco aoFechar={extras.aoFechar} aoPing={extras.aoPing} />
+    case 'cronometro': {
+      // Argumento invalido nao vira painel quebrado: vira vinte segundos, que
+      // e o que o roteiro da EF pede no aquecimento.
+      const pedido = Number((argumento ?? '').replace(/[^0-9]/g, ''))
+      const segundos = Number.isFinite(pedido) && pedido > 0 ? Math.min(600, pedido) : 20
+      return (
+        <PainelCronometro
+          segundos={segundos}
+          aoPing={extras.aoPing}
+          aoFechar={extras.aoFechar}
+        />
+      )
+    }
+    case 'enigma':
+      return (
+        <PainelEnigma
+          aoPing={extras.aoPing}
+          aoFechar={extras.aoFechar}
+          aoAjuda={extras.aoAjuda}
+        />
+      )
     case 'traco':
       return (
         <PainelTraco

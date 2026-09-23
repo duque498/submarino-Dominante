@@ -392,6 +392,8 @@ export function Player({ roteiro, engine }: Props) {
   const [consoleAberto, setConsoleAberto] = useState(false)
   const [consoleTravado, setConsoleTravado] = useState(false)
   const [autoComando, setAutoComando] = useState<string | null>(null)
+  /** Comando já começado no campo quando um atalho abre o console. */
+  const [comandoIniciado, setComandoIniciado] = useState<string | null>(null)
   const [painel, setPainel] = useState<PainelAberto | null>(null)
   /**
    * Desenhos feitos no painel de traço nesta cena. Entram no rodízio de M/N
@@ -1588,6 +1590,14 @@ export function Player({ roteiro, engine }: Props) {
       refRespostaIdent.current = null
       motor.turbidez = 0
       motor.exibirEspecie(null)
+      // A expedição volta pra profundidade da CENA.
+      //
+      // Cada espécie tem a sua (a tartaruga a 20 m, a baleia a 40 m), e sem
+      // isto o submarino ficava onde a última parou: medido, a cena seguinte
+      // à identificação abria a 40 m, e a cena depois dela puxava o submarino
+      // 560 m pra baixo de uma vez. A expedição desce; ela não sobe pra ver um
+      // bicho e esquece de voltar.
+      motor.definirAlvo(refProfundidade.current)
     }
   }, [cena, engine, falarAvulso, avancar, prepararForma, setPainel])
 
@@ -2268,10 +2278,20 @@ export function Player({ roteiro, engine }: Props) {
             }
             if (refIdentAtiva.current) refRespostaIdent.current?.(false)
             break
+          case 'cronometro':
+            // Não captura dígitos soltos: abre o console com o comando
+            // começado. As teclas 1–4 já têm dono em cena (setor do combate,
+            // reparo do 2B, dica do enigma) e disputá-las aqui seria ganhar um
+            // atalho e perder três.
+            operadorAssumiu()
+            setComandoIniciado('cronometro ')
+            setConsoleAberto(true)
+            break
           case 'ajuda':
             setAjudaVisivel((visivel) => !visivel)
             break
           case 'console':
+            setComandoIniciado(null)
             setConsoleAberto(true)
             break
           case 'fechar':
@@ -2606,7 +2626,12 @@ export function Player({ roteiro, engine }: Props) {
   }, [fala])
 
   const aoTerminarAuto = useCallback(() => setAutoComando(null), [])
-  const aoFecharConsole = useCallback(() => setConsoleAberto(false), [])
+  const aoFecharConsole = useCallback(() => {
+    setConsoleAberto(false)
+    // O comando começado morre com o console: reabrir pelo `/` tem que dar um
+    // campo vazio, não o `cronometro ` de dois minutos atrás.
+    setComandoIniciado(null)
+  }, [])
 
   if (!cena) {
     return (
@@ -2830,6 +2855,7 @@ export function Player({ roteiro, engine }: Props) {
             travado={tracoTravado}
             aoPing={aoPing}
             aoPingGrave={aoPingGrave}
+            aoAjuda={() => setAjudaVisivel((visivel) => !visivel)}
             // Só nesta cena o sonar conta uma história: o contato vem da borda
             // ao centro em 6 s, com o ping acelerando e ficando grave.
             aproximacao={cena.id === 'contato' ? 6 : undefined}
@@ -2863,6 +2889,7 @@ export function Player({ roteiro, engine }: Props) {
             aberto={consoleAberto}
             travado={consoleTravado}
             autoTexto={autoComando}
+            textoInicial={comandoIniciado}
             aoFechar={aoFecharConsole}
             aoExecutar={executarComando}
             aoTerminarAuto={aoTerminarAuto}

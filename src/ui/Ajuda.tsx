@@ -1,3 +1,5 @@
+import { OBJETOS_ENIGMA } from '../paineis/PainelEnigma'
+
 type Props = {
   /** Nome e posição da cena atual, pro operador se localizar no roteiro. */
   cena: string
@@ -20,6 +22,9 @@ const ATALHOS: Array<[string, string]> = [
   ['1 2 3 4', 'marca a resposta do quiz'],
   ['1 2 3', 'no combate: o setor do contato'],
   ['1 2 3', 'no 2B: religa o subsistema do reparo'],
+  ['1 2 3 4', 'no enigma: revela a dica daquele slot'],
+  ['T', 'abre o cronômetro (digite os segundos)'],
+  ['/ + enigma', 'o Scape Room da Educação Física'],
   ['Enter', 'na identificação e no hidrofone: a sala acertou'],
   ['X', 'na identificação e no hidrofone: revela sem acerto'],
   ['→ (no combate)', 'força a rodada a seguir'],
@@ -50,6 +55,17 @@ const ATALHOS: Array<[string, string]> = [
 export function Ajuda({ cena, forma, escala, aceitos }: Props) {
   return (
     <div className="ajuda">
+      {/* Só aqui, nunca na tela da plateia: pôr o nome do objeto no painel
+          entregaria o jogo pra quem está lendo. A resposta é dos alunos, com o
+          objeto na mão. */}
+      {cena === 'ef' && (
+        <div className="ajuda__aceitos">
+          <h3>enigma · resposta de cada dica</h3>
+          <p>
+            {OBJETOS_ENIGMA.map((objeto, i) => `${i + 1}. ${objeto}`).join(' · ')}
+          </p>
+        </div>
+      )}
       {aceitos && (
         <div className="ajuda__aceitos">
           <h3>vale como acerto · {aceitos.rotulo}</h3>

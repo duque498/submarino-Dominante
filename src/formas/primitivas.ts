@@ -529,6 +529,31 @@ function orca(): HTMLCanvasElement {
   return canvas
 }
 
+/**
+ * Prancha de surfe, vista de cima: o contorno de gota com a quilha embaixo.
+ *
+ * De cima e nao de perfil porque de perfil ela e um risco — e um risco nao se
+ * reconhece como prancha nem com legenda.
+ */
+function prancha(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const u = LADO / 100
+  ctx.beginPath()
+  ctx.moveTo(50 * u, 4 * u)
+  ctx.bezierCurveTo(70 * u, 26 * u, 74 * u, 62 * u, 50 * u, 92 * u)
+  ctx.bezierCurveTo(26 * u, 62 * u, 30 * u, 26 * u, 50 * u, 4 * u)
+  ctx.closePath()
+  ctx.fill()
+  // quilha
+  ctx.beginPath()
+  ctx.moveTo(50 * u, 78 * u)
+  ctx.lineTo(56 * u, 96 * u)
+  ctx.lineTo(44 * u, 96 * u)
+  ctx.closePath()
+  ctx.fill()
+  return canvas
+}
+
 /** Primitivas com nome fixo — valem no JSON e no console. */
 export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   circulo,
@@ -545,6 +570,7 @@ export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   peixe,
   coral,
   mergulhador,
+  prancha,
   submarino,
   boia,
   satelite,

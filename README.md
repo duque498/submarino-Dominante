@@ -843,6 +843,80 @@ Nas duas dinâmicas de gritar a resposta, quem julga é o operador — e ele dec
 em dois segundos, no escuro, com a sala falando junto. A lista de `aceitos` da
 espécie ou do som atual aparece no topo do overlay `H`, que é onde ele olha.
 
+## A ordem do 2º ano A
+
+```
+entrada (50 m) → bio-intro → bio (120 m)
+→ arte-intro → arte (300 m)
+→ ident-intro → ident (450 m)
+→ ef-intro → ef (600 m)
+→ transicao-2b (mergulho 600 → 900 m)
+```
+
+> A identificação move o submarino: cada espécie tem a profundidade dela (a
+> tartaruga a 20 m, a baleia a 40 m). No fim da dinâmica ele **volta pros 450
+> da cena** — sem isso ficava onde a última espécie parou, e a cena seguinte
+> abria a 40 m com o `ef` puxando 560 m de uma vez. A expedição desce; ela não
+> sobe pra ver um bicho e esquece de voltar.
+
+A ordem não é arbitrária: ela sai de duas coisas que os alunos escreveram e
+que só cabem juntas nesta sequência.
+
+- O grupo de **Arte** termina com a fala da DOMI IA, e é ela que dá a deixa
+  pra identificação — por isso `ident-intro` abre com "Confirmado. Demonstração
+  de identificação de espécies." e vem logo depois de Arte.
+- O grupo de **Educação Física** fecha com "agora pode passar para a próxima
+  etapa com o 2B". Eles assumem que são os últimos do 2A — então são.
+
+Daí a `transicao-2b` não repete o que eles acabaram de dizer: ela só executa.
+A IA não anuncia a transferência, ela faz.
+
+> **A cena `ident-fim` deixou de existir.** A linha "Banco de espécies
+> recalibrado" foi pra abertura do `ef-intro`, que é a cena seguinte à
+> identificação — e é justamente uma cena além dela que o painel `cache` ainda
+> vive, então o contador continua fechando em 240.112 na frente da plateia. Uma
+> cena só pra dizer uma frase, com outra logo atrás dizendo "nossa expedição
+> continua", era uma pausa a mais entre a dinâmica e o próximo grupo.
+>
+> A segunda linha dela ("Sonar operando com referência completa") saiu junto.
+> Era [nova], minha, e não sobreviveu ao corte.
+
+### A cena `ef`
+
+`apresentacao` manual, orbe em palco, formas `mergulhador · prancha · onda ·
+barco`. **Nenhuma fala da IA dentro dela**: os quatro alunos conduzem tudo,
+cooperação → equilíbrio → agilidade → Scape Room, inclusive o resultado do
+jogo. O sistema só dá apoio, e só quando o operador pede.
+
+**Painel `cronometro`** (genérico) — `cronometro 20` no console, ou a tecla
+`T`, que abre o console com o comando já começado. Contador grande, ping de
+sonar a cada 5 s, ping duplo no fim, e ele se fecha sozinho 3 s depois de
+zerar.
+
+> A IA **não** conta junto. Quem conduz o exercício é o aluno na frente da
+> plateia, e uma voz de bordo contando por cima tiraria dele a única coisa que
+> ele tem pra dirigir: o tempo.
+>
+> E os relógios de saída morrem com o painel. Sem isso o `aoFechar` agendado
+> sobrevivia à desmontagem e fechava o que estivesse aberto três segundos
+> depois: medido, abrir o enigma logo após um cronômetro zerado fechava o
+> enigma sozinho.
+>
+> E o `T` não captura dígitos soltos. As teclas `1`–`4` já têm dono em cena (o
+> setor do combate, o reparo do 2B, a dica do enigma) e disputá-las aqui seria
+> ganhar um atalho e perder três.
+
+**Painel `enigma`** — o Scape Room. Quatro slots vazios, as teclas `1`–`4`
+revelam cada dica conforme os alunos lêem, e o cronômetro de 30 s **só começa
+no `Enter`** — depois que a Pessoa 4 terminar de ler. Um relógio correndo por
+cima de alguém lendo é pressa, não tensão. No fim: ping duplo, os slots piscam
+juntos, `TEMPO ENCERRADO`, e o painel fica aberto.
+
+> **O nome do objeto não aparece em lugar nenhum da tela.** Garrafa PET, copo
+> plástico, isopor e pilha ficam só no overlay `H`, que é do operador. A
+> resposta é dos alunos, dita por eles, com o objeto na mão — pôr o nome no
+> painel entregaria o jogo pra quem está lendo.
+
 ## Expedição de identificação (2A)
 
 Tipo de cena novo: `identificacao`. Substitui o quiz do 2A. O banco de espécies
@@ -878,7 +952,8 @@ E durante a fala de resultado ela não fazia nada, o que numa cena em que a
 tecla é a única coisa que o operador controla lê como travamento. Agora ela
 vale o tempo todo: na busca confirma, na revelação corta a fala e a
 contemplação e vai pra próxima espécie. Quem sai da cena é o laço, quando a
-quarta termina — e aí o `ident-fim` fala e o roteiro segue pro 2B.
+quarta termina — e aí o `ef-intro` fala "banco de espécies recalibrado" e a
+expedição segue pra Educação Física.
 
 > Consequência: **a seta direita não pula a cena de identificação**. A saída de
 > emergência dela é o console (`cena transicao-2b`).
@@ -1010,7 +1085,7 @@ Odômetro com rolagem de dígitos, barra e quatro slots que vão se preenchendo 
 a silhueta de cada espécie. Fica no canto superior direito durante toda a cena,
 renderizado pela CENA e não por `setPainel`: assim nenhum painel do Diretor o
 fecha no meio da dinâmica. Ele sobrevive uma cena além da identificação, porque
-é no `ident-fim` que a IA diz "banco recalibrado" e o contador fecha em 240.112
+é na cena seguinte que a IA diz "banco recalibrado" e o contador fecha em 240.112
 — mesmo que alguma espécie tenha sido revelada pelo operador e valido metade.
 
 ## Dinâmicas: quiz e verdadeiro/falso

@@ -14,9 +14,11 @@ Tom: descoberta, não perigo. Trilha aqui é ambiente (drone claro, água, sem t
 
 **ident** (identificacao) — ver schema.
 
-**ident-fim** (fala, auto) — [nova]
-- "Banco de espécies recalibrado." → cache completa até 240.112 com rolagem rápida
-- "Sonar operando com referência completa."
+~~**ident-fim** (fala, auto)~~ — **cena removida.** A linha "Banco de espécies
+recalibrado." (→ cache completa até 240.112 com rolagem rápida) passou a abrir
+o `ef-intro`, que é a cena seguinte à identificação; o painel `cache` vive uma
+cena além dela, então o contador continua fechando na frente da plateia. A
+linha "Sonar operando com referência completa." saiu.
 
 ## Schema
 type CenaIdentificacao = CenaBase & {
@@ -49,7 +51,7 @@ Cena com `cameras: false` (a câmera grande é o palco) e `orbe: "discreto"` at�
 4. Operador aperta Enter quando ouvir o nome certo. X = revelar sem acerto.
 5. Acerto: turbidez limpa em 1.5s (partículas somem, contraste sobe, resolução interna 640×360), animal nítido nadando, ficha ao lado com 3–4 dados, cache pula com rolagem de dígitos, sfx ok, orbe morfa na forma. Fala `acerto` e em seguida a `curiosidade` da espécie — é o momento em que a sala está olhando o bicho que acabou de nomear. 1,6s de contemplação (era 4s: a narração já segura a cena), próxima espécie. Enter corta narração e contemplação.
 6. Revelado sem acerto: mesma revelação, fala `revelado`, cache pula metade.
-7. Após a última: ident-fim.
+7. Após a última: a cena seguinte (`ef-intro`), que abre dizendo que o banco foi recalibrado.
 Sem penalidade. Sem timer visível — só a barra de calibração, suave.
 
 ## As criaturas têm que ser BOAS de ver

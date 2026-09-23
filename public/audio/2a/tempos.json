@@ -1,30 +1,30 @@
 {
   "arte-intro": {
-    "duracaoMs": 25008,
+    "duracaoMs": 23496,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3048
+        "fim": 1536
       },
       {
-        "inicio": 3648,
-        "fim": 9600
+        "inicio": 2136,
+        "fim": 8088
       },
       {
-        "inicio": 10200,
-        "fim": 12480
+        "inicio": 8688,
+        "fim": 10968
       },
       {
-        "inicio": 13080,
-        "fim": 19872
+        "inicio": 11568,
+        "fim": 18360
       },
       {
-        "inicio": 20472,
-        "fim": 22176
+        "inicio": 18960,
+        "fim": 20664
       },
       {
-        "inicio": 22776,
-        "fim": 24768
+        "inicio": 21264,
+        "fim": 23256
       }
     ]
   },
@@ -46,19 +46,23 @@
     ]
   },
   "ef-intro": {
-    "duracaoMs": 10968,
+    "duracaoMs": 14040,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 1536
+        "fim": 2064
       },
       {
-        "inicio": 2136,
-        "fim": 8736
+        "inicio": 2664,
+        "fim": 4560
       },
       {
-        "inicio": 9336,
-        "fim": 10872
+        "inicio": 5160,
+        "fim": 11760
+      },
+      {
+        "inicio": 12360,
+        "fim": 13896
       }
     ]
   },
@@ -163,19 +167,6 @@
       {
         "inicio": 13776,
         "fim": 19128
-      }
-    ]
-  },
-  "ident-fim": {
-    "duracaoMs": 5352,
-    "linhas": [
-      {
-        "inicio": 0,
-        "fim": 2064
-      },
-      {
-        "inicio": 2664,
-        "fim": 5304
       }
     ]
   },

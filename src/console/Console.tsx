@@ -7,6 +7,14 @@ type Props = {
   travado: boolean
   /** Texto que a própria IA digita sozinha (comando roteirizado do JSON). */
   autoTexto?: string | null
+  /**
+   * Texto já no campo quando o console abre, sem digitação e sem executar.
+   *
+   * É o atalho do operador: a tecla abre o console com o comando começado e
+   * ele só completa o argumento. Diferente do `autoTexto`, que é a IA digitando
+   * na frente da plateia e executando no fim.
+   */
+  textoInicial?: string | null
   aoFechar: () => void
   aoExecutar: (texto: string, manterAberto: boolean) => void
   /** Avisa que a digitação automática terminou, pra o Player limpar o pedido. */
@@ -26,6 +34,7 @@ export function ConsoleComandos({
   aberto,
   travado,
   autoTexto,
+  textoInicial,
   aoFechar,
   aoExecutar,
   aoTerminarAuto,
@@ -37,11 +46,25 @@ export function ConsoleComandos({
 
   // Foco ao abrir; campo limpo ao fechar.
   useEffect(() => {
-    if (aberto) refInput.current?.focus()
-    else {
+    if (aberto) {
+      refInput.current?.focus()
+      // O cursor vai pro fim: o operador continua digitando de onde o atalho
+      // parou, sem ter que apertar End.
+      if (textoInicial) {
+        setTexto(textoInicial)
+        window.setTimeout(() => {
+          const campo = refInput.current
+          if (campo) campo.setSelectionRange(textoInicial.length, textoInicial.length)
+        }, 0)
+      }
+    } else {
       setTexto('')
       setPosHistorico(-1)
     }
+    // `textoInicial` fora das dependências: ele só vale no instante em que o
+    // console abre. Como dependência, redigitaria o comando por cima do que o
+    // operador já escreveu a cada render do Player.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto])
 
   // Digitação automática de um comando roteirizado.

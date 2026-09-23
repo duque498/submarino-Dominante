@@ -17,6 +17,7 @@ export type Acao =
   | { tipo: 'console' }
   | { tipo: 'fechar' }
   | { tipo: 'revelar' }
+  | { tipo: 'cronometro' }
 
 function traduzir(evento: KeyboardEvent): Acao | null {
   switch (evento.key) {
@@ -57,6 +58,11 @@ function traduzir(evento: KeyboardEvent): Acao | null {
     // Só a expedição de identificação usa: revela a espécie sem acerto.
     case 'x':
       return { tipo: 'revelar' }
+    // Abre o console com "cronometro " já digitado: o operador só completa com
+    // os segundos e dá Enter. Capturar dígitos soltos depois do T brigaria com
+    // as teclas 1–4, que no 2B religam subsistema e no enigma revelam dica.
+    case 't':
+      return { tipo: 'cronometro' }
     case 'm':
       return { tipo: 'proximaForma' }
     case 'n':
