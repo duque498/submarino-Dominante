@@ -3,6 +3,14 @@ type Props = {
   cena: string
   forma: string
   escala: number
+  /**
+   * O que vale como acerto agora.
+   *
+   * Nas dinâmicas em que a plateia GRITA a resposta, quem julga é o operador —
+   * e ele decide em dois segundos, no escuro, com a sala falando junto. A
+   * lista precisa estar na tela dele, não no JSON.
+   */
+  aceitos?: { rotulo: string; termos: string[] } | null
 }
 
 const ATALHOS: Array<[string, string]> = [
@@ -11,6 +19,9 @@ const ATALHOS: Array<[string, string]> = [
   ['Espaço', 'corta o áudio e avança'],
   ['1 2 3 4', 'marca a resposta do quiz'],
   ['1 2 3', 'no combate: o setor do contato'],
+  ['1 2 3', 'no 2B: religa o subsistema do reparo'],
+  ['Enter', 'na identificação e no hidrofone: a sala acertou'],
+  ['X', 'na identificação e no hidrofone: revela sem acerto'],
   ['→ (no combate)', 'força a rodada a seguir'],
   ['V / F', 'marca verdadeiro ou falso'],
   ['P', 'dispara a pane de qualquer cena'],
@@ -36,9 +47,15 @@ const ATALHOS: Array<[string, string]> = [
 ]
 
 /** Overlay discreto de atalhos. Fica sempre por cima, mas sem tampar a cena. */
-export function Ajuda({ cena, forma, escala }: Props) {
+export function Ajuda({ cena, forma, escala, aceitos }: Props) {
   return (
     <div className="ajuda">
+      {aceitos && (
+        <div className="ajuda__aceitos">
+          <h3>vale como acerto · {aceitos.rotulo}</h3>
+          <p>{aceitos.termos.join(' · ')}</p>
+        </div>
+      )}
       <h2 className="ajuda__titulo">atalhos do operador</h2>
       <dl className="ajuda__lista">
         {ATALHOS.map(([tecla, acao]) => (

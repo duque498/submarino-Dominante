@@ -10,6 +10,7 @@ import {
   type LinhaFalada,
 } from '../audio/vozNavegador'
 import { tocarSintetico, tocarTesteDeSom, type NomeSfx } from '../audio/sfx'
+import { tocarSomDoHidrofone, type SomTocando } from '../audio/hidrofone'
 import type { Sfx } from '../roteiros/tipos'
 
 /**
@@ -166,6 +167,30 @@ export class AudioEngine {
 
   private nivelAtual = 0
   private loopNivel = 0
+
+  // --- hidrofone (2B) ---
+  /**
+   * Analisador SÓ do hidrofone.
+   *
+   * O da voz não serviria: durante a dinâmica a IA fala entre um som e outro, e
+   * o espectrograma passaria a desenhar a locução dela. O que a plateia tem que
+   * ver na tela é o som que ela está tentando identificar, e mais nada.
+   */
+  private analisadorHidro: AnalyserNode | null = null
+  private espectroHidro: Uint8Array<ArrayBuffer> | null = null
+  private ondaHidro: Uint8Array<ArrayBuffer> | null = null
+  private somHidro: SomTocando | null = null
+  private elementoHidro: HTMLAudioElement | null = null
+  /**
+   * Elementos que já foram ligados ao grafo.
+   *
+   * `createMediaElementSource` só pode ser chamado UMA vez por elemento, e os
+   * elementos são cacheados por URL: reentrar na cena chamaria de novo e
+   * lançaria InvalidStateError no meio da apresentação.
+   */
+  private roteadosHidro = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>()
+  private nivelHidro = 0
+  private loopHidro = 0
   /** Estado do envelope sintético da camada B. */
   private silaba = { fase: 0, freq: 5, amplitude: 0.7, pausaAte: 0, proximaPausa: 0 }
 
@@ -781,11 +806,106 @@ export class AudioEngine {
 
   stop(): void {
     this.pararVoz()
+    this.pararHidrofone()
     if (this.sfxAtual) {
       this.sfxAtual.pause()
       this.sfxAtual.currentTime = 0
       this.sfxAtual = null
     }
+  }
+
+  // --- hidrofone (2B) -----------------------------------------------------
+
+  /**
+   * Põe um som do hidrofone em loop e devolve `true` se conseguiu.
+   *
+   * Prefere o mp3 embutido (`./audio/sfx/hidro-<id>.mp3`) e cai no sintetizado
+   * — o projeto inteiro roda sem nenhum arquivo de som, e esta dinâmica não
+   * podia ser a exceção que quebra a apresentação por falta de download.
+   */
+  iniciarHidrofone(id: string): boolean {
+    this.pararHidrofone()
+    const contexto = this.obterContexto()
+    if (!contexto || !this.saidaSfx) return false
+    void contexto.resume()
+
+    if (!this.analisadorHidro) {
+      this.analisadorHidro = contexto.createAnalyser()
+      this.analisadorHidro.fftSize = 1024
+      this.analisadorHidro.smoothingTimeConstant = 0.6
+      this.analisadorHidro.connect(this.saidaSfx)
+      this.espectroHidro = new Uint8Array(
+        new ArrayBuffer(this.analisadorHidro.frequencyBinCount),
+      )
+      this.ondaHidro = new Uint8Array(new ArrayBuffer(this.analisadorHidro.fftSize))
+    }
+
+    const url = `./audio/sfx/hidro-${id}.mp3`
+    if (this.embutido(url)) {
+      const elemento = this.obterElemento(url)
+      elemento.loop = true
+      elemento.currentTime = 0
+      let fonte = this.roteadosHidro.get(elemento)
+      if (!fonte) {
+        fonte = contexto.createMediaElementSource(elemento)
+        this.roteadosHidro.set(elemento, fonte)
+      }
+      fonte.connect(this.analisadorHidro)
+      this.elementoHidro = elemento
+      void elemento.play().catch(() => {
+        /* cai no sintetizado no próximo som */
+      })
+    } else {
+      this.somHidro = tocarSomDoHidrofone(contexto, this.analisadorHidro, id)
+      if (!this.somHidro) return false
+    }
+
+    this.iniciarLoopHidro()
+    return true
+  }
+
+  pararHidrofone(): void {
+    this.somHidro?.parar()
+    this.somHidro = null
+    if (this.elementoHidro) {
+      this.elementoHidro.pause()
+      this.elementoHidro.currentTime = 0
+      this.elementoHidro = null
+    }
+    if (this.loopHidro) cancelAnimationFrame(this.loopHidro)
+    this.loopHidro = 0
+    this.nivelHidro = 0
+  }
+
+  /** Espectro do hidrofone agora (0–255 por faixa). Vazio se nada toca. */
+  espectroDoHidrofone(): Uint8Array | null {
+    if (!this.analisadorHidro || !this.espectroHidro) return null
+    this.analisadorHidro.getByteFrequencyData(this.espectroHidro)
+    return this.espectroHidro
+  }
+
+  /** Forma de onda do hidrofone agora (0–255, 128 = silêncio). */
+  ondaDoHidrofone(): Uint8Array | null {
+    if (!this.analisadorHidro || !this.ondaHidro) return null
+    this.analisadorHidro.getByteTimeDomainData(this.ondaHidro)
+    return this.ondaHidro
+  }
+
+  private iniciarLoopHidro(): void {
+    const passo = () => {
+      const onda = this.ondaDoHidrofone()
+      if (onda) {
+        let soma = 0
+        for (let i = 0; i < onda.length; i++) {
+          const desvio = (onda[i] - 128) / 128
+          soma += desvio * desvio
+        }
+        const rms = Math.sqrt(soma / onda.length)
+        this.nivelHidro = misturar(this.nivelHidro, Math.min(1, rms * 3), 0.3)
+      }
+      this.loopHidro = requestAnimationFrame(passo)
+    }
+    this.loopHidro = requestAnimationFrame(passo)
   }
 
   // --- nível --------------------------------------------------------------
@@ -796,7 +916,10 @@ export class AudioEngine {
    * re-renderizaria a árvore inteira.
    */
   nivel(): number {
-    return this.nivelAtual
+    // O orbe pulsa com o que estiver soando: a voz da IA ou, na dinâmica do
+    // hidrofone, o próprio som captado. São dois caminhos separados no grafo,
+    // e o orbe só quer saber do mais alto dos dois.
+    return Math.max(this.nivelAtual, this.nivelHidro)
   }
 
   private iniciarLoopNivel(modo: 'real' | 'sintetico'): void {

@@ -1,11 +1,14 @@
 import { marcadorExiste, NOMES_MARCADORES } from '../paineis/mapa'
 import { formaRegistrada, NOMES_FORMAS } from '../formas'
 import { ESPECIES } from '../mundo/bestiario'
+import { idSintetizado } from '../audio/hidrofone'
 import { NOMES_PAINEIS } from '../paineis/nomes'
 import type {
   Acao,
   Cena,
   CenaCombate,
+  CenaEmergencia,
+  CenaHidrofone,
   CenaIdentificacao,
   Linha,
   Roteiro,
@@ -23,6 +26,8 @@ const TIPOS_VALIDOS = [
   'quiz',
   'vf',
   'pane',
+  'emergencia',
+  'hidrofone',
   'combate',
   'identificacao',
   'olho',
@@ -336,6 +341,96 @@ function conferirCombate(cena: CenaCombate, onde: string, erros: string[]) {
   }
 }
 
+function conferirEmergencia(cena: CenaEmergencia, onde: string, erros: string[]) {
+  if (!ehListaDeTextos(cena.subsistemas)) {
+    erros.push(`${onde}: "subsistemas" precisa ser uma lista de textos nao vazia.`)
+  }
+  if (!ehListaDeTextos(cena.tela?.linhas)) {
+    erros.push(`${onde}: "tela.linhas" precisa ser a tela de falha (primeira linha = titulo).`)
+  }
+  for (const chave of ['falasQueda', 'falasRetorno'] as const) {
+    if (!ehListaDeTextos(cena[chave])) {
+      erros.push(`${onde}: "${chave}" precisa ser uma lista de falas nao vazia.`)
+    }
+  }
+  for (const chave of ['queda', 'retorno'] as const) {
+    if (!ehTextoPreenchido(cena.audio?.[chave])) {
+      erros.push(`${onde}: "audio.${chave}" faltando.`)
+    }
+  }
+  if (cena.avanco === 'manual') {
+    erros.push(
+      `${onde}: a cena "emergencia" nao pode ser manual — ela avanca sozinha ` +
+        `quando a IA termina de voltar em modo reduzido, e parar antes disso ` +
+        `deixaria a tela de falha travada na frente da plateia.`,
+    )
+  }
+}
+
+function conferirHidrofone(cena: CenaHidrofone, onde: string, erros: string[]) {
+  if (!Array.isArray(cena.sons) || cena.sons.length === 0) {
+    erros.push(`${onde}: "sons" precisa ser uma lista com pelo menos um som.`)
+    return
+  }
+
+  cena.sons.forEach((som, i) => {
+    const ondeS = `${onde}, som ${i + 1} ("${som?.id ?? '???'}")`
+    if (!ehTextoPreenchido(som?.id)) erros.push(`${ondeS}: "id" faltando.`)
+    if (!ehTextoPreenchido(som?.nome)) erros.push(`${ondeS}: "nome" faltando.`)
+    if (!ehListaDeTextos(som?.aceitos)) {
+      erros.push(
+        `${ondeS}: "aceitos" vazio. E a lista que o operador le no overlay H ` +
+          `pra decidir se a plateia acertou.`,
+      )
+    }
+    if (!ehTextoPreenchido(som?.pista)) {
+      erros.push(`${ondeS}: "pista" faltando — uma so, e facil.`)
+    }
+    if (!ehTextoPreenchido(som?.audioPista)) {
+      erros.push(`${ondeS}: "audioPista" faltando (o mp3 da pista).`)
+    }
+    if (typeof som?.distanciaKm !== 'number' || som.distanciaKm <= 0) {
+      erros.push(`${ondeS}: "distanciaKm" deve ser um numero de quilometros.`)
+    }
+    if (!['superficie', 'navio', 'animal'].includes(som?.origem)) {
+      erros.push(`${ondeS}: "origem" deve ser "superficie", "navio" ou "animal".`)
+    }
+    if (!idSintetizado(som?.id)) {
+      erros.push(
+        `${ondeS}: nao existe sintetizador pro id "${som?.id}". ` +
+          `Ha sintetizador pra: chuva, navio, baleia. Um som sem sintetizador ` +
+          `e sem mp3 deixaria a plateia olhando um espectrograma mudo.`,
+      )
+    }
+  })
+
+  for (const chave of ['inicio', 'acerto', 'revelado'] as const) {
+    const falas = cena.falas?.[chave]
+    const audios = cena.audio?.[chave]
+    if (!Array.isArray(falas) || falas.length === 0 || !falas.every(ehListaDeTextos)) {
+      erros.push(`${onde}: "falas.${chave}" precisa ser uma lista de listas de falas.`)
+    }
+    if (!ehListaDeTextos(audios)) {
+      erros.push(`${onde}: "audio.${chave}" precisa ser uma lista de mp3.`)
+    } else if (Array.isArray(falas) && audios.length !== falas.length) {
+      erros.push(
+        `${onde}: "audio.${chave}" tem ${audios.length} itens e "falas.${chave}" ` +
+          `tem ${falas.length}. Precisam bater.`,
+      )
+    }
+  }
+
+  // As falas de acerto levam o dado da distancia, entao ha UMA por som, na
+  // ordem — nao sao sorteadas como as de inicio.
+  if (Array.isArray(cena.falas?.acerto) && cena.falas.acerto.length !== cena.sons.length) {
+    erros.push(
+      `${onde}: "falas.acerto" tem ${cena.falas.acerto.length} entradas e ha ` +
+        `${cena.sons.length} sons. Cada acerto carrega a distancia do som dele, ` +
+        `entao a lista e na ordem dos sons, nao sorteada.`,
+    )
+  }
+}
+
 export function validarRoteiro(dado: unknown): string[] {
   const erros: string[] = []
 
@@ -415,6 +510,53 @@ export function validarRoteiro(dado: unknown): string[] {
 
     if (cena.ameacas !== undefined && typeof cena.ameacas !== 'boolean') {
       erros.push(`${onde}: "ameacas" deve ser true ou false.`)
+    }
+
+    if (cena.sementes !== undefined) {
+      const agua = cena.sementes?.agua
+      if (agua !== undefined) {
+        if (!Array.isArray(agua) || agua.length !== 2 || !agua.every((v) => typeof v === 'number')) {
+          erros.push(`${onde}: "sementes.agua" deve ser [inicio, fim] em graus Celsius.`)
+        } else if (agua[0] === agua[1]) {
+          erros.push(
+            `${onde}: "sementes.agua" comeca e termina em ${agua[0]} °C. ` +
+              `A leitura existe pra MUDAR na frente da plateia; parada, e so ruido no HUD.`,
+          )
+        }
+      }
+      if (cena.sementes?.avisos !== undefined && !ehListaDeTextos(cena.sementes.avisos)) {
+        erros.push(`${onde}: "sementes.avisos" deve ser uma lista de textos.`)
+      }
+    }
+
+    if (cena.reparos !== undefined) {
+      if (!Array.isArray(cena.reparos) || cena.reparos.length === 0) {
+        erros.push(`${onde}: "reparos" deve ser uma lista com pelo menos um reparo.`)
+      } else {
+        const teclas = new Set<string>()
+        cena.reparos.forEach((reparo, i) => {
+          const ondeR = `${onde}, reparo ${i + 1}`
+          if (!['1', '2', '3'].includes(reparo?.tecla)) {
+            erros.push(`${ondeR}: "tecla" deve ser "1", "2" ou "3".`)
+          } else if (teclas.has(reparo.tecla)) {
+            erros.push(
+              `${ondeR}: a tecla "${reparo.tecla}" ja e usada por outro reparo ` +
+                `nesta cena. Uma tecla so pode religar um subsistema.`,
+            )
+          } else {
+            teclas.add(reparo.tecla)
+          }
+          if (!ehTextoPreenchido(reparo?.subsistema)) {
+            erros.push(`${ondeR}: "subsistema" faltando.`)
+          }
+          if (!ehListaDeTextos(reparo?.fala)) {
+            erros.push(`${ondeR}: "fala" precisa ser uma lista de falas nao vazia.`)
+          }
+          if (!ehTextoPreenchido(reparo?.audio)) {
+            erros.push(`${ondeR}: "audio" faltando (o mp3 da fala do reparo).`)
+          }
+        })
+      }
     }
 
     if (cena.comandos !== undefined) {
@@ -553,6 +695,14 @@ export function validarRoteiro(dado: unknown): string[] {
         }
         break
       }
+      case 'emergencia': {
+        conferirEmergencia(cena, onde, erros)
+        break
+      }
+      case 'hidrofone': {
+        conferirHidrofone(cena, onde, erros)
+        break
+      }
       case 'combate': {
         conferirCombate(cena, onde, erros)
         break
@@ -598,6 +748,31 @@ export function validarRoteiro(dado: unknown): string[] {
       }
     }
   })
+
+  // Um reparo que aponta pra um subsistema que nao existe nao acende nada e
+  // nao reclama: o operador aperta a tecla no meio da apresentacao e fica sem
+  // resposta. E exatamente o tipo de erro que so aparece na feira.
+  const quebra = roteiro.cenas.find(
+    (c): c is CenaEmergencia => (c as Cena)?.tipo === 'emergencia',
+  )
+  for (const cena of roteiro.cenas) {
+    for (const reparo of (cena as Cena)?.reparos ?? []) {
+      if (!quebra) {
+        erros.push(
+          `Cena "${(cena as Cena).id}": ha "reparos" mas o roteiro nao tem ` +
+            `nenhuma cena de "emergencia" — nao ha luz nenhuma pra acender.`,
+        )
+        break
+      }
+      if (!quebra.subsistemas.includes(reparo.subsistema)) {
+        erros.push(
+          `Cena "${(cena as Cena).id}": o reparo da tecla "${reparo.tecla}" aponta ` +
+            `pro subsistema "${reparo.subsistema}", que nao esta na cena de ` +
+            `emergencia "${quebra.id}" (${quebra.subsistemas.join(', ')}).`,
+        )
+      }
+    }
+  }
 
   return erros
 }

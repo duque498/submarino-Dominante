@@ -33,6 +33,30 @@ export type Visor = 'ok' | 'rachado' | 'parcial'
 
 export type Avanco = 'auto' | 'manual'
 
+/**
+ * Sementes da pane, por cena.
+ *
+ * `agua` desce linearmente do primeiro valor ao segundo enquanto a cena esta
+ * no ar, e aparece na barra do HUD. `avisos` entram no log espacados pela
+ * cena. Sao dois valores e uma lista de textos de proposito: qualquer coisa
+ * mais esperta viraria um sistema de eventos que so esta cena usaria.
+ */
+export type Sementes = {
+  /** [inicio, fim] em graus Celsius. */
+  agua?: [number, number]
+  /** Linhas pro log, espacadas pela duracao da cena. Prefixe com "WARN:". */
+  avisos?: string[]
+}
+
+/** Um subsistema que a fala dos alunos religa, acionado pelo operador. */
+export type Reparo = {
+  tecla: '1' | '2' | '3'
+  /** Precisa estar em `subsistemas` da cena de emergencia. */
+  subsistema: string
+  fala: string[]
+  audio: string
+}
+
 export type CenaBase = {
   /** unico na turma; vira o nome do mp3 */
   id: string
@@ -69,6 +93,23 @@ export type CenaBase = {
    * Estado do visor a partir desta cena. Sem o campo, herda o da cena anterior.
    */
   visor?: Visor
+  /**
+   * Sementes da pane: o que muda na tela ANTES de a IA quebrar.
+   *
+   * O 2B quebra no fim do grupo 2, e uma pane que chega do nada e um susto,
+   * nao uma consequencia. Durante o grupo 1 a agua esfria na leitura do HUD e
+   * o log solta avisos ambar espacados. Sem som e sem fala: a plateia nao tem
+   * que PERCEBER, tem que reconhecer depois que ja estava ali.
+   */
+  sementes?: Sementes
+  /**
+   * Reparos que o operador pode acionar NESTA cena, um por tecla.
+   *
+   * A fala dos alunos e que conserta o submarino — mas quem sabe quando eles
+   * chegaram no trecho certo e o operador, nao o relogio. Por isso e tecla, e
+   * nao temporizador: o grupo pode demorar o que quiser no empuxo.
+   */
+  reparos?: Reparo[]
   /**
    * Liga as ameacas no mundo: rede fantasma, plastico a deriva e coral
    * branqueado, cada uma na sua faixa de profundidade. Usado so na subida do
@@ -353,6 +394,74 @@ export type CenaOlho = CenaBase & {
 }
 
 /**
+ * A quebra do 2B: pane PARCIAL e persistente.
+ *
+ * Diferente da pane global (`P`/`R`), que congela a apresentacao inteira e
+ * espera o operador reiniciar. Aqui a apresentacao CONTINUA — quem esta
+ * avariado e o submarino. Os grupos 3 e 4 apresentam com tres luzes vermelhas
+ * no canto e a moldura pulsando, e e a fala deles que religa cada sistema.
+ *
+ * Por isso ela e uma cena e nao uma tecla: a quebra tem hora marcada no
+ * roteiro (o grupo 2 acabou de dizer que a IA pode errar) e o estado dela
+ * atravessa as cenas seguintes ate o hidrofone.
+ */
+export type CenaEmergencia = CenaBase & {
+  tipo: 'emergencia'
+  /** ["CASCO", "SONAR", "COMUNICACAO"] — a ordem e a das luzes. */
+  subsistemas: string[]
+  /** Tela de falha, travada alguns segundos. */
+  tela: { linhas: string[] }
+  /** As falas da queda, ditas antes de a tela travar. */
+  falasQueda: string[]
+  /** As falas do modo reduzido, ditas quando a tela destrava. */
+  falasRetorno: string[]
+  audio: { queda: string; retorno: string }
+}
+
+/**
+ * Hidrofone: a plateia identifica tres sons.
+ *
+ * E a irma da identificacao do 2A, com uma troca de sentido: la a plateia
+ * RECONHECE pela forma, aqui pelo som. E o terceiro som nao e so mais um — e
+ * o canto da baleia, cuja frequencia a IA usa pra alcancar a superficie. A
+ * dinamica devolve a comunicacao ao submarino.
+ *
+ * Sem erro, sem timer e sem barra: a unica pressao e a luz vermelha da
+ * comunicacao no canto.
+ */
+export type CenaHidrofone = CenaBase & {
+  tipo: 'hidrofone'
+  sons: SomHidrofone[]
+  falas: {
+    /** Sorteada na entrada de cada som. */
+    inicio: string[][]
+    /** Uma por som, na ordem: leva o dado da distancia. */
+    acerto: string[][]
+    /** Ninguem acertou e o operador revelou. */
+    revelado: string[][]
+  }
+  audio: {
+    inicio: string[]
+    acerto: string[]
+    revelado: string[]
+  }
+}
+
+export type SomHidrofone = {
+  /** "chuva" | "navio" | "baleia". Escolhe o sintetizador e o icone. */
+  id: string
+  nome: string
+  /** Sinonimos aceitos. Referencia pro operador no overlay de ajuda. */
+  aceitos: string[]
+  /** UMA pista, facil, dita 4 s depois de o som comecar. */
+  pista: string
+  audioPista: string
+  /** Aparece no mapa ao identificar, e na fala de acerto. */
+  distanciaKm: number
+  origem: 'superficie' | 'navio' | 'animal'
+}
+
+/**
  * Tela final estatica. Nao avanca sozinha e nao tem proxima cena: e onde a
  * apresentacao termina e fica, enquanto a plateia aplaude.
  */
@@ -369,6 +478,8 @@ export type Cena =
   | CenaQuiz
   | CenaVF
   | CenaPane
+  | CenaEmergencia
+  | CenaHidrofone
   | CenaCombate
   | CenaOlho
   | CenaFim

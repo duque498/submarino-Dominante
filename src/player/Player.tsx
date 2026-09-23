@@ -51,6 +51,9 @@ import {
   PISO_CALIBRACAO,
   type EstadoIdent,
 } from '../cenas/Identificacao'
+import { Emergencia, type EstadoEmergencia } from '../cenas/Emergencia'
+import { Hidrofone, type EstadoHidro } from '../cenas/Hidrofone'
+import { LuzesEmergencia, type EstadoLuz } from '../paineis/LuzesEmergencia'
 import { Fim } from '../cenas/Fim'
 import { Olho } from '../cenas/Olho'
 import type { EstadoCache } from '../paineis/PainelCache'
@@ -113,6 +116,11 @@ export function audioDaCena(cena: Cena): string | null {
       return cena.audio.afirmacao
     case 'pane':
       return cena.audio.entrada
+    // A emergencia tem DOIS: a queda e o retorno em modo reduzido, com a tela
+    // travada entre eles. Quem toca os dois e o laco proprio da cena.
+    case 'emergencia':
+    // O hidrofone e como a identificacao: cada som tem as falas dele.
+    case 'hidrofone':
     // O combate nao tem UM audio: tem um por rodada, tocado pelo laco proprio.
     // A tela final nao fala nada — o encerramento ja falou.
     case 'combate':
@@ -148,6 +156,10 @@ function linhasDeReferencia(cena: Cena): string[] {
       return [cena.afirmacao]
     case 'pane':
       return cena.falaEntrada ?? cena.subsistemas
+    case 'emergencia':
+      return cena.falasQueda
+    case 'hidrofone':
+      return cena.falas.inicio[0] ?? [cena.sons[0]?.nome ?? 'hidrofone']
     case 'combate':
       return cena.falas.rodada[0] ?? [cena.criatura]
     case 'identificacao':
@@ -167,6 +179,10 @@ function rotaDaCena(cena: Cena): string {
       return 'CONTATO HOSTIL'
     case 'identificacao':
       return 'RECALIBRANDO CATÁLOGO'
+    case 'emergencia':
+      return 'FALHA DE SISTEMA'
+    case 'hidrofone':
+      return 'ESCUTA PASSIVA'
     case 'olho':
       return 'CONTATO VISUAL'
     case 'fim':
@@ -188,7 +204,14 @@ function layoutDaCena(cena: Cena): Layout {
   // No olho a tela é do bicho: o orbe some pro canto e a área central fica
   // inteira pra a câmera.
   // Na identificação a tela também é da câmera: o orbe sai do caminho.
-  if (cena.tipo === 'combate' || cena.tipo === 'olho' || cena.tipo === 'identificacao') {
+  // No hidrofone a tela e do espectrograma: mesma logica das outras dinamicas
+  // em que a plateia precisa LER alguma coisa pra responder.
+  if (
+    cena.tipo === 'combate' ||
+    cena.tipo === 'olho' ||
+    cena.tipo === 'identificacao' ||
+    cena.tipo === 'hidrofone'
+  ) {
     return 'canto'
   }
   if (cena.tipo !== 'apresentacao') return 'central'
@@ -239,6 +262,29 @@ const MS_ESTATICA_APOS_OLHO = 2200
 const MS_OLHO_CAMERA = 1500
 /** Olho, tempo 2: a silhueta cruza o facho de ponta a ponta. */
 const MS_OLHO_TRAVESSIA = 3000
+/** Emergencia: quanto cada linha da tela de falha demora pra entrar. */
+const MS_LINHA_FALHA = 380
+/** Emergencia: quanto a tela de falha fica travada antes do modo reduzido. */
+const MS_TELA_TRAVADA = 3000
+/** Reparo: vermelho -> ambar -> verde. */
+const MS_RELIGANDO = 1200
+/** Hidrofone: tempo de a sala ouvir o som antes de a IA dar a pista. */
+const MS_ATE_PISTA = 4000
+/** Hidrofone: quanto a fonte fica na tela depois da fala de resultado. */
+const MS_FONTE_NA_TELA = 3000
+/**
+ * Sementes: quanto a agua leva pra ir do primeiro valor ao segundo.
+ *
+ * Quatro minutos, que e a ordem de grandeza de uma apresentacao de grupo. Se
+ * o grupo falar menos, a agua nao chega no fundo da faixa — e tudo bem: o que
+ * a cena precisa e que ela esteja CAINDO, nao que chegue num numero.
+ */
+const MS_QUEDA_AGUA = 240_000
+/** Modo reduzido: espacamento das linhas de erro no log. */
+const MS_ENTRE_ERROS = 20_000
+/** Sementes: espacamento dos avisos no log. */
+const MS_ENTRE_AVISOS = 40_000
+
 /**
  * Identificacao: quanto o bicho nitido ainda fica na tela depois que a IA
  * termina de falar sobre ele.
@@ -307,6 +353,22 @@ export function Player({ roteiro, engine }: Props) {
     return i < 0 ? null : { de: i, ate: i + 1 }
   }, [sequencia])
 
+  /**
+   * Até onde o modo reduzido continua ligado.
+   *
+   * Derivado da estrutura, não de ids, como a janela da trilha: da cena de
+   * `emergencia` até a cena logo DEPOIS do `hidrofone` — que é onde a IA diz
+   * que a comunicação voltou e as luzes fecham em verde. Sem a guarda, voltar
+   * com a seta esquerda deixaria três luzes vermelhas em cima de uma
+   * apresentação que ainda não quebrou.
+   */
+  const janelaEmergencia = useMemo(() => {
+    const quebra = sequencia.findIndex((c) => c.tipo === 'emergencia')
+    if (quebra < 0) return null
+    const hidro = sequencia.findIndex((c) => c.tipo === 'hidrofone')
+    return { de: quebra, ate: (hidro >= 0 ? hidro : quebra) + 1 }
+  }, [sequencia])
+
   const janelaTrilha = useMemo(() => {
     const combate = sequencia.findIndex((c) => c.tipo === 'combate')
     if (combate < 0) return null
@@ -370,6 +432,8 @@ export function Player({ roteiro, engine }: Props) {
   /** Calibração viva: muda a 60 fps, então fica fora do estado. */
   const refCalibracao = useRef(1)
   const lerCalibracao = useCallback(() => refCalibracao.current, [])
+  const lerEspectro = useCallback(() => engine.espectroDoHidrofone(), [engine])
+  const lerOnda = useCallback(() => engine.ondaDoHidrofone(), [engine])
   /** Tremor da tela inteira: o impacto do combate e a quebra do visor. */
   const [impacto, setImpacto] = useState(false)
   /**
@@ -453,6 +517,33 @@ export function Player({ roteiro, engine }: Props) {
 
   // --- pane ---
   const [pane, setPane] = useState<EstadoPane | null>(null)
+
+  // --- emergência do 2B ---
+  /**
+   * Modo reduzido: PERSISTENTE entre cenas, como o visor rachado do 3A.
+   *
+   * Não é um painel nem uma fase de cena: a quebra acontece numa cena e o
+   * estado atravessa as três seguintes, porque é isso que o roteiro conta —
+   * os grupos 3 e 4 apresentam com o submarino avariado. Só o `hidro-fim`
+   * desliga.
+   */
+  const [emergencia, setEmergencia] = useState<{
+    subsistemas: string[]
+    estados: EstadoLuz[]
+    encerrando: boolean
+  } | null>(null)
+  const [emerg, setEmerg] = useState<EstadoEmergencia | null>(null)
+  /** Estado do hidrofone. `null` fora da cena. */
+  const [hidro, setHidro] = useState<EstadoHidro | null>(null)
+  /** Teclas de reparo já usadas nesta cena — a segunda vez não faz nada. */
+  const refReparosUsados = useRef<Set<string>>(new Set())
+  /** Lido pelo callback memorizado do teclado, como o do combate. */
+  const refReparos = useRef<((tecla: string) => void) | null>(null)
+  const refHidroAtiva = useRef(false)
+  const refRespostaHidro = useRef<((acertou: boolean) => void) | null>(null)
+  /** Leitura de temperatura da água. Muda devagar, mas fora do estado. */
+  const refAgua = useRef<HTMLElement | null>(null)
+  const [aguaVisivel, setAguaVisivel] = useState(false)
   /** Última profundidade declarada; cenas sem o campo herdam esta. */
   const refProfundidade = useRef(50)
   /** performance.now() de quando a fala da cena começou a tocar. */
@@ -1274,6 +1365,23 @@ export function Player({ roteiro, engine }: Props) {
     if (!janelaCache || indice < janelaCache.de || indice > janelaCache.ate) setCache(null)
   }, [indice, janelaCache])
 
+  // Fora da janela, nada de luzes. Dentro dela, a última cena é o encerramento:
+  // as três acendem juntas enquanto a IA diz que a comunicação voltou.
+  useEffect(() => {
+    if (!janelaEmergencia || indice < janelaEmergencia.de || indice > janelaEmergencia.ate) {
+      setEmergencia(null)
+      return
+    }
+    if (indice === janelaEmergencia.ate) {
+      setEmergencia((atual) =>
+        atual
+          ? { ...atual, estados: atual.subsistemas.map(() => 'online'), encerrando: true }
+          : atual,
+      )
+      setRajadaLog(['CASCO: ONLINE', 'SONAR: ONLINE', 'COMUNICAÇÃO: ONLINE'])
+    }
+  }, [indice, janelaEmergencia])
+
   // --- expedicao de identificacao (2A) --------------------------------------
 
   /**
@@ -1482,6 +1590,268 @@ export function Player({ roteiro, engine }: Props) {
       motor.exibirEspecie(null)
     }
   }, [cena, engine, falarAvulso, avancar, prepararForma, setPainel])
+
+  // --- emergência e hidrofone (2B) ------------------------------------------
+
+  /**
+   * O laço da quebra.
+   *
+   * Três tempos, como a cena do olho: a IA fala normalmente e QUEBRA no meio,
+   * a tela de falha trava, e ela volta em modo reduzido. O travamento é o
+   * ponto — uma tela que pisca e segue em frente não convence ninguém de que
+   * o sistema caiu.
+   */
+  useEffect(() => {
+    if (!cena || cena.tipo !== 'emergencia') {
+      setEmerg(null)
+      return
+    }
+    const roteiro = cena
+    let cancelado = false
+    const relogios: number[] = []
+    const daqui = (ms: number) =>
+      new Promise<void>((resolve) => {
+        relogios.push(window.setTimeout(resolve, ms))
+      })
+
+    const rodar = async () => {
+      setEmerg({ fase: 'caindo', linhas: 0 })
+      const naTela = await falarAvulso(roteiro.audio.queda, roteiro.falasQueda, true)
+      await daqui(naTela)
+      if (cancelado) return
+
+      // Tela travada: as linhas entram uma a uma e FICAM.
+      engine.tocarSfx('alarme')
+      setImpacto(true)
+      relogios.push(window.setTimeout(() => setImpacto(false), 600))
+      setEmerg({ fase: 'travado', linhas: 0 })
+      const quantas = Math.max(0, roteiro.tela.linhas.length - 1)
+      for (let i = 1; i <= quantas; i++) {
+        await daqui(MS_LINHA_FALHA)
+        if (cancelado) return
+        setEmerg({ fase: 'travado', linhas: i })
+      }
+      await daqui(MS_TELA_TRAVADA)
+      if (cancelado) return
+
+      // E volta reduzida. As luzes nascem aqui e vivem ALÉM desta cena.
+      setEmergencia({
+        subsistemas: roteiro.subsistemas,
+        estados: roteiro.subsistemas.map(() => 'caido' as EstadoLuz),
+        encerrando: false,
+      })
+      setEmerg({ fase: 'retorno', linhas: quantas })
+      const volta = await falarAvulso(roteiro.audio.retorno, roteiro.falasRetorno, true)
+      await daqui(volta)
+      if (cancelado) return
+      setFala(null)
+      avancar()
+    }
+
+    void rodar().catch(() => {
+      if (!cancelado) avancar()
+    })
+
+    return () => {
+      cancelado = true
+      relogios.forEach((id) => window.clearTimeout(id))
+    }
+  }, [cena, engine, falarAvulso, avancar])
+
+  /**
+   * Reparos: a fala dos alunos religa o submarino, pela mão do operador.
+   *
+   * Tecla e não temporizador porque o relógio não sabe quando o grupo chegou
+   * no trecho do empuxo. Usada uma vez, a tecla morre: apertar de novo não
+   * repete a fala nem acende nada.
+   */
+  useEffect(() => {
+    refReparosUsados.current = new Set()
+    if (!cena?.reparos || cena.reparos.length === 0) {
+      refReparos.current = null
+      return
+    }
+    const lista = cena.reparos
+    refReparos.current = (tecla: string) => {
+      const reparo = lista.find((r) => r.tecla === tecla)
+      if (!reparo || refReparosUsados.current.has(tecla)) return
+      refReparosUsados.current.add(tecla)
+
+      const acender = (estado: EstadoLuz) =>
+        setEmergencia((atual) => {
+          if (!atual) return atual
+          const i = atual.subsistemas.indexOf(reparo.subsistema)
+          if (i < 0) return atual
+          const estados = [...atual.estados]
+          estados[i] = estado
+          return { ...atual, estados }
+        })
+
+      acender('religando')
+      engine.tocarSfx('ok')
+      void falarAvulso(reparo.audio, reparo.fala)
+      window.setTimeout(() => {
+        acender('online')
+        setRajadaLog([`${reparo.subsistema}: ONLINE`])
+        if (reparo.subsistema === 'SONAR') engine.tocarSfx('sonar')
+      }, MS_RELIGANDO)
+    }
+    return () => {
+      refReparos.current = null
+    }
+  }, [cena, engine, falarAvulso])
+
+  /**
+   * O laço do hidrofone.
+   *
+   * Mesma forma da identificação — som, pista, espera, revelação — com uma
+   * diferença que é o ponto da cena: o terceiro som não é só mais um. É a
+   * frequência que a IA precisa pra alcançar a superfície, e por isso a cena
+   * não termina em "identificado": termina com a comunicação de volta.
+   */
+  useEffect(() => {
+    if (!cena || cena.tipo !== 'hidrofone') {
+      setHidro(null)
+      engine.pararHidrofone()
+      return
+    }
+    const roteiro = cena
+    let cancelado = false
+    const relogios: number[] = []
+    const daqui = (ms: number) =>
+      new Promise<void>((resolve) => {
+        relogios.push(window.setTimeout(resolve, ms))
+      })
+
+    const sortear = (falas: string[][], audios: string[], i?: number) => {
+      if (!falas?.length || !audios?.length) return null
+      const n = i ?? Math.floor(Math.random() * falas.length)
+      return { linhas: falas[n] ?? falas[0], url: audios[n] ?? audios[0] }
+    }
+    const dizer = async (grupo: { linhas: string[]; url: string } | null) => {
+      if (!grupo) return
+      const ms = await falarAvulso(grupo.url, grupo.linhas)
+      await daqui(ms)
+    }
+
+    const rodar = async (indiceSom: number) => {
+      const som = roteiro.sons[indiceSom]
+      if (!som || cancelado) return
+      const publicar = (estado: EstadoHidro) => {
+        if (!cancelado) setHidro(estado)
+      }
+      publicar({ fase: 'escutando', indice: indiceSom, pista: false, acertou: false })
+
+      await dizer(sortear(roteiro.falas.inicio, roteiro.audio.inicio))
+      if (cancelado) return
+      engine.iniciarHidrofone(som.id)
+
+      /**
+       * Trava local, como na identificação e pelo mesmo motivo: a revelação
+       * REARMA `refRespostaHidro` pra poder ser cortada, e uma guarda baseada
+       * nela deixaria a pista voltar por cima da fala de resultado.
+       */
+      let escutando = true
+      const marcado = await new Promise<boolean>((resolve) => {
+        refRespostaHidro.current = (acertou) => {
+          refRespostaHidro.current = null
+          escutando = false
+          resolve(acertou)
+        }
+        void (async () => {
+          await daqui(MS_ATE_PISTA)
+          if (cancelado || !escutando) return
+          publicar({ fase: 'escutando', indice: indiceSom, pista: true, acertou: false })
+          await falarAvulso(som.audioPista, [som.pista])
+        })()
+      })
+      if (cancelado) return
+
+      engine.pararHidrofone()
+      publicar({ fase: 'revelado', indice: indiceSom, pista: true, acertou: marcado })
+      engine.tocarSfx(marcado ? 'ok' : 'pulso')
+
+      const cortado = await Promise.race([
+        (async () => {
+          await dizer(
+            marcado
+              ? sortear(roteiro.falas.acerto, roteiro.audio.acerto, indiceSom)
+              : sortear(roteiro.falas.revelado, roteiro.audio.revelado),
+          )
+          await daqui(MS_FONTE_NA_TELA)
+          return false
+        })(),
+        new Promise<boolean>((resolve) => {
+          refRespostaHidro.current = () => {
+            refRespostaHidro.current = null
+            resolve(true)
+          }
+        }),
+      ])
+      refRespostaHidro.current = null
+      if (cortado) engine.pararVoz()
+      if (cancelado) return
+
+      if (indiceSom + 1 < roteiro.sons.length) {
+        void rodar(indiceSom + 1)
+      } else {
+        publicar({ fase: 'fim', indice: indiceSom, pista: true, acertou: marcado })
+        avancar()
+      }
+    }
+
+    void rodar(0).catch(() => {
+      if (!cancelado) avancar()
+    })
+
+    return () => {
+      cancelado = true
+      relogios.forEach((id) => window.clearTimeout(id))
+      refRespostaHidro.current = null
+      engine.pararHidrofone()
+    }
+  }, [cena, engine, falarAvulso, avancar])
+
+  /**
+   * As sementes da pane.
+   *
+   * A água esfria na barra do HUD e o log solta avisos âmbar espaçados. Sem
+   * som e sem fala: a plateia não tem que PERCEBER isso acontecendo, tem que
+   * reconhecer, depois que a IA quebrar, que já estava ali.
+   *
+   * A leitura vai direto no DOM. É um número que muda devagar, mas muda
+   * sozinho durante uma cena que pode durar dez minutos — como estado, seriam
+   * milhares de renders do Player inteiro por apresentação.
+   */
+  useEffect(() => {
+    const sementes = cena?.sementes
+    setAguaVisivel(!!sementes?.agua)
+    if (!sementes) return
+
+    const inicio = performance.now()
+    const avisos = sementes.avisos ?? []
+    const relogios = avisos.map((aviso, i) =>
+      window.setTimeout(() => setRajadaLog([aviso]), (i + 1) * MS_ENTRE_AVISOS),
+    )
+
+    let quadro = 0
+    if (sementes.agua) {
+      const [de, ate] = sementes.agua
+      const desenhar = () => {
+        const t = Math.min(1, (performance.now() - inicio) / MS_QUEDA_AGUA)
+        if (refAgua.current) {
+          refAgua.current.textContent = `${(de + (ate - de) * t).toFixed(1).replace('.', ',')} °C`
+        }
+        quadro = requestAnimationFrame(desenhar)
+      }
+      quadro = requestAnimationFrame(desenhar)
+    }
+
+    return () => {
+      relogios.forEach((id) => window.clearTimeout(id))
+      cancelAnimationFrame(quadro)
+    }
+  }, [cena])
 
   // --- diretor de cena ------------------------------------------------------
 
@@ -1819,6 +2189,12 @@ export function Player({ roteiro, engine }: Props) {
               refRespostaIdent.current?.(true)
               break
             }
+            // No hidrofone, idem: Enter confirma o som, não pula a cena. Pular
+            // aqui deixaria a comunicação offline e o 2B sem fim.
+            if (refHidroAtiva.current) {
+              refRespostaHidro.current?.(true)
+              break
+            }
             avancar()
             break
           case 'voltar':
@@ -1831,8 +2207,18 @@ export function Player({ roteiro, engine }: Props) {
           case 'alternativa':
             // No combate as mesmas teclas marcam o SETOR do contato. É a mesma
             // mão do operador e o mesmo gesto, com outro significado.
-            if (refCombateAtivo.current) responderCombate(acao.indice)
-            else responderQuiz(acao.indice)
+            if (refCombateAtivo.current) {
+              responderCombate(acao.indice)
+              break
+            }
+            // No 2B elas religam subsistemas, quando o grupo chega no trecho
+            // que justifica o reparo. Não há conflito com o quiz: ele não
+            // existe no roteiro do 2B.
+            if (refReparos.current) {
+              refReparos.current(String(acao.indice + 1))
+              break
+            }
+            responderQuiz(acao.indice)
             break
           case 'vf':
             responderVF(acao.resposta)
@@ -1876,6 +2262,10 @@ export function Player({ roteiro, engine }: Props) {
             )
             break
           case 'revelar':
+            if (refHidroAtiva.current) {
+              refRespostaHidro.current?.(false)
+              break
+            }
             if (refIdentAtiva.current) refRespostaIdent.current?.(false)
             break
           case 'ajuda':
@@ -1937,7 +2327,16 @@ export function Player({ roteiro, engine }: Props) {
     // tela final não fala nada. Nos dois casos o `executar()` de sempre não
     // serve: ele tocaria um áudio que não existe e, na tela final, avançaria
     // pra lugar nenhum.
-    if (cena.tipo === 'combate' || cena.tipo === 'fim' || cena.tipo === 'olho') {
+    if (
+      cena.tipo === 'combate' ||
+      cena.tipo === 'fim' ||
+      cena.tipo === 'olho' ||
+      // A emergência toca DOIS áudios com a tela travada no meio, e o
+      // hidrofone toca um por som: nos dois casos o `executar()` genérico
+      // tocaria um mp3 que não existe e avançaria por baixo do laço.
+      cena.tipo === 'emergencia' ||
+      cena.tipo === 'hidrofone'
+    ) {
       return () => {
         diretor.cenaTerminou()
         engine.pararVoz()
@@ -2021,12 +2420,23 @@ export function Player({ roteiro, engine }: Props) {
     // Conta TODOS os mp3 que o roteiro cita (inclui acerto e erro das
     // dinâmicas), não só o áudio principal de cada cena.
     const urls = roteiro.cenas.flatMap((cena) => {
+      const reparos = (cena.reparos ?? []).map((r) => r.audio)
+      if (reparos.length > 0) return reparos.concat(audioDaCena(cena) ?? [])
       switch (cena.tipo) {
         case 'quiz':
         case 'vf':
           return Object.values(cena.audio)
         case 'pane':
           return [cena.audio.entrada, cena.audio.retorno]
+        case 'emergencia':
+          return [cena.audio.queda, cena.audio.retorno]
+        case 'hidrofone':
+          return [
+            ...cena.audio.inicio,
+            ...cena.audio.acerto,
+            ...cena.audio.revelado,
+            ...cena.sons.map((som) => som.audioPista),
+          ]
         default: {
           const url = audioDaCena(cena)
           return url ? [url] : []
@@ -2096,6 +2506,33 @@ export function Player({ roteiro, engine }: Props) {
   useEffect(() => {
     motor.estaticaGlobal = pane !== null && pane.fase !== 'voltando'
   }, [pane])
+
+  // No modo reduzido não: a imagem continua, suja.
+  useEffect(() => {
+    motor.avaria = emergencia !== null && !emergencia.encerrando
+    return () => {
+      motor.avaria = false
+    }
+  }, [emergencia])
+
+  /**
+   * O log do modo reduzido: UMA linha de erro de vez em quando.
+   *
+   * Esparsa de propósito. Rajada de erro é linguagem de pane, e aqui o
+   * sistema não caiu — ele está mancando por trás de uma apresentação que
+   * continua. Uma linha a cada vinte segundos lembra a plateia sem roubar a
+   * cena de quem está falando.
+   */
+  useEffect(() => {
+    if (!emergencia || emergencia.encerrando) return
+    const caidos = emergencia.subsistemas.filter((_, i) => emergencia.estados[i] !== 'online')
+    if (caidos.length === 0) return
+    const timer = window.setInterval(() => {
+      const nome = caidos[Math.floor(Math.random() * caidos.length)]
+      setRajadaLog([`ERR: ${nome.toLowerCase()} sem resposta`])
+    }, MS_ENTRE_ERROS)
+    return () => window.clearInterval(timer)
+  }, [emergencia])
 
   /**
    * Eventos de linha pro Diretor.
@@ -2168,6 +2605,7 @@ export function Player({ roteiro, engine }: Props) {
   // espécies por mostrar.
   refIdentAtiva.current =
     cena.tipo === 'identificacao' && ident !== null && ident.fase !== 'fim'
+  refHidroAtiva.current = cena.tipo === 'hidrofone' && hidro !== null && hidro.fase !== 'fim'
 
   const estadoOrbe = pane
     ? pane.fase === 'voltando'
@@ -2189,6 +2627,8 @@ export function Player({ roteiro, engine }: Props) {
 
   return (
     <Hud
+      emergencia={emergencia !== null && !emergencia.encerrando}
+      agua={aguaVisivel ? refAgua : undefined}
       rota={pane ? 'FALHA DE SISTEMA' : rotaDaCena(cena)}
       sonar={
         pane
@@ -2224,6 +2664,7 @@ export function Player({ roteiro, engine }: Props) {
             tremor={tremor}
             pulso={pulso}
             compacto={modo === 'canto'}
+            avariado={emergencia !== null && !emergencia.encerrando}
           />
           <div className="palco__texto">
             {conteudoDaCena(cena, sinc, modo, falando, lerNivel, linhaGuiada)}
@@ -2302,6 +2743,26 @@ export function Player({ roteiro, engine }: Props) {
                 />
               )}
             </>
+          )}
+          {cena.tipo === 'emergencia' && emerg && <Emergencia cena={cena} estado={emerg} />}
+          {cena.tipo === 'hidrofone' && hidro && (
+            <Hidrofone
+              som={cena.sons[hidro.indice]}
+              estado={hidro}
+              total={cena.sons.length}
+              lerEspectro={lerEspectro}
+              lerOnda={lerOnda}
+            />
+          )}
+          {/* As luzes são da SESSÃO, não da cena: elas atravessam o grupo 3, o
+              grupo 4 e o hidrofone, e é justamente essa permanência que conta
+              que o submarino continua avariado. */}
+          {emergencia && (
+            <LuzesEmergencia
+              subsistemas={emergencia.subsistemas}
+              estados={emergencia.estados}
+              encerrando={emergencia.encerrando}
+            />
           )}
           {cena.tipo === 'olho' && passoOlho !== null && passoOlho !== 'olho' && (
             <div className={`olho-camera olho-camera--${passoOlho}`} aria-hidden="true">
@@ -2395,7 +2856,26 @@ export function Player({ roteiro, engine }: Props) {
         />
       </div>
       {apagao && <div className="apagao" />}
-      {ajudaVisivel && <Ajuda cena={cena.id} forma={formaAtual} escala={escala} />}
+      {ajudaVisivel && (
+        <Ajuda
+          cena={cena.id}
+          forma={formaAtual}
+          escala={escala}
+          aceitos={
+            cena.tipo === 'identificacao' && ident
+              ? {
+                  rotulo: cena.especies[ident.indice]?.nome ?? '',
+                  termos: cena.especies[ident.indice]?.aceitos ?? [],
+                }
+              : cena.tipo === 'hidrofone' && hidro
+                ? {
+                    rotulo: cena.sons[hidro.indice]?.nome ?? '',
+                    termos: cena.sons[hidro.indice]?.aceitos ?? [],
+                  }
+                : null
+          }
+        />
+      )}
       {depurarDiretor && <DepuracaoDiretor diretor={diretor} cena={cena.id} />}
     </Hud>
   )
@@ -2403,6 +2883,10 @@ export function Player({ roteiro, engine }: Props) {
 
 function estadoDoOrbe(cena: Cena, falando: boolean, fase: FaseDinamica): EstadoOrbe {
   switch (cena.tipo) {
+    // O modo reduzido nao e pane: a IA continua falando, so que mais devagar
+    // e mais escura. Quem escurece o orbe e a classe do HUD, nao o estado.
+    case 'emergencia':
+      return falando ? 'falando' : 'pane'
     case 'pane':
       return 'pane'
     case 'quiz':

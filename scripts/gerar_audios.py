@@ -124,6 +124,11 @@ def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
         cid = cena.get("id", "?")
         tipo = cena.get("tipo")
 
+        # Os reparos não pertencem a um tipo de cena: são um campo da base, e
+        # qualquer cena pode ter. Ficam fora do switch por isso.
+        for reparo in cena.get("reparos") or []:
+            juntar(f"reparo-{reparo['subsistema'].lower()}", reparo.get("fala"))
+
         if tipo in ("fala", "transicao"):
             juntar(cid, cena.get("tela", {}).get("linhas"))
         elif tipo == "apresentacao":
@@ -140,6 +145,20 @@ def falas_do_roteiro(turma: str, roteiro: dict) -> list[Fala]:
         elif tipo == "pane":
             juntar(f"{cid}-entrada", cena.get("falaEntrada"))
             juntar(f"{cid}-retorno", cena.get("falaRetorno"))
+        elif tipo == "emergencia":
+            # Dois mp3 e não um: entre a queda e o retorno a tela de falha fica
+            # travada por segundos, e um arquivo só emendaria por cima dela.
+            juntar(f"{cid}-queda", cena.get("falasQueda"))
+            juntar(f"{cid}-retorno", cena.get("falasRetorno"))
+        elif tipo == "hidrofone":
+            falas_hidro = cena.get("falas", {})
+            for chave in ("inicio", "acerto", "revelado"):
+                for n, bloco in enumerate(falas_hidro.get(chave) or [], start=1):
+                    juntar(f"{cid}-{chave}-{n}", bloco)
+            # Uma pista por som, com o id no nome: trocar um som não embaralha
+            # os arquivos dos outros.
+            for som in cena.get("sons") or []:
+                juntar(f"{cid}-{som['id']}-pista", [som.get("pista")])
         elif tipo == "combate":
             # Cada fala do combate vira um mp3 próprio, porque elas não são
             # ditas em sequência: entre uma e outra a plateia responde. Os nomes

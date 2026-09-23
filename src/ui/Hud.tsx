@@ -16,6 +16,21 @@ type Props = {
   impacto?: boolean
   /** A energia acabou de voltar: o HUD se firma com glitch. */
   voltandoDoApagao?: boolean
+  /**
+   * Modo reduzido do 2B: a moldura pulsa vermelho, devagar e fraco.
+   *
+   * Lento e de baixa opacidade de proposito. A avaria dura tres cenas de
+   * apresentacao, e um alarme piscando forte por dez minutos atras de alunos
+   * falando deixa de ser cenario e vira incomodo.
+   */
+  emergencia?: boolean
+  /**
+   * Leitura de temperatura da agua, quando a cena tem sementes.
+   *
+   * Recebe a REF, nao o numero: quem escreve e o Player, direto no DOM, a
+   * cada quadro. Como prop numerica seria um render do HUD por tique.
+   */
+  agua?: React.RefObject<HTMLElement | null>
   children: ReactNode
 }
 
@@ -29,6 +44,8 @@ export function Hud({
   mergulhando = false,
   impacto = false,
   voltandoDoApagao = false,
+  emergencia = false,
+  agua,
   children,
 }: Props) {
   const refMetros = useRef<HTMLElement>(null)
@@ -50,7 +67,8 @@ export function Hud({
         (mergulhando ? ' hud--mergulhando' : '') +
         (inclinado ? ' hud--inclinado' : '') +
         (impacto ? ' hud--impacto' : '') +
-        (voltandoDoApagao ? ' hud--religando' : '')
+        (voltandoDoApagao ? ' hud--religando' : '') +
+        (emergencia ? ' hud--emergencia' : '')
       }
     >
       <div className="hud__moldura">
@@ -63,6 +81,11 @@ export function Hud({
           <span className="hud__campo">
             prof. <strong ref={refMetros} />
           </span>
+          {agua && (
+            <span className="hud__campo hud__campo--agua">
+              água <strong ref={agua as React.RefObject<HTMLElement>} />
+            </span>
+          )}
           <span className="hud__campo">
             sonar <strong>{sonar}</strong>
           </span>

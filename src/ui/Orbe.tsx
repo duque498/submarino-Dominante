@@ -21,6 +21,14 @@ type Props = {
   pulso?: boolean
   /** Só pro modo "canto" da cena de apresentação. */
   compacto?: boolean
+  /**
+   * Modo reduzido do 2B: o orbe fica mais lento e mais escuro.
+   *
+   * É a única coisa que conta a avaria enquanto a IA está calada e os alunos
+   * falam. Não é um estado novo (`pane` já existe e é agitado demais pra
+   * durar três cenas): é o mesmo ocioso, com menos energia.
+   */
+  avariado?: boolean
 }
 
 const QTD_PONTOS = 760
@@ -147,6 +155,7 @@ export function Orbe({
   tremor = false,
   pulso = false,
   compacto = false,
+  avariado = false,
 }: Props) {
   const refCanvas = useRef<HTMLCanvasElement>(null)
   // Tudo em refs: o loop de animação monta uma vez e vive a sessão inteira.
@@ -154,11 +163,13 @@ export function Orbe({
   // reiniciaria a animação do zero.
   const refEstado = useRef(estado)
   const refNivel = useRef(lerNivel)
+  const refAvariado = useRef(avariado)
   const refCompacto = useRef(compacto)
   const refEscala = useRef(escala)
   const refForma = useRef(forma)
   refEstado.current = estado
   refNivel.current = lerNivel
+  refAvariado.current = avariado
   refCompacto.current = compacto
   refEscala.current = escala
   refForma.current = forma
@@ -390,6 +401,12 @@ export function Orbe({
           brilho = 0.5 + Math.random() * 0.5
           velParticulas = 4
           break
+      }
+
+      if (refAvariado.current) {
+        velocidade *= 0.45
+        brilho *= 0.6
+        velParticulas *= 0.5
       }
 
       t += dt * (1 + nivelSuave)

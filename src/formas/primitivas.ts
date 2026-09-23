@@ -399,6 +399,136 @@ function submarino(): HTMLCanvasElement {
   return canvas
 }
 
+/**
+ * Boia de monitoramento: flutuador na linha d'agua, antena em cima e o
+ * sensor pendurado embaixo.
+ *
+ * O que faz ela nao ser "uma bola com um pau" e o cabo com o lastro: e ele
+ * que diz que o aparelho mede a COLUNA, nao a superficie.
+ */
+function boia(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const u = LADO / 100
+  // flutuador
+  ctx.beginPath()
+  ctx.ellipse(50 * u, 42 * u, 20 * u, 15 * u, 0, 0, Math.PI * 2)
+  ctx.fill()
+  // mastro e antena
+  ctx.fillRect(47 * u, 12 * u, 6 * u, 20 * u)
+  ctx.beginPath()
+  ctx.moveTo(50 * u, 4 * u)
+  ctx.lineTo(58 * u, 16 * u)
+  ctx.lineTo(42 * u, 16 * u)
+  ctx.closePath()
+  ctx.fill()
+  // cabo e sensor
+  ctx.fillRect(48 * u, 56 * u, 4 * u, 28 * u)
+  ctx.beginPath()
+  ctx.ellipse(50 * u, 88 * u, 8 * u, 10 * u, 0, 0, Math.PI * 2)
+  ctx.fill()
+  return canvas
+}
+
+/** Satelite: corpo central e dois paineis abertos. */
+function satelite(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const u = LADO / 100
+  ctx.fillRect(40 * u, 36 * u, 20 * u, 28 * u)
+  ctx.fillRect(10 * u, 40 * u, 26 * u, 20 * u)
+  ctx.fillRect(64 * u, 40 * u, 26 * u, 20 * u)
+  ctx.fillRect(36 * u, 47 * u, 6 * u, 6 * u)
+  ctx.fillRect(58 * u, 47 * u, 6 * u, 6 * u)
+  // antena parabolica
+  ctx.beginPath()
+  ctx.arc(50 * u, 30 * u, 11 * u, Math.PI, 0)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillRect(48 * u, 30 * u, 4 * u, 8 * u)
+  return canvas
+}
+
+/** Barco de pesca visto de perfil: casco, cabine e mastro. */
+function barco(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const u = LADO / 100
+  // casco
+  ctx.beginPath()
+  ctx.moveTo(8 * u, 58 * u)
+  ctx.lineTo(92 * u, 58 * u)
+  ctx.quadraticCurveTo(84 * u, 80 * u, 60 * u, 82 * u)
+  ctx.lineTo(28 * u, 82 * u)
+  ctx.quadraticCurveTo(14 * u, 74 * u, 8 * u, 58 * u)
+  ctx.closePath()
+  ctx.fill()
+  // cabine
+  ctx.fillRect(34 * u, 40 * u, 26 * u, 18 * u)
+  // mastro e lanca
+  ctx.fillRect(66 * u, 16 * u, 4 * u, 42 * u)
+  ctx.beginPath()
+  ctx.moveTo(68 * u, 18 * u)
+  ctx.lineTo(30 * u, 38 * u)
+  ctx.lineTo(30 * u, 42 * u)
+  ctx.lineTo(68 * u, 24 * u)
+  ctx.closePath()
+  ctx.fill()
+  return canvas
+}
+
+/**
+ * Baleia-azul: corpo MUITO longo e fino, dorsal minuscula bem pra tras.
+ *
+ * E o contrario da jubarte do bestiario, que e curta e de peitoral enorme. A
+ * proporcao e a informacao: e o bicho mais comprido do planeta.
+ */
+function baleiaAzul(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const u = LADO / 100
+  ctx.beginPath()
+  ctx.moveTo(96 * u, 48 * u)
+  ctx.bezierCurveTo(78 * u, 38 * u, 52 * u, 38 * u, 34 * u, 44 * u)
+  ctx.lineTo(26 * u, 40 * u)   // dorsal pequena, bem atras
+  ctx.lineTo(24 * u, 45 * u)
+  ctx.bezierCurveTo(18 * u, 47 * u, 14 * u, 48 * u, 12 * u, 49 * u)
+  ctx.lineTo(2 * u, 34 * u)    // cauda horizontal
+  ctx.lineTo(6 * u, 50 * u)
+  ctx.lineTo(2 * u, 66 * u)
+  ctx.lineTo(12 * u, 52 * u)
+  ctx.bezierCurveTo(18 * u, 54 * u, 26 * u, 56 * u, 34 * u, 57 * u)
+  ctx.lineTo(44 * u, 68 * u)   // peitoral estreita
+  ctx.lineTo(50 * u, 58 * u)
+  ctx.bezierCurveTo(70 * u, 60 * u, 86 * u, 57 * u, 96 * u, 48 * u)
+  ctx.closePath()
+  ctx.fill()
+  return canvas
+}
+
+/**
+ * Orca: cabeca redonda, sem bico, e a dorsal ALTA — e ela que identifica a
+ * especie a cem metros de distancia.
+ */
+function orca(): HTMLCanvasElement {
+  const [canvas, ctx] = tela()
+  const u = LADO / 100
+  ctx.beginPath()
+  ctx.moveTo(92 * u, 52 * u)
+  ctx.quadraticCurveTo(88 * u, 38 * u, 74 * u, 36 * u)  // cabeca redonda
+  ctx.bezierCurveTo(64 * u, 34 * u, 58 * u, 36 * u, 52 * u, 38 * u)
+  ctx.lineTo(46 * u, 6 * u)                              // dorsal alta
+  ctx.lineTo(36 * u, 40 * u)
+  ctx.bezierCurveTo(28 * u, 43 * u, 20 * u, 47 * u, 14 * u, 50 * u)
+  ctx.lineTo(4 * u, 34 * u)                              // cauda
+  ctx.lineTo(9 * u, 51 * u)
+  ctx.lineTo(4 * u, 70 * u)
+  ctx.lineTo(14 * u, 55 * u)
+  ctx.bezierCurveTo(24 * u, 60 * u, 36 * u, 64 * u, 46 * u, 65 * u)
+  ctx.lineTo(40 * u, 84 * u)                             // peitoral em pa
+  ctx.lineTo(56 * u, 66 * u)
+  ctx.bezierCurveTo(72 * u, 66 * u, 86 * u, 62 * u, 92 * u, 52 * u)
+  ctx.closePath()
+  ctx.fill()
+  return canvas
+}
+
 /** Primitivas com nome fixo — valem no JSON e no console. */
 export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   circulo,
@@ -416,6 +546,11 @@ export const PRIMITIVAS: Record<string, () => HTMLCanvasElement> = {
   coral,
   mergulhador,
   submarino,
+  boia,
+  satelite,
+  barco,
+  'baleia-azul': baleiaAzul,
+  orca,
   // Do bestiário das câmeras, em silhueta: mesmo desenho que passa na câmera.
   baleia: doBestiario('cachalote'),
   tartaruga: doBestiario('tartaruga'),

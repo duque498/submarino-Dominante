@@ -139,6 +139,16 @@ export class MotorMundo {
   estaticaGlobal = false
 
   /**
+   * Modo reduzido do 2B: a imagem continua, mas suja.
+   *
+   * Não é estática — as câmeras não caíram. É grão a mais, que é o que uma
+   * câmera dá quando o processamento dela está degradado. A dessaturação e o
+   * retículo desligado ficam no CSS, porque são propriedades do elemento e
+   * não do desenho.
+   */
+  avaria = false
+
+  /**
    * Estado do visor externo.
    *
    * `rachado` derruba todas as câmeras — a pressão quebrou o vidro e não há
@@ -1513,7 +1523,8 @@ export class MotorMundo {
 
   /** Grão de vídeo: poucos pontos, redesenhados a cada quadro. */
   private desenharGrao(ctx: CanvasRenderingContext2D, L: number, A: number) {
-    const pontos = this.economizar ? 30 : 70
+    const base = this.economizar ? 30 : 70
+    const pontos = this.avaria ? base * 3 : base
     ctx.fillStyle = 'rgba(255, 255, 255, 0.045)'
     for (let i = 0; i < pontos; i++) {
       ctx.fillRect(Math.random() * L, Math.random() * A, 1, 1)

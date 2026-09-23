@@ -3317,3 +3317,353 @@ body {
     animation: none;
   }
 }
+
+/* ==========================================================================
+   2B — modo reduzido e hidrofone
+   ========================================================================== */
+
+/* A moldura pulsando é o que diz, durante três cenas inteiras, que o submarino
+   continua avariado. Lenta e fraca de propósito: a avaria dura o tempo de dois
+   grupos apresentarem, e um alarme forte piscando atrás de alunos falando
+   deixa de ser cenário e vira incômodo. */
+.hud--emergencia .hud__moldura {
+  animation: emerg-moldura 2s ease-in-out infinite;
+}
+
+@keyframes emerg-moldura {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(255, 77, 94, 0.12);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(255, 77, 94, 0.42);
+  }
+}
+
+/* Câmeras degradadas: cor lavada e retículo desligado. O grão a mais vem do
+   motor; isto aqui é o que é propriedade do elemento, não do desenho. */
+.hud--emergencia .feed__canvas {
+  filter: saturate(0.3) contrast(1.06) brightness(0.84);
+}
+
+.hud--emergencia .feed__reticulo {
+  display: none;
+}
+
+/* --- tela de falha -------------------------------------------------------- */
+
+.emerg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  background: rgba(2, 10, 12, 0.92);
+  z-index: 8;
+}
+
+.emerg__titulo {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  letter-spacing: 0.28em;
+  color: var(--vermelho);
+  text-shadow: 0 0 18px rgba(255, 77, 94, 0.45);
+  animation: emerg-titulo 900ms steps(2) infinite;
+}
+
+@keyframes emerg-titulo {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  71%,
+  100% {
+    opacity: 0.55;
+  }
+}
+
+.emerg__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  min-width: min(28rem, 60vw);
+}
+
+.emerg__item {
+  opacity: 0;
+  padding: 0.35rem 0.9rem;
+  border-left: 2px solid rgba(255, 77, 94, 0.5);
+  background: rgba(255, 77, 94, 0.07);
+  color: rgba(189, 255, 240, 0.55);
+  letter-spacing: 0.1em;
+  transition: opacity 180ms linear;
+}
+
+.emerg__item--visivel {
+  opacity: 1;
+}
+
+/* --- as três luzes -------------------------------------------------------- */
+
+.luzes {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 6;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(255, 77, 94, 0.3);
+  background: rgba(4, 22, 26, 0.9);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  min-width: 11.5rem;
+}
+
+.luzes--encerrando {
+  border-color: rgba(77, 255, 166, 0.4);
+}
+
+.luzes__rotulo {
+  margin: 0 0 0.4rem;
+  color: rgba(189, 255, 240, 0.45);
+  text-transform: uppercase;
+}
+
+.luzes__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.luzes__item {
+  display: grid;
+  grid-template-columns: 0.6rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.luzes__led {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--vermelho);
+  box-shadow: 0 0 6px rgba(255, 77, 94, 0.6);
+}
+
+.luzes__item--caido .luzes__led {
+  animation: luz-caida 1.6s ease-in-out infinite;
+}
+
+@keyframes luz-caida {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Âmbar no meio do caminho: é o passo que faz a plateia ver o sistema
+   RELIGANDO, em vez de ver uma luz trocar de cor. */
+.luzes__item--religando .luzes__led {
+  background: var(--ambar);
+  box-shadow: 0 0 10px rgba(255, 194, 77, 0.8);
+  animation: luz-religando 300ms linear infinite;
+}
+
+@keyframes luz-religando {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.luzes__item--online .luzes__led {
+  background: var(--verde);
+  box-shadow: 0 0 8px rgba(77, 255, 166, 0.7);
+  animation: none;
+}
+
+.luzes__nome {
+  color: var(--texto);
+}
+
+.luzes__estado {
+  color: rgba(189, 255, 240, 0.4);
+}
+
+.luzes__item--online .luzes__estado {
+  color: rgba(77, 255, 166, 0.75);
+}
+
+.luzes--encerrando .luzes__led {
+  animation: luz-fechando 320ms steps(2) 4;
+}
+
+@keyframes luz-fechando {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* --- hidrofone ------------------------------------------------------------ */
+
+.hidro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 2.2rem 1rem 1rem;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.hidro__cabecalho {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: rgba(189, 255, 240, 0.5);
+  text-transform: uppercase;
+  max-width: 41.25rem;
+}
+
+/* O espectrograma é o centro da cena: é ele que mostra o que o ouvido já
+   ouviu, e é por ele que quem não reconheceu pelo som reconhece pelo desenho. */
+.hidro__espectro {
+  width: min(41.25rem, 100%);
+  height: auto;
+  border: 1px solid rgba(27, 106, 120, 0.5);
+  background: #03141a;
+  image-rendering: pixelated;
+}
+
+.hidro__onda {
+  width: min(41.25rem, 100%);
+  height: auto;
+  opacity: 0.75;
+}
+
+.hidro__pista {
+  margin: 0;
+  padding: 0.4rem 0.8rem;
+  max-width: min(41.25rem, 100%);
+  border-left: 2px solid var(--ciano);
+  background: rgba(56, 232, 255, 0.07);
+  color: var(--texto);
+  font-size: 0.92rem;
+}
+
+.hidro__fonte {
+  display: flex;
+  gap: 1.2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  max-width: min(41.25rem, 100%);
+}
+
+.hidro__nome {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: var(--verde);
+}
+
+.hidro__sem-acerto {
+  margin: 0.2rem 0 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: rgba(255, 194, 77, 0.75);
+  text-transform: uppercase;
+}
+
+.hidro__pista-dita {
+  margin: 0.4rem 0 0;
+  max-width: 18rem;
+  color: rgba(189, 255, 240, 0.55);
+  font-size: 0.82rem;
+}
+
+.hidro__mapa {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(27, 106, 120, 0.5);
+  background: rgba(4, 22, 26, 0.85);
+}
+
+.hidro__dados {
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+}
+
+.hidro__dados div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.hidro__dados dt {
+  color: rgba(189, 255, 240, 0.4);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hidro__dados dd {
+  margin: 0;
+  color: var(--ciano);
+  font-size: 0.95rem;
+}
+
+.hud__campo--agua strong {
+  color: var(--ambar);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud--emergencia .hud__moldura,
+  .emerg__titulo,
+  .luzes__item--caido .luzes__led,
+  .luzes__item--religando .luzes__led,
+  .luzes--encerrando .luzes__led {
+    animation: none;
+  }
+}
+
+/* O que vale como acerto, no overlay do operador. Fica no TOPO da ajuda: nas
+   dinâmicas de gritar a resposta é a única coisa ali que ele consulta no
+   escuro, com a sala falando junto. */
+.ajuda__aceitos {
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.4);
+}
+
+.ajuda__aceitos h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.45);
+}
+
+.ajuda__aceitos p {
+  margin: 0;
+  color: var(--verde);
+  font-size: 0.95rem;
+}

@@ -9,19 +9,24 @@ Um aluno operador controla tudo pelo teclado — não é preciso mouse.
 
 ## Estado atual
 
-**Fase 4 (3º ano) concluída.** Todos os tipos de cena funcionam: `fala`,
-`apresentacao`, `transicao`, `quiz`, `vf` e `pane`. Mais HUD, orbe que morfa em
-silhuetas, legenda sincronizada, log de sistemas, console de comandos, painéis,
-câmeras externas com o oceano procedural, profundidade real, o pipeline de voz
-e o **Diretor de cena** — a IA passou a reagir ao que ela mesma está dizendo, em
+**Fase 5 (2º ano B) concluída.** Todos os tipos de cena funcionam: `fala`,
+`apresentacao`, `transicao`, `quiz`, `vf`, `pane`, `identificacao`, `combate`,
+`olho`, `emergencia` e `hidrofone`. Mais HUD, orbe que morfa em silhuetas,
+legenda sincronizada, log de sistemas, console de comandos, painéis, câmeras
+externas com o oceano procedural, profundidade real, o pipeline de voz e o
+**Diretor de cena** — a IA passou a reagir ao que ela mesma está dizendo, em
 vez de a um relógio.
 
 O **3A** está escrito e jogável de ponta a ponta: descida à abissal, visor
 rachando, as quatro apresentações, o combate acústico com a plateia e o
 encerramento na superfície.
 
-Falta o **2B** (ainda sem roteiro da professora) e os roteiros de Biologia e
-Educação Física do 2A.
+O **2B** também: descida a 1800 m, as sementes da pane durante o grupo 1, a
+quebra da IA no fim do grupo 2, os grupos 3 e 4 em modo reduzido com os reparos
+pelo operador, o hidrofone com os três sons e o encerramento com a comunicação
+de volta.
+
+Faltam os roteiros de Biologia e Educação Física do 2A.
 
 > **O conteúdo do 3A é provisório.** A criatura, a mecânica e as falas novas da
 > IA ainda vão ser confirmadas com a turma e com a professora. O código foi
@@ -628,6 +633,151 @@ susto é o `impacto` no fim da cena, e espera que grita perde o corte.
 
 Tipo `fim`: título, subtítulo e uma nota, sem avanço automático e sem próxima
 cena. É onde a apresentação termina e **fica**, enquanto a plateia aplaude.
+
+## O arco do 2º ano B
+
+O 2B é a turma do meio, e a apresentação dele tem um arco próprio: **a IA
+quebra.** Não por acidente de roteiro — quebra logo depois de o grupo 2
+explicar que inteligência artificial pode gerar informações incorretas. É a
+única vez na expedição em que o sistema erra, e ele erra na deixa.
+
+1. O submarino desce de 900 m a 1800 m. A tripulação entra com tudo saudável.
+2. **Grupo 1** (temperatura e submarinos) apresenta. Durante a cena a água
+   esfria na barra do HUD e o log solta avisos âmbar, espaçados. Sem som e sem
+   fala.
+3. **Grupo 2** (IA e efeito estufa). Ao fim, a IA tenta seguir, processa e
+   quebra: tela de falha travada, três subsistemas offline.
+4. **Grupos 3 e 4** apresentam com o submarino avariado — três luzes vermelhas
+   no canto, moldura pulsando, câmeras sujas. A fala do grupo 3 devolve casco e
+   sonar; a do grupo 4 dá a ideia do resto.
+5. **Hidrofone**: a plateia identifica três sons. O terceiro é o canto da
+   baleia, e é a frequência dele que a IA usa pra alcançar a superfície.
+6. Comunicação de volta, rota recalculada, transição pro 3A a 3000 m.
+
+Poemas e músicas são dos alunos, ao vivo: **o sistema não mostra letra nem toca
+trecho de nada.**
+
+### Sementes da pane
+
+Campo `sementes` em qualquer cena: `agua: [8, 4]` faz a leitura de temperatura
+descer de 8 °C a 4 °C ao longo da cena, e `avisos` entram no log espaçados.
+
+A queda leva quatro minutos — a ordem de grandeza de uma apresentação de grupo.
+Se o grupo falar menos, a água não chega no fundo da faixa, e tudo bem: o que a
+cena precisa é que ela esteja CAINDO, não que chegue num número. O validador
+recusa uma faixa que começa e termina no mesmo valor, porque aí a leitura é só
+ruído no HUD.
+
+> A leitura vai direto no DOM, como a profundidade. Um número que muda sozinho
+> durante uma cena de dez minutos, como estado do React, seriam milhares de
+> renders do Player inteiro por apresentação.
+
+**Nada disso faz barulho.** A plateia não tem que PERCEBER a água esfriando —
+tem que reconhecer, depois que a IA quebrar, que já estava ali.
+
+### Tipo `emergencia`: a pane que não congela
+
+A pane global (`P`/`R`) congela a apresentação inteira e espera o operador
+reiniciar. Esta é o contrário: **a apresentação continua, o submarino é que
+está avariado.** Por isso é uma cena e não uma tecla — a quebra tem hora
+marcada no roteiro — e por isso o estado dela atravessa as cenas seguintes.
+
+A cena tem três tempos. A IA fala normalmente ("Processando informações..."),
+a tela de falha trava alguns segundos, e ela volta em modo reduzido.
+
+> **A tela de falha só aparece no tempo 2.** Na primeira versão ela entrava
+> junto com a primeira fala, e entregava o susto antes de ele acontecer: a
+> plateia via FALHA DE SISTEMA enquanto a IA ainda dizia calmamente que estava
+> processando. É a naturalidade da fala que faz a quebra funcionar.
+
+Enquanto o modo reduzido está ligado, em QUALQUER cena:
+
+| efeito | onde |
+|---|---|
+| três luzes vermelhas no canto | `LuzesEmergencia`, renderizada pelo Player |
+| moldura pulsando vermelho (2 s) | classe `hud--emergencia` |
+| câmeras dessaturadas, retículo off | CSS sobre o `.feed__canvas` |
+| grão triplicado nas câmeras | `motor.avaria` |
+| orbe 45% mais lento e 40% mais escuro | prop `avariado` do orbe |
+| uma linha de erro a cada ~20 s | efeito no Player |
+
+**Nada disso faz som.** Os grupos 3 e 4 apresentam por cima, e um alarme
+tocando por dez minutos atrás de alunos falando deixa de ser cenário.
+
+As luzes NÃO são um painel do Diretor: painel tem prazo e fecha com `Esc`, e a
+avaria não tem prazo. A janela de vida delas é derivada da estrutura, como a da
+trilha do 3A — da cena de `emergencia` até a cena logo depois do `hidrofone`.
+Sem essa guarda, voltar com a seta esquerda deixaria três luzes vermelhas em
+cima de uma apresentação que ainda não quebrou.
+
+### Reparos: a fala dos alunos conserta o submarino
+
+Campo `reparos` na cena: `{ tecla, subsistema, fala, audio }`. O operador
+aperta `1` ou `2` quando o grupo chega no trecho que justifica o reparo, a IA
+fala, a luz vai de vermelho a âmbar a verde em 1,2 s e o log registra
+`CASCO: ONLINE`.
+
+**Tecla e não temporizador**, porque o relógio não sabe quando o grupo chegou no
+empuxo — eles podem demorar o que quiserem. Tecla já usada é ignorada: apertar
+de novo não repete a fala nem acende nada.
+
+O passo âmbar no meio não é enfeite: vermelho → verde direto lê como uma luz
+trocando de cor, e vermelho → âmbar → verde lê como um sistema religando.
+
+> Não há conflito com `1 2 3` do quiz: o quiz não existe no roteiro do 2B. E
+> não há com o combate, que é do 3A. O validador confere que cada reparo aponta
+> pra um subsistema que existe na cena de `emergencia` — um reparo apontando
+> pro nome errado não acenderia nada e não reclamaria, que é o tipo de erro que
+> só aparece na feira.
+
+### Tipo `hidrofone`: identificar pelo som
+
+A irmã da identificação do 2A, com uma troca de sentido: lá a plateia reconhece
+pela forma, aqui pelo ouvido. Sem erro, sem timer e sem barra — **a única
+pressão é a luz vermelha da comunicação no canto.**
+
+O centro da tela é um **espectrograma** rolando da direita pra esquerda,
+desenhado do próprio áudio por um `AnalyserNode`. Ele mostra o que o ouvido já
+ouviu: a chuva vira uma faixa larga e agitada, o navio vira listras grossas e
+REGULARES no grave, a baleia vira riscos que sobem. Quem não reconheceu pelo
+som reconhece pelo desenho, e quem reconheceu vê o porquê.
+
+Ele **congela** na revelação em vez de limpar: a imagem do som que acabou de
+tocar é a prova, e apagá-la no instante do acerto jogaria fora justamente a
+ligação entre o que a sala ouviu e o nome que ela gritou.
+
+Ao identificar, abre um mapa pequeno com a fonte, a distância e — o dado que
+justifica a cena — **quanto o som levaria pra chegar de verdade**, a 1500 m/s:
+a chuva a 1,2 s e o canto da baleia a 8 min 53 s.
+
+> O analisador é SÓ do hidrofone, separado do da voz. Se fosse o mesmo, o
+> espectrograma passaria a desenhar a locução da IA entre um som e outro — e o
+> que a plateia precisa ver ali é o som que ela está tentando identificar.
+
+Os três sons são sintetizados em `src/audio/hidrofone.ts`, cada um construído
+em cima do único traço que o identifica:
+
+- **chuva** — ruído de banda larga na faixa da gota (bandpass ~4 kHz) com
+  micro-envelopes. A granulação não vem de disparar mil fontes (isso derrubaria
+  o quadro): vem de um buffer já multiplicado por micro-pulsos na geração, uma
+  vez só, na entrada da cena.
+- **navio** — ruído cortado em 200 Hz modulado a 1,5 Hz mais um tom de 60 Hz. O
+  que entrega a máquina é a REGULARIDADE, então a modulação é um oscilador
+  exato e não um envelope sorteado.
+- **baleia** — frases de glissando com harmônicos e reverberação longa,
+  separadas por silêncio. O silêncio é parte do som: um glissando contínuo vira
+  sirene.
+
+Se existir `public/audio/sfx/hidro-<id>.mp3`, o motor prefere o arquivo. O
+sintetizado é o plano que funciona sem ninguém baixar nada — e o validador
+recusa um som cujo `id` não tenha sintetizador nem mp3, porque isso deixaria a
+plateia olhando um espectrograma mudo.
+
+### O que vale como acerto
+
+Nas duas dinâmicas de gritar a resposta, quem julga é o operador — e ele decide
+em dois segundos, no escuro, com a sala falando junto. A lista de `aceitos` da
+espécie ou do som atual aparece no topo do overlay `H`, que é onde ele olha.
 
 ## Expedição de identificação (2A)
 
@@ -1553,17 +1703,21 @@ public/audio/        mp3 fora do bundle: sfx/ e uma pasta por turma
 src/
   App.tsx            seleção de turma, tela de ativação, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
-  cenas/             um componente por tipo de cena (Quiz, VF, Combate, Olho, Fim)
+  cenas/             um componente por tipo de cena (Quiz, VF, Combate, Olho,
+                     Identificacao, Emergencia, Hidrofone, Fim)
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
-  audio/             efeitos, ambiente do oceano e a voz do navegador
+  audio/             efeitos, ambiente do oceano, os sons do hidrofone e a
+                     voz do navegador
   console/           barra de comando, parser e as respostas fixas da IA
-  paineis/           sonar, status, ficha, mapa, traco, espectro e o registro
+  paineis/           sonar, status, ficha, mapa, traco, espectro, cache,
+                     luzes de emergencia e o registro
   diretor/           Diretor de cena, gatilhos semânticos, mergulho e coluna d'água
   mundo/             o oceano procedural: perfil, motor, bestiário, Feed e Rachadura
   formas/            registro das silhuetas, amostragem, primitivas e dossie/
   roteiros/          tipos.ts, validar.ts, fichas.json, gatilhos.json e os JSONs
 scripts/
-  gerar_audios.py    voz da IA: kokoro/edge/espeak + ffmpeg + tempos.json
-  embutir_audios.py  gera public/audios.js (camada A)
-  config.json        voz, rate e pitch, com override por turma
+  gerar_audios.py         voz da IA: kokoro/edge/espeak + ffmpeg + tempos.json
+  silhueta_de_prancha.py  tira a silhueta de uma especie de uma prancha
+  embutir_audios.py       gera public/audios.js (camada A)
+  config.json             voz, rate e pitch, com override por turma
 ```
