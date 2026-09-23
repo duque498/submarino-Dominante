@@ -68,6 +68,9 @@ MS_SILENCIO = 600
 # ficava de 0,40 a 0,82 s — pausa de FRASE, não respiração de meio de frase, e
 # a cena inteira crescia cinco segundos.
 MS_BATIDA = 120
+# Piso do vão entre duas falas, por mais que a linha peça pra emendar. Abaixo
+# disso a frase seguinte começa em cima da anterior.
+MS_MINIMO_ENTRE = 150
 # Parâmetros fixos do mp3: o concat com -c copy exige que todos batam.
 TAXA = 24000
 CANAIS = 1
@@ -154,10 +157,11 @@ class Fala:
         # rate/pitch desta linha, sobrescrevendo o da turma. Genérico: vale pra
         # qualquer cena de qualquer turma.
         self.prosodia = prosodia or {}
-        # Silêncio extra DEPOIS desta linha, em ms, somado aos 600 de sempre.
-        # Entra no concat e nos offsets, então a legenda respeita a pausa sem
-        # precisar saber que ela existe.
-        self.pausa_depois = max(0, int(pausa_depois or 0))
+        # Ajuste do silêncio DEPOIS desta linha, em ms, somado aos 600 de
+        # sempre. Pode ser NEGATIVO, pra emendar duas falas mais perto — numa
+        # troca rápida os 600 ms padrão são uma eternidade. Entra no concat e
+        # nos offsets, então a legenda respeita sem precisar saber.
+        self.pausa_depois = int(pausa_depois or 0)
 
     @property
     def falado(self) -> str:
@@ -834,15 +838,13 @@ def main() -> int:
         acumulado = 0
         for i, fala in enumerate(lista):
             if i > 0:
-                partes.append(silencio)
-                acumulado += MS_SILENCIO
-                # Pausa extra pedida pela linha ANTERIOR. Entra aqui e não logo
-                # depois dela porque o silêncio só faz sentido ENTRE duas
-                # linhas: depois da última ele seria rabo morto no fim do mp3.
-                extra = lista[i - 1].pausa_depois
-                if extra > 0:
-                    partes.append(silencio_de(extra))
-                    acumulado += extra
+                # O silêncio entre duas falas: o padrão mais (ou menos) o que a
+                # linha ANTERIOR pediu. Fica aqui e não logo depois dela porque
+                # silêncio só faz sentido ENTRE duas linhas: depois da última
+                # seria rabo morto no fim do mp3.
+                vao = max(MS_MINIMO_ENTRE, MS_SILENCIO + lista[i - 1].pausa_depois)
+                partes.append(silencio_de(vao))
+                acumulado += vao
             # A linha pode ser dita em pedaços. O offset dela vai do começo do
             # primeiro ao fim do último: pra a legenda é UMA linha só.
             inicio = acumulado

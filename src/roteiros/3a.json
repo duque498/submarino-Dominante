@@ -349,16 +349,15 @@
             "prosodia": {
               "rate": "-3%",
               "dinamica": "preservada"
-            }
+            },
+            "pausaDepois": -250
           },
           {
             "texto": "Espera.",
-            "fala": "Espera...",
             "prosodia": {
-              "rate": "-15%",
               "dinamica": "preservada"
             },
-            "pausaDepois": 1200,
+            "pausaDepois": 300,
             "acoes": [
               {
                 "tipo": "log",
@@ -381,7 +380,7 @@
               "escala": 1.4,
               "glitch": false
             },
-            "pausaDepois": 1400,
+            "pausaDepois": 300,
             "acoes": [
               {
                 "tipo": "painel",
