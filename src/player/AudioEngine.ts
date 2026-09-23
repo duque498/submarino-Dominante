@@ -13,6 +13,11 @@ import { tocarSintetico, tocarTesteDeSom, type NomeSfx } from '../audio/sfx'
 import { tocarSomDoHidrofone, type SomTocando } from '../audio/hidrofone'
 import type { Sfx } from '../roteiros/tipos'
 
+/** Teto da voz normal: aberto, que é o que a deixa clara na quadra. */
+const TETO_VOZ_LIMPA = 20000
+/** Teto da voz avariada. Aqui o abafado é o ponto. */
+const TETO_VOZ_AVARIADA = 5200
+
 /**
  * Uma reprodução em andamento.
  * `tocou: false` significa que o áudio não existe ou não pôde ser reproduzido —
@@ -176,6 +181,21 @@ export class AudioEngine {
    * o espectrograma passaria a desenhar a locução dela. O que a plateia tem que
    * ver na tela é o som que ela está tentando identificar, e mais nada.
    */
+  // --- voz avariada ---
+  /**
+   * Cadeia de glitch da voz, entre o analisador e o ganho.
+   *
+   * DEPOIS do analisador de proposito: o orbe continua lendo o nivel limpo da
+   * fala. Se ela viesse antes, cada queda de sinal encolheria o orbe junto, e
+   * o que a plateia veria seria a IA gaguejando de tamanho.
+   */
+  private corteVoz: GainNode | null = null
+  private tetoVoz: BiquadFilterNode | null = null
+  private tremorVoz: GainNode | null = null
+  private anelMistura: GainNode | null = null
+  private falhaVoz = 0
+  private vozQuebrada = false
+
   private analisadorHidro: AnalyserNode | null = null
   private espectroHidro: Uint8Array<ArrayBuffer> | null = null
   private ondaHidro: Uint8Array<ArrayBuffer> | null = null
@@ -250,7 +270,8 @@ export class AudioEngine {
     this.analisador.fftSize = 1024
     this.ganhoVoz = this.contexto.createGain()
     this.ganhoVoz.gain.value = AUDIO.voz.ganho
-    this.analisador.connect(this.ganhoVoz)
+    this.montarGlitchDaVoz(this.contexto)
+    this.analisador.connect(this.corteVoz!)
     this.ganhoVoz.connect(this.contexto.destination)
     this.amostras = new Uint8Array(new ArrayBuffer(this.analisador.fftSize))
 
@@ -807,11 +828,106 @@ export class AudioEngine {
   stop(): void {
     this.pararVoz()
     this.pararHidrofone()
+    this.vozAvariada(false)
     if (this.sfxAtual) {
       this.sfxAtual.pause()
       this.sfxAtual.currentTime = 0
       this.sfxAtual = null
     }
+  }
+
+  // --- voz avariada -------------------------------------------------------
+
+  /**
+   * Monta a cadeia de glitch, neutra enquanto ninguém a liga.
+   *
+   * Três efeitos somados, e a escolha dos três é toda em favor de continuar
+   * INTELIGÍVEL — uma IA quebrada que a plateia não entende não conta história
+   * nenhuma, só irrita:
+   *
+   *   - trêmulo a 11 Hz: lê como aparelho falhando e quase não custa palavra,
+   *     porque mexe no volume e não no espectro;
+   *   - anel a 62 Hz numa mistura baixa: põe a borda digital, o "robô";
+   *   - quedas curtas de sinal: 35 a 70 ms a 30% do nível, NUNCA a zero. Zero
+   *     comeria sílabas inteiras, e é exatamente aí que a fala se perde.
+   *
+   * E o teto desce pra 5,2 kHz — que é onde a voz estava antes de eu abrir a
+   * banda pra clareza. Aqui o abafado é o ponto.
+   */
+  private montarGlitchDaVoz(contexto: AudioContext): void {
+    if (this.corteVoz || !this.ganhoVoz) return
+
+    this.corteVoz = contexto.createGain()
+    this.tetoVoz = contexto.createBiquadFilter()
+    this.tetoVoz.type = 'lowpass'
+    this.tetoVoz.frequency.value = TETO_VOZ_LIMPA
+
+    // Trêmulo: entra SOMADO ao valor do próprio parâmetro, então as quedas
+    // continuam podendo mexer nele sem uma brigar com a outra.
+    const osc = contexto.createOscillator()
+    osc.frequency.value = 11
+    this.tremorVoz = contexto.createGain()
+    this.tremorVoz.gain.value = 0
+    osc.connect(this.tremorVoz).connect(this.corteVoz.gain)
+    osc.start()
+
+    // Anel: um ganho oscilando em torno de ZERO é modulação em anel.
+    const anel = contexto.createGain()
+    anel.gain.value = 0
+    const oscAnel = contexto.createOscillator()
+    oscAnel.frequency.value = 62
+    oscAnel.connect(anel.gain)
+    oscAnel.start()
+    this.anelMistura = contexto.createGain()
+    this.anelMistura.gain.value = 0
+
+    this.corteVoz.connect(this.tetoVoz)
+    this.tetoVoz.connect(this.ganhoVoz)
+    this.tetoVoz.connect(anel).connect(this.anelMistura).connect(this.ganhoVoz)
+  }
+
+  /** Liga ou desliga o glitch da voz (pane global e modo reduzido do 2B). */
+  vozAvariada(sim: boolean): void {
+    if (sim === this.vozQuebrada) return
+    this.vozQuebrada = sim
+    const contexto = this.obterContexto()
+    if (!contexto || !this.corteVoz || !this.tetoVoz || !this.tremorVoz || !this.anelMistura) {
+      return
+    }
+    const agora = contexto.currentTime
+    this.tetoVoz.frequency.setTargetAtTime(sim ? TETO_VOZ_AVARIADA : TETO_VOZ_LIMPA, agora, 0.1)
+    this.tremorVoz.gain.setTargetAtTime(sim ? 0.16 : 0, agora, 0.1)
+    this.anelMistura.gain.setTargetAtTime(sim ? 0.16 : 0, agora, 0.1)
+
+    if (sim) {
+      this.agendarFalha()
+    } else {
+      clearTimeout(this.falhaVoz)
+      this.falhaVoz = 0
+      this.corteVoz.gain.cancelScheduledValues(agora)
+      this.corteVoz.gain.setTargetAtTime(1, agora, 0.05)
+    }
+  }
+
+  /** Uma queda curta de sinal, e marca a próxima. */
+  private agendarFalha(): void {
+    this.falhaVoz = window.setTimeout(
+      () => {
+        if (!this.vozQuebrada) return
+        const contexto = this.contexto
+        const corte = this.corteVoz
+        if (contexto && corte) {
+          const agora = contexto.currentTime
+          const duracao = sorteio(0.035, 0.07)
+          corte.gain.setValueAtTime(1, agora)
+          corte.gain.linearRampToValueAtTime(0.3, agora + 0.008)
+          corte.gain.setValueAtTime(0.3, agora + duracao)
+          corte.gain.linearRampToValueAtTime(1, agora + duracao + 0.02)
+        }
+        this.agendarFalha()
+      },
+      sorteio(900, 2400),
+    )
   }
 
   // --- hidrofone (2B) -----------------------------------------------------

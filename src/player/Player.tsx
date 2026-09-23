@@ -2516,6 +2516,29 @@ export function Player({ roteiro, engine }: Props) {
   }, [emergencia])
 
   /**
+   * A voz sai avariada enquanto o sistema está avariado.
+   *
+   * Vale pros dois jeitos de o submarino quebrar: a pane global (`P`) e o modo
+   * reduzido do 2B. Nos dois a IA continua falando, e é a fala dela que tem
+   * que soar quebrada — a legenda tremendo diria isso só pra quem está lendo.
+   *
+   * O efeito depende do BOOLEANO, não dos objetos de estado. Dependendo deles,
+   * ele religava a cada subsistema que caía (a pane troca o objeto a cada
+   * 400 ms) e a cada reparo: medido, quatro ciclos de liga-desliga numa pane
+   * só — o glitch piscava e o sorteio das quedas reiniciava junto.
+   */
+  const vozQuebrada =
+    (pane !== null && pane.fase !== 'voltando') ||
+    (emergencia !== null && !emergencia.encerrando)
+
+  useEffect(() => {
+    engine.vozAvariada(vozQuebrada)
+  }, [engine, vozQuebrada])
+
+  // Desligar de vez é coisa de desmontagem, não de cada re-render.
+  useEffect(() => () => engine.vozAvariada(false), [engine])
+
+  /**
    * O log do modo reduzido: UMA linha de erro de vez em quando.
    *
    * Esparsa de propósito. Rajada de erro é linguagem de pane, e aqui o

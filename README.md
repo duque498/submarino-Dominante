@@ -701,8 +701,30 @@ Enquanto o modo reduzido está ligado, em QUALQUER cena:
 | **orbe VERMELHO**, 45% mais lento | prop `avariado` do orbe |
 | uma linha de erro a cada ~20 s | efeito no Player |
 
-**Nada disso faz som.** Os grupos 3 e 4 apresentam por cima, e um alarme
-tocando por dez minutos atrás de alunos falando deixa de ser cenário.
+**Nada disso faz som** — de fundo. O que muda é a VOZ: enquanto o sistema
+está quebrado, a fala da IA sai avariada, e sai nos dois jeitos de o
+submarino quebrar (a pane global `P` e o modo reduzido do 2B). A legenda
+tremendo diria isso só pra quem está lendo.
+
+O glitch são três efeitos somados, e a escolha dos três é toda em favor de
+continuar **inteligível** — uma IA quebrada que a plateia não entende não
+conta história nenhuma, só irrita:
+
+| efeito | o que faz | por que não atrapalha |
+|---|---|---|
+| trêmulo a 11 Hz | lê como aparelho falhando | mexe no volume, não no espectro |
+| anel a 62 Hz, mistura 16% | põe a borda digital, o "robô" | mistura baixa: colore sem mascarar |
+| quedas de 35–70 ms | o sinal some e volta | caem a **30%**, nunca a zero |
+| teto em 5,2 kHz | abafa | é onde a voz estava antes de eu abrir a banda |
+
+Queda a zero comeria sílabas inteiras, e é exatamente aí que a fala se perde.
+
+> A cadeia fica **depois do analisador**, entre ele e o ganho da voz. Se
+> viesse antes, cada queda de sinal encolheria o orbe junto — e o que a
+> plateia veria seria a IA gaguejando de tamanho.
+
+Os grupos 3 e 4 apresentam por cima disso, e um alarme tocando por dez
+minutos atrás de alunos falando deixa de ser cenário.
 
 > **O orbe fica vermelho até o hidrofone.** Ele É a IA na tela: deixá-lo da cor
 > de sempre, só um pouco mais escuro, contava a avaria apenas pra quem
@@ -779,6 +801,20 @@ Se existir `public/audio/sfx/hidro-<id>.mp3`, o motor prefere o arquivo. O
 sintetizado é o plano que funciona sem ninguém baixar nada — e o validador
 recusa um som cujo `id` não tenha sintetizador nem mp3, porque isso deixaria a
 plateia olhando um espectrograma mudo.
+
+> **Hoje a chuva e a baleia são gravações**, fornecidas pela professora e
+> livres de direitos: `hidro-chuva.mp3` (10 s, recortado de um trecho estável
+> e com a cauda cruzada sobre a própria cabeça, pra o laço não ter emenda
+> audível) e `hidro-baleia.mp3` (6 s). Os dois em mono — o hidrofone é UM
+> sensor — e nivelados com o navio: média de −15,2 e −13,3 dBFS contra os
+> −16 do sintetizado. Os sintetizadores dos dois continuam no código como
+> plano B.
+>
+> **O navio continua sintetizado, e na versão ANTIGA.** A versão com a batida
+> funda, que a medição aprovou (modulação de 1,4 para 7,0), soava
+> helicóptero: hélice no ar bate seca e separada, hélice na água é abafada, e
+> o que chega ao hidrofone a doze quilômetros é um zumbido ondulado. O número
+> melhor não era o som melhor.
 
 > **Os três foram medidos, não ouvidos por cima.** Renderizando cada um por 6 s
 > num `OfflineAudioContext`, com o mesmo compressor da saída de efeitos:
@@ -1709,7 +1745,17 @@ feira: o projeto roda completo sem nenhum mp3 de efeito.
 
 Se você quiser efeitos "de verdade", é só jogar o arquivo em
 `public/audio/sfx/<nome>.mp3` — ele passa a ter prioridade sobre o sintético,
-um a um. Dá pra ter o `sonar` de arquivo e o resto sintetizado.
+um a um. Dá pra ter o `sonar` de arquivo e o resto sintetizado. **Não esqueça
+de rodar `python3 scripts/embutir_audios.py` depois**: o player só considera
+efeito que esteja embutido no `audios.js`, porque por `file://` um caminho
+solto não é confiável.
+
+> **Hoje o `impacto` é gravação** (3,3 s, fornecida pela professora), e ela
+> serve os DOIS lugares que disparam esse efeito: a rachadura do visor, depois
+> do olho, e cada pancada no casco durante o combate. É a mesma criatura
+> batendo no mesmo casco — dois sons diferentes pro mesmo evento é que soaria
+> errado. O elemento é reaproveitado e rebobinado a cada disparo, então duas
+> pancadas seguidas reiniciam o som em vez de empilhar cauda sobre cauda.
 
 Os níveis foram calibrados pra caixa de som em quadra, não pra fone: os picos
 ficam entre 0,35 e 0,7, e tudo passa por um compressor pra o eco do sonar não

@@ -134,88 +134,66 @@ function chuva(ctx: AudioContext, destino: AudioNode): SomTocando {
 }
 
 /**
- * Navio: grave de casco (ruido cortado em 200 Hz) pulsando no giro da helice,
- * mais o tom fixo do motor.
+ * Navio: grave de casco pulsando no giro da helice, mais o tom do motor.
  *
- * O que entrega a maquina e a REGULARIDADE — som de bicho nunca bate tao
- * certo. Por isso a modulacao e um oscilador exato a 1,5 Hz e nao um envelope
- * sorteado.
+ * VOLTOU a ser o de antes. A versao "melhorada" levava a modulacao quase ao
+ * silencio entre as pas e passava o motor por dentro dela — medido, a batida
+ * saltou de 1,4 pra 7,0 —, e o resultado foi um som de HELICOPTERO: helice no
+ * ar bate seca e separada; helice na agua e abafada, e o que chega no
+ * hidrofone a doze quilometros e um zumbido ondulado, nao um chop.
+ *
+ * O numero melhor nao era o som melhor. Fica a ondulacao suave, com o tom do
+ * motor entrando por fora dela: e ele que segura o fundo enquanto a helice
+ * respira por cima.
  */
 function navio(ctx: AudioContext, destino: AudioNode): SomTocando {
   const fonte = ctx.createBufferSource()
   fonte.buffer = ruidoBranco(ctx, 3)
   fonte.loop = true
 
-  // Passa-banda estreito no lugar do passa-baixa: o ruido de casco vira uma
-  // FAIXA grave definida em vez de um rumor sem altura, e e essa altura que o
-  // ouvido lê como "motor grande" e não como "vento".
-  const casco = ctx.createBiquadFilter()
-  casco.type = 'lowpass'
-  casco.frequency.value = 260
-  casco.Q.value = 3
+  const grave = ctx.createBiquadFilter()
+  grave.type = 'lowpass'
+  grave.frequency.value = 200
+  grave.Q.value = 1.2
 
-  // Batida da hélice quase até o silêncio entre as pás.
-  //
-  // Antes ela oscilava de 0,13 a 0,97 do nível e o resultado era um zumbido
-  // ondulado. O que entrega um navio é o CHOP: cada pá bate, e entre uma e
-  // outra o som cai de verdade. Modulação quase total, e um oscilador exato —
-  // bicho nenhum bate tão certo.
   const helice = ctx.createGain()
-  helice.gain.value = 0.5
+  helice.gain.value = 0.55
   const lfo = ctx.createOscillator()
-  lfo.type = 'triangle'
   lfo.frequency.value = NAVIO_HZ_HELICE
   const profundidade = ctx.createGain()
-  profundidade.gain.value = 0.46
+  profundidade.gain.value = 0.42
   lfo.connect(profundidade).connect(helice.gain)
 
-  // Motor: fundamental e dois harmônicos, que é o que faz soar maquinário e
-  // não nota de sintetizador.
-  const ganho = ctx.createGain()
-  ganho.gain.value = 1.92
-  const osciladores: OscillatorNode[] = []
-  const nos: AudioNode[] = []
-  for (const [hz, pico] of [
-    [55, 0.22],
-    [110, 0.12],
-    [165, 0.05],
-  ] as const) {
-    const osc = ctx.createOscillator()
-    osc.type = 'sawtooth'
-    osc.frequency.value = hz
-    const corte = ctx.createBiquadFilter()
-    corte.type = 'lowpass'
-    corte.frequency.value = 600
-    const g = ctx.createGain()
-    g.gain.value = pico
-    // Pelo MODULADOR, não direto na saída.
-    //
-    // Medido: com o motor entrando por fora, a modulação do envelope de 20 ms
-    // ficava em 1,4 — ou seja, não havia batida nenhuma. O tom contínuo
-    // preenchia exatamente os vales entre as pás, que são o que identifica uma
-    // hélice. Passando por dentro, o som inteiro pulsa.
-    osc.connect(corte).connect(g).connect(helice)
-    osc.start()
-    osciladores.push(osc)
-    nos.push(corte, g)
-  }
+  const motor = ctx.createOscillator()
+  motor.type = 'sawtooth'
+  motor.frequency.value = 60
+  const ganhoMotor = ctx.createGain()
+  ganhoMotor.gain.value = 0.16
+  const corteMotor = ctx.createBiquadFilter()
+  corteMotor.type = 'lowpass'
+  corteMotor.frequency.value = 420
 
-  fonte.connect(casco).connect(helice).connect(ganho)
+  const ganho = ctx.createGain()
+  ganho.gain.value = 1
+
+  fonte.connect(grave).connect(helice).connect(ganho)
+  motor.connect(corteMotor).connect(ganhoMotor).connect(ganho)
   ganho.connect(destino)
 
   fonte.start()
   lfo.start()
+  motor.start()
   return {
     saida: ganho,
     parar: () => {
-      for (const no of [fonte, lfo, ...osciladores]) {
+      for (const no of [fonte, lfo, motor]) {
         try {
           no.stop()
         } catch {
           /* ja parou */
         }
       }
-      for (const no of [fonte, casco, helice, lfo, profundidade, ganho, ...osciladores, ...nos]) {
+      for (const no of [fonte, grave, helice, lfo, profundidade, motor, corteMotor, ganhoMotor, ganho]) {
         no.disconnect()
       }
     },
