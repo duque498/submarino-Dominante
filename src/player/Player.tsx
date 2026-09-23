@@ -2551,6 +2551,26 @@ export function Player({ roteiro, engine }: Props) {
       }
     })
     const carregados = urls.filter((url) => engine.camadaDe(url) === 'A').length
+
+    // Áudio defasado: o roteiro está no bundle e o áudio vem de fora (o
+    // audios.js, ou os mp3 soltos). Quando alguém troca o texto de uma cena e
+    // esquece de regerar a voz — ou quando o navegador serve um audios.js
+    // velho do cache — a legenda fica CERTA e a voz fica ERRADA, sem nada na
+    // tela dizendo isso. Aconteceu de verdade, e levou uma sessão pra achar.
+    //
+    // Conferir é barato: o tempos.json traz um offset por fala. Se a contagem
+    // não bate com a da cena, aquele áudio é de outra versão do texto.
+    const defasadas: string[] = []
+    for (const cena of sequencia) {
+      if (cena.tipo !== 'fala' && cena.tipo !== 'transicao') continue
+      const tempos = engine.temposDaCena(roteiro.turma, cena.id)
+      if (!tempos) continue
+      const noRoteiro = cena.tela.linhas.length
+      if (tempos.linhas.length !== noRoteiro) {
+        defasadas.push(`${cena.id} (roteiro ${noRoteiro}, áudio ${tempos.linhas.length})`)
+      }
+    }
+
     const base = [
       `Voz de bordo: ${carregados}/${urls.length} arquivos carregados`,
       carregados > 0
@@ -2560,6 +2580,10 @@ export function Player({ roteiro, engine }: Props) {
         ? `Narração: voz do sistema — ${engine.descricaoDaVoz()}`
         : 'Narração: gravação de bordo (mp3)',
       `Saída de áudio: ${engine.estadoDoContexto()}`,
+      `Selo do áudio: ${engine.seloDoAudio()}`,
+      ...(defasadas.length > 0
+        ? [`ERR: áudio defasado em ${defasadas.join(', ')} — regere a voz`]
+        : []),
     ]
     setRajadaLog(base)
 

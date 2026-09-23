@@ -48,6 +48,8 @@ declare global {
      * Vem do tempos.json que o gerar_audios.py emite, embutido no audios.js.
      */
     __TEMPOS?: Record<string, Record<string, TemposDaCena>>
+    /** Hash do audios.js que está carregado. Ver embutir_audios.py. */
+    __AUDIOS_SELO?: string
   }
 }
 
@@ -824,6 +826,17 @@ export class AudioEngine {
   /** Offsets reais das linhas de uma cena, se o tempos.json foi gerado. */
   temposDaCena(turma: string, grupo: string): TemposDaCena | null {
     return window.__TEMPOS?.[turma.toLowerCase()]?.[grupo] ?? null
+  }
+
+  /**
+   * Selo do audios.js carregado, pra conferir de fora se a cópia é a atual.
+   *
+   * Existe por um caso real: a apresentação rodando com um audios.js antigo,
+   * legenda nova e VOZ VELHA. Os dois vêm do mesmo arquivo, então não podem
+   * divergir entre si — mas podem divergir do roteiro, que está no bundle.
+   */
+  seloDoAudio(): string {
+    return window.__AUDIOS_SELO ?? '—'
   }
 
   /** Quantas cenas da turma têm tempos reais — só pro log de diagnóstico. */

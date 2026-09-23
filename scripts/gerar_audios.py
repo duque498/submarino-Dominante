@@ -391,16 +391,42 @@ def razao_de_pitch(pitch: str | None) -> float:
     return max(0.5, min(2.0, (F0_BASE_HZ + float(achado.group(1))) / F0_BASE_HZ))
 
 
+_tem_rubberband: bool | None = None
+
+
+def tem_rubberband() -> bool:
+    """O ffmpeg desta máquina foi compilado com o rubberband?"""
+    global _tem_rubberband
+    if _tem_rubberband is None:
+        saida = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True
+        ).stdout
+        _tem_rubberband = bool(re.search(r"^\s*\S*\s+rubberband\s", saida, re.M))
+    return _tem_rubberband
+
+
 def filtro_de_pitch(razao: float) -> str:
     """
-    Desloca o tom sem mexer na duração.
+    Desloca o tom sem mexer na duração, preservando os FORMANTES.
 
-    `asetrate` reamostra (muda tom E duração juntos) e o `atempo` desfaz a
-    parte da duração. É o truque clássico; pra um deslocamento pequeno como
-    -4 Hz numa voz de 175 Hz (-0,4 semitom) ele não deixa artefato audível.
+    Formante é o que identifica a vogal e, junto, o "tamanho" de quem fala.
+    Deslocar o tom arrastando os formantes junto é o que faz voz virar
+    esquilo — ou, num deslocamento pequeno como o daqui, sair anasalada em
+    algumas palavras (as que têm formante perto da faixa deslocada).
+
+    `rubberband=formant=preserved` desloca só a fundamental. A alternativa
+    `asetrate`+`atempo` arrasta os formantes E ainda emenda o áudio por WSOLA,
+    que borra transiente. Ela fica de reserva pra um ffmpeg sem rubberband.
     """
     if abs(razao - 1) < 0.001:
         return ""
+    if tem_rubberband():
+        return f"rubberband=pitch={razao:.6f}:pitchq=quality:formant=preserved"
+    print(
+        "aviso: ffmpeg sem rubberband — o tom vai por asetrate/atempo, que "
+        "arrasta o formante.",
+        file=sys.stderr,
+    )
     return f"asetrate={TAXA}*{razao:.6f},aresample={TAXA},atempo={1 / razao:.6f}"
 
 

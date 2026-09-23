@@ -22,6 +22,7 @@ Na Fase 3 o gerar_audios.py vai chamar isso no fim da geração.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -76,6 +77,14 @@ def main() -> int:
     partes.append(";\n")
     conteudo = "".join(partes)
 
+    # Selo do áudio: hash do conteúdo, escrito no próprio arquivo e impresso
+    # aqui. Existe por um caso que aconteceu de verdade — a apresentação rodando
+    # com um audios.js antigo em cache, legenda nova e VOZ VELHA, sem nada na
+    # tela dizendo isso. Com o selo dá pra comparar o que está rodando com o
+    # que acabou de ser gerado, em um segundo.
+    selo = hashlib.sha1(conteudo.encode("utf-8")).hexdigest()[:8]
+    conteudo += f'window.__AUDIOS_SELO = "{selo}";\n'
+
     SAIDA.write_text(conteudo, encoding="utf-8")
 
     tamanho_mb = len(conteudo) / (1024 * 1024)
@@ -84,6 +93,7 @@ def main() -> int:
         f"public/audios.js gerado: {len(entradas)} áudio(s), "
         f"{cenas_com_tempos} cena(s) com tempos reais, {tamanho_mb:.1f} MB"
     )
+    print(f"  selo do áudio: {selo}  (aparece no log de bordo do app)")
     if tamanho_mb > AVISO_TAMANHO_MB:
         print(
             f"aviso: passou de {AVISO_TAMANHO_MB} MB. Considere reduzir o bitrate "
