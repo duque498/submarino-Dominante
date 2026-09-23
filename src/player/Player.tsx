@@ -1293,24 +1293,6 @@ export function Player({ roteiro, engine }: Props) {
         relogios.push(window.setTimeout(resolve, ms))
       })
 
-    /**
-     * Espera, mas o operador pode encurtar com Enter.
-     *
-     * É a válvula da contemplação: quem está no palco sente quando a sala já
-     * viu o bicho, e ficar preso a quatro segundos fixos com a turma esperando
-     * é pior do que cortar. O que ele NUNCA faz é pular a cena — as espécies
-     * que faltam continuam de pé.
-     */
-    const esperarOuPular = (ms: number) =>
-      new Promise<void>((resolve) => {
-        const acabar = () => {
-          refRespostaIdent.current = null
-          resolve()
-        }
-        relogios.push(window.setTimeout(acabar, ms))
-        refRespostaIdent.current = acabar
-      })
-
     const sortear = (falas: string[][], audios: string[]) => {
       if (!falas?.length || !audios?.length) return null
       const i = Math.floor(Math.random() * falas.length)
@@ -1374,8 +1356,12 @@ export function Player({ roteiro, engine }: Props) {
           resolve(acertou)
         }
         const proximaPista = async () => {
-          for (const pista of especie.pistas) {
-            await daqui(especie.intervaloPistas * 1000)
+          for (const [n, pista] of especie.pistas.entries()) {
+            // A PRIMEIRA sai na hora, junto com o contato. Esperar os 7 s
+            // valia quando os bichos eram difíceis; com tartaruga e golfinho a
+            // sala responde em três segundos e a dinâmica acabava sem NENHUMA
+            // pista ter aparecido na tela. Agora sempre há uma.
+            if (n > 0) await daqui(especie.intervaloPistas * 1000)
             if (cancelado || !refRespostaIdent.current) return
             pistas += 1
             publicar({
@@ -1419,14 +1405,32 @@ export function Player({ roteiro, engine }: Props) {
         if (!cancelado) setFormaForcada(chave === FORMA_PADRAO ? null : chave)
       }
 
-      await dizer(
-        marcado
-          ? sortear(roteiro.falas.acerto, roteiro.audio.acerto)
-          : sortear(roteiro.falas.revelado, roteiro.audio.revelado),
-      )
-      if (cancelado) return
-      // Contemplação: 4 s com o bicho nítido antes de a água sujar de novo.
-      await esperarOuPular(MS_CONTEMPLACAO)
+      // Fala de resultado + contemplação, as duas encurtáveis pelo Enter.
+      //
+      // Antes só a contemplação era: durante a fala o operador apertava e NADA
+      // acontecia, porque o resolvedor estava nulo. Numa cena em que a tecla é
+      // a única coisa que ele controla, um Enter que não faz nada lê como
+      // travamento — ainda mais na última espécie, onde o que vem depois é a
+      // transferência pro 2B.
+      const cortado = await Promise.race([
+        (async () => {
+          await dizer(
+            marcado
+              ? sortear(roteiro.falas.acerto, roteiro.audio.acerto)
+              : sortear(roteiro.falas.revelado, roteiro.audio.revelado),
+          )
+          await daqui(MS_CONTEMPLACAO)
+          return false
+        })(),
+        new Promise<boolean>((resolve) => {
+          refRespostaIdent.current = () => {
+            refRespostaIdent.current = null
+            resolve(true)
+          }
+        }),
+      ])
+      refRespostaIdent.current = null
+      if (cortado) engine.pararVoz()
       if (cancelado) return
 
       if (indice + 1 < totalEspecies) {

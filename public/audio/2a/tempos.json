@@ -123,29 +123,29 @@
     ]
   },
   "ident-baleia-pista-1": {
-    "duracaoMs": 4392,
+    "duracaoMs": 3168,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 4392
+        "fim": 3168
       }
     ]
   },
   "ident-baleia-pista-2": {
-    "duracaoMs": 4440,
+    "duracaoMs": 2904,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 4440
+        "fim": 2904
       }
     ]
   },
   "ident-baleia-pista-3": {
-    "duracaoMs": 2952,
+    "duracaoMs": 2928,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 2952
+        "fim": 2928
       }
     ]
   },
@@ -181,11 +181,11 @@
     ]
   },
   "ident-golfinho-pista-3": {
-    "duracaoMs": 3816,
+    "duracaoMs": 2736,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3816
+        "fim": 2736
       }
     ]
   },
@@ -261,11 +261,11 @@
     ]
   },
   "ident-tartaruga-pista-2": {
-    "duracaoMs": 3432,
+    "duracaoMs": 2160,
     "linhas": [
       {
         "inicio": 0,
-        "fim": 3432
+        "fim": 2160
       }
     ]
   },

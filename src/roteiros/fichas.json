@@ -1,22 +1,22 @@
 {
   "baleia": {
-    "titulo": "Baleia-jubarte",
+    "titulo": "Baleia",
     "dados": {
-      "Nome científico": "Megaptera novaeangliae",
-      "Comprimento": "12 a 16 m",
-      "Grupo": "Cetáceo (mamífero marinho)",
-      "Ocorrência no Brasil": "Banco dos Abrolhos, BA",
-      "Temporada reprodutiva": "julho a novembro"
+      "Grupo": "Mamífero marinho (cetáceo)",
+      "Respiração": "sobe à superfície e solta um jato",
+      "Cauda": "horizontal, bate de cima pra baixo",
+      "Porte": "as maiores passam de 20 m",
+      "Onde vive": "todos os oceanos"
     }
   },
   "tartaruga": {
-    "titulo": "Tartaruga-verde",
+    "titulo": "Tartaruga",
     "dados": {
-      "Nome científico": "Chelonia mydas",
-      "Comprimento do casco": "até cerca de 1,2 m",
-      "Alimentação (adulta)": "algas e plantas marinhas",
-      "Desova no Brasil": "Fernando de Noronha e Atol das Rocas",
-      "Status IUCN": "Em perigo"
+      "Grupo": "Réptil marinho",
+      "Respiração": "pulmões: sobe à superfície",
+      "Corpo": "casco e quatro nadadeiras em remo",
+      "Reprodução": "põe ovos na areia da praia",
+      "Onde vive": "mares tropicais e subtropicais"
     }
   },
   "agua-viva": {
@@ -69,23 +69,23 @@
     "credito": "[PENDENTE] crédito da imagem — autor, licença e fonte"
   },
   "golfinho": {
-    "titulo": "Golfinho-nariz-de-garrafa",
+    "titulo": "Golfinho",
     "dados": {
-      "Nome científico": "Tursiops truncatus",
-      "Comprimento": "2 a 4 m",
-      "Grupo": "Cetáceo (mamífero marinho)",
-      "Alimentação": "peixes e lulas",
-      "Ocorrência no Brasil": "todo o litoral"
+      "Grupo": "Mamífero marinho (cetáceo)",
+      "Respiração": "orifício no alto da cabeça",
+      "Comportamento": "vive em grupo",
+      "Orientação": "por som",
+      "Onde vive": "todos os oceanos"
     }
   },
   "tubarao": {
     "titulo": "Tubarão",
     "dados": {
-      "Grupo": "Elasmobrânquio",
+      "Grupo": "Peixe cartilaginoso",
       "Esqueleto": "cartilagem, não osso",
       "Dentes": "em fileiras, repostos a vida toda",
       "Respiração": "fendas branquiais",
-      "Ocorrência no Brasil": "todo o litoral"
+      "Onde vive": "todos os oceanos"
     }
   }
 }

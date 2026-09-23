@@ -234,16 +234,15 @@
       "especies": [
         {
           "id": "tartaruga",
-          "nome": "Tartaruga-verde",
+          "nome": "Tartaruga",
           "aceitos": [
             "tartaruga",
-            "tartaruga-verde",
-            "aruanã",
-            "aruana"
+            "tartarugas",
+            "tartaruga marinha"
           ],
           "pistas": [
             "Réptil que vive no mar e precisa subir para respirar.",
-            "Põe os ovos na areia da praia onde ela mesma nasceu.",
+            "Põe os ovos na areia da praia.",
             "Tem casco e nada com quatro nadadeiras."
           ],
           "audioPistas": [
@@ -268,7 +267,7 @@
           "pistas": [
             "Mamífero que vive em grupo e respira por um orifício no alto da cabeça.",
             "Usa sons para se orientar e achar comida na água escura.",
-            "Tem focinho alongado, salta fora d’água e acompanha barcos."
+            "Tem focinho alongado e salta fora d’água."
           ],
           "audioPistas": [
             "./audio/2a/ident-golfinho-pista-1.mp3",
@@ -286,6 +285,7 @@
           "aceitos": [
             "tubarão",
             "tubarao",
+            "tubarões",
             "cação",
             "cacao"
           ],
@@ -306,16 +306,15 @@
         },
         {
           "id": "baleia",
-          "nome": "Baleia-jubarte",
+          "nome": "Baleia",
           "aceitos": [
             "baleia",
-            "jubarte",
-            "baleia-jubarte"
+            "baleias"
           ],
           "pistas": [
-            "O maior animal desta expedição. Mamífero, e respira na superfície.",
-            "Vem da Antártida até a costa da Bahia todo inverno para ter filhotes.",
-            "Solta um jato ao respirar e canta embaixo d’água."
+            "Mamífero enorme. O maior animal desta expedição.",
+            "Sobe para respirar e solta um jato visível.",
+            "Tem cauda horizontal e bate nela para nadar."
           ],
           "audioPistas": [
             "./audio/2a/ident-baleia-pista-1.mp3",

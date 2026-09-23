@@ -655,11 +655,26 @@ recompensa — e a recompensa é ver o bicho. Especificação completa em
 > incrementos que não fecha o total: sem a soma exata, o contador pararia num
 > número quebrado depois da última espécie.
 
-**Enter nunca pula a cena.** Enquanto a tecla só valia na fase de busca, um
-Enter apertado DEPOIS de revelar caía no `avancar()` genérico e mandava a
-expedição inteira pro 2B com três espécies por mostrar. Agora ela vale durante
-toda a cena: na busca confirma, na revelação encurta a contemplação e vai pra
-próxima espécie. Quem sai da cena é o laço, quando a quarta termina.
+**Enter nunca pula a cena, e nunca fica sem efeito.** Enquanto a tecla só valia
+na fase de busca, um Enter apertado DEPOIS de revelar caía no `avancar()`
+genérico e mandava a expedição inteira pro 2B com três espécies por mostrar.
+E durante a fala de resultado ela não fazia nada, o que numa cena em que a
+tecla é a única coisa que o operador controla lê como travamento. Agora ela
+vale o tempo todo: na busca confirma, na revelação corta a fala e a
+contemplação e vai pra próxima espécie. Quem sai da cena é o laço, quando a
+quarta termina — e aí o `ident-fim` fala e o roteiro segue pro 2B.
+
+> Consequência: **a seta direita não pula a cena de identificação**. A saída de
+> emergência dela é o console (`cena transicao-2b`).
+
+**A primeira pista sai junto com o contato.** Esperar os 7 s valia quando as
+espécies eram difíceis; com tartaruga e golfinho a sala responde em três
+segundos, e a dinâmica acabava sem NENHUMA pista ter aparecido na tela.
+
+**As espécies são genéricas de propósito** — tartaruga, golfinho, tubarão,
+baleia. Nomes de espécie (tartaruga-verde, baleia-jubarte) pedem da plateia uma
+precisão que ela não tem, e a dinâmica é gritar o nome, não acertar o táxon. As
+pistas e as fichas valem para o grupo inteiro.
 
 **As pistas ficam na tela na revelação**, ao lado do bicho. É ali que a sala
 liga o que ouviu ao que está vendo; sumir com elas na hora do acerto jogaria

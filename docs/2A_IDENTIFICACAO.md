@@ -57,29 +57,30 @@ Sem penalidade. Sem timer visível — só a barra de calibração, suave.
 - Turvo: sprite escuro e borrado. Revelado: gradiente de contraluz do farol + brilho na borda superior.
 - Escala relativa correta: tartaruga pequena, jubarte não cabe inteira — entra e passa. Comportamento por espécie: tartaruga rema devagar; jubarte passa lenta e enorme com cauda subindo; peixe-boi paira e sobe pra respirar; manta plana "voa" batendo as asas.
 
-## Espécies (provisórias — a professora confirma)
-O peixe-boi e a arraia-manta saíram: espécie específica demais pra a plateia
-gritar o nome. Entraram golfinho e tubarão, que qualquer criança reconhece.
-As pistas foram refeitas mais fáceis, mantendo a ordem mediana → fácil.
+## Espécies
+Nomes GENÉRICOS: a plateia grita "tartaruga", não "tartaruga-verde". Nome de
+espécie pede uma precisão que ela não tem, e a dinâmica é reconhecer o bicho.
+As pistas e as fichas valem para o grupo inteiro. A primeira pista sai junto
+com o contato; as outras duas a cada 7 s.
 
-1. Tartaruga-verde · recife, 20 m · aceitos: tartaruga, tartaruga-verde, aruanã · cache +50.000
+1. Tartaruga · recife, 20 m · aceitos: tartaruga, tartaruga marinha · +50.000
    - "Réptil que vive no mar e precisa subir para respirar."
-   - "Põe os ovos na areia da praia onde ela mesma nasceu."
+   - "Põe os ovos na areia da praia."
    - "Tem casco e nada com quatro nadadeiras."
 2. Golfinho · aberto, 15 m · aceitos: golfinho, boto, delfim · +60.000
    - "Mamífero que vive em grupo e respira por um orifício no alto da cabeça."
    - "Usa sons para se orientar e achar comida na água escura."
-   - "Tem focinho alongado, salta fora d'água e acompanha barcos."
+   - "Tem focinho alongado e salta fora d'água."
 3. Tubarão · aberto, 30 m · aceitos: tubarão, cação · +60.112
    - "Peixe com esqueleto de cartilagem, e não de osso."
    - "Troca os dentes a vida inteira: atrás de cada fileira vem outra."
    - "Barbatana triangular nas costas cortando a superfície."
-4. Baleia-jubarte · aberto, 40 m · aceitos: baleia, jubarte, baleia-jubarte · +70.000
-   - "O maior animal desta expedição. Mamífero, e respira na superfície."
-   - "Vem da Antártida até a costa da Bahia todo inverno para ter filhotes."
-   - "Solta um jato ao respirar e canta embaixo d'água."
+4. Baleia · aberto, 40 m · aceitos: baleia · +70.000
+   - "Mamífero enorme. O maior animal desta expedição."
+   - "Sobe para respirar e solta um jato visível."
+   - "Tem cauda horizontal e bate nela para nadar."
 
-Fichas correspondentes em fichas.json, mesma regra.
+Fichas correspondentes em fichas.json, também genéricas.
 
 ## Painel cache
 Contador grande com rolagem de dígitos (odômetro), rótulo `CACHE DE ESPÉCIES`, barra de progresso, grade de 4 slots preenchidos com a silhueta pequena de cada espécie identificada. Aberto durante toda a ident, canto superior direito da área central — medir colisão com câmera grande e legenda a 1366×768.
