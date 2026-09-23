@@ -168,7 +168,7 @@
     ]
   },
   "dossie": {
-    "duracaoMs": 64656,
+    "duracaoMs": 64440,
     "linhas": [
       {
         "inicio": 0,
@@ -236,7 +236,7 @@
       },
       {
         "inicio": 60690,
-        "fim": 63498
+        "fim": 63282
       }
     ]
   },

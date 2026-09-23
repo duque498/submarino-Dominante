@@ -462,7 +462,10 @@
             "texto": "Tripulação... preciso de vocês.",
             "fala": [
               "Tripulação.",
-              "Preciso de vocês."
+              {
+                "texto": "Preciso de vocês, agora.",
+                "cortarApos": 1.3
+              }
             ],
             "prosodia": {
               "dinamica": "preservada"

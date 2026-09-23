@@ -266,7 +266,19 @@ export type Linha =
        * NAO serve pra reescrever a fala: sao as mesmas palavras, na mesma
        * ordem, na grafia que o sintetizador entende.
        */
-      fala?: string | string[]
+      fala?:
+        | string
+        | Array<
+            | string
+            /**
+             * `cortarApos` em segundos: sintetiza este texto e joga fora o
+             * resto. E a saida pra palavra que o modelo relaxa quando ela e a
+             * ULTIMA da frase — com uma palavra de apoio depois dela ela sai
+             * inteira, e a palavra de apoio some no corte. O ponto vem do
+             * envelope de energia, medido uma vez.
+             */
+            | { texto: string; cortarApos?: number }
+          >
       acoes?: Acao[]
       enfase?: EnfaseLinha
       prosodia?: { rate?: string; pitch?: string; dinamica?: 'preservada' }

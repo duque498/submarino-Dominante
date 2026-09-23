@@ -145,7 +145,7 @@ class Fala:
         texto: str,
         prosodia: dict | None = None,
         pausa_depois: int = 0,
-        falado: list[str] | None = None,
+        falado: list[tuple[str, float | None]] | None = None,
     ):
         self.pasta = pasta
         self.grupo = grupo
@@ -153,7 +153,7 @@ class Fala:
         # `texto` é o que vai pra tela; `pedacos` é o que vai pro sintetizador,
         # um ou mais. Quando a linha não pede grafia própria, é o texto inteiro.
         self.texto = texto.strip()
-        self.pedacos = falado or [texto.strip()]
+        self.pedacos = falado or [(texto.strip(), None)]
         # rate/pitch desta linha, sobrescrevendo o da turma. Genérico: vale pra
         # qualquer cena de qualquer turma.
         self.prosodia = prosodia or {}
@@ -166,7 +166,7 @@ class Fala:
     @property
     def falado(self) -> str:
         """Os pedaços juntos, só pra listagem e log."""
-        return " ".join(self.pedacos)
+        return " ".join(t for t, _ in self.pedacos)
 
 
 def texto_da_linha(linha) -> str:
@@ -183,7 +183,7 @@ def texto_da_linha(linha) -> str:
     return str(linha or "")
 
 
-def fala_da_linha(linha) -> list[str] | None:
+def fala_da_linha(linha) -> list[tuple[str, float | None]] | None:
     """
     A grafia que vai pro sintetizador, quando ela difere da que vai pra tela.
 
@@ -195,7 +195,7 @@ def fala_da_linha(linha) -> list[str] | None:
     if isinstance(linha, dict):
         f = linha.get("fala")
         if isinstance(f, str) and f.strip():
-            return [f.strip()]
+            return [(f.strip(), None)]
         # Lista = a MESMA frase dita em pedaços, com uma batida entre eles.
         #
         # Nenhuma pontuação produz pausa dentro de uma frase no kokoro —
@@ -204,7 +204,23 @@ def fala_da_linha(linha) -> list[str] | None:
         # é sintetizar os pedaços separados e emendar com silêncio, que é o
         # que a concatenação já faz entre falas.
         if isinstance(f, list):
-            pedacos = [str(x).strip() for x in f if str(x).strip()]
+            pedacos: list[tuple[str, float | None]] = []
+            for x in f:
+                # Um pedaço pode trazer `cortarApos`: sintetiza um texto mais
+                # longo e joga fora o resto. É a saída pra uma palavra que o
+                # modelo relaxa quando ela é a ÚLTIMA da frase — com uma
+                # palavra de apoio depois dela, ela sai inteira, e a palavra de
+                # apoio some no corte. O ponto de corte é medido no envelope de
+                # energia, uma vez; o modelo é determinístico (conferido: o
+                # mesmo texto dá os mesmos bytes), então ele não escorrega.
+                if isinstance(x, dict):
+                    t = str(x.get("texto") or "").strip()
+                    if not t:
+                        continue
+                    corte = x.get("cortarApos")
+                    pedacos.append((t, float(corte) if corte else None))
+                elif str(x).strip():
+                    pedacos.append((str(x).strip(), None))
             if pedacos:
                 return pedacos
     return None
@@ -604,6 +620,26 @@ def aplicar_filtro(
     rodar(comando, "filtro de intercomunicador")
 
 
+def cortar(origem: Path, destino: Path, segundos: float):
+    """
+    Corta o áudio em `segundos`, com um fade de 20 ms pra não estalar.
+
+    Cortar no seco deixa um clique: a onda para no meio de um ciclo e o
+    alto-falante tem que pular pro zero de uma vez.
+    """
+    rodar(
+        [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", str(origem),
+            "-t", f"{segundos:.3f}",
+            "-af", f"afade=t=out:st={max(0.0, segundos - 0.02):.3f}:d=0.02",
+            "-ar", str(TAXA), "-ac", str(CANAIS), "-b:a", BITRATE,
+            str(destino),
+        ],
+        "corte do pedaço",
+    )
+
+
 def gerar_silencio(destino: Path, ms: int = MS_SILENCIO):
     rodar(
         [
@@ -791,8 +827,9 @@ def main() -> int:
             # equalizacao. Guardando o CRU em separado, mexer no filtro passa a
             # ser so um ffmpeg por linha: segundos em vez de meia hora.
             pedacos: list[Path] = []
-            for pedaco in fala.pedacos:
-                assinatura_crua = f"{pedaco}|{perfil}"
+            for pedaco, cortar_apos in fala.pedacos:
+                sufixo_corte = f"|corte:{cortar_apos:.3f}" if cortar_apos else ""
+                assinatura_crua = f"{pedaco}|{perfil}{sufixo_corte}"
                 chave_crua = hashlib.sha1(assinatura_crua.encode("utf-8")).hexdigest()
                 bruto = CACHE_DIR / f"cru-{chave_crua}.mp3"
 
@@ -817,7 +854,11 @@ def main() -> int:
                         gerados += 1
                     else:
                         print(f"  refiltrando: {pedaco[:58]}")
-                    aplicar_filtro(bruto, destino, com_filtro, args.motor, pitch_extra, dinamica)
+                    fonte = bruto
+                    if cortar_apos:
+                        fonte = CACHE_DIR / f"corte-{chave_crua}.mp3"
+                        cortar(bruto, fonte, cortar_apos)
+                    aplicar_filtro(fonte, destino, com_filtro, args.motor, pitch_extra, dinamica)
                     cache[chave] = assinatura
                 pedacos.append(destino)
             caminhos[id(fala)] = pedacos
