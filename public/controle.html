@@ -281,6 +281,7 @@
         color: rgba(120, 190, 205, 0.5);
       }
       [data-modo='espera'] { --acento: var(--verde); }
+      [data-modo='ativacao'] .modo__vazio { color: var(--ambar); }
       [data-modo='quiz'],
       [data-modo='identificacao'],
       [data-modo='hidrofone'] { --acento: var(--ambar); }
@@ -697,6 +698,7 @@
       var MS_COOLDOWN = 1200
 
       var NOME_DO_MODO = {
+        ativacao: 'ativação',
         espera: 'em espera',
         apresentacao: 'apresentação',
         quiz: 'quiz',
@@ -872,9 +874,13 @@
         // Sem nenhuma tecla de modo, a área fica com uma frase e nada mais:
         // uma grade de botões apagados só faria o operador procurar o que
         // apertar numa cena em que não há nada pra apertar.
-        var semTeclas = modo === 'mergulho'
+        var semTeclas = modo === 'ativacao' || modo === 'mergulho'
         $('modo-cabecalho').textContent =
           numeros && temVF ? 'verdadeiro ou falso' : NOME_DO_MODO[modo] || modo
+        $('bloco-vazio').textContent =
+          modo === 'ativacao'
+            ? 'este passo é no Chromebook — alguém precisa apertar uma tecla lá'
+            : 'nada a fazer — aguarde'
         $('bloco-vazio').classList.toggle('oculto', !semTeclas)
         $('modo-cabecalho').classList.toggle('oculto', semTeclas)
         $('bloco-espera').classList.toggle('oculto', modo !== 'espera')

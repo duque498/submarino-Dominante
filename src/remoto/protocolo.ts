@@ -23,7 +23,12 @@ export type Pong = { id: string; turma: string; cenaId: string }
 
 /** Em que "tela" o celular deve se desenhar. Sai do tipo da cena. */
 export type ModoRemoto =
-  /** A primeira cena: tudo ligado e parado, esperando o → que inicia a IA. */
+  /**
+   * Antes do gesto físico: o canal já está aberto e o PIN à vista, mas o
+   * celular não tem o que fazer — o passo é no teclado do Chromebook.
+   */
+  | 'ativacao'
+  /** Já ativado e parado, esperando o → que inicia a IA. Daqui o celular age. */
   | 'espera'
   | 'apresentacao'
   | 'quiz'

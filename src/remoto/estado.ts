@@ -124,21 +124,22 @@ function teclasDaCena(cena: Cena, modo: ModoRemoto): string[] {
 }
 
 /**
- * O estado publicado nos primeiros instantes, antes de o Player montar.
+ * O estado publicado enquanto a tela de ativação está no ar.
  *
- * Existe pra o celular poder conectar imediatamente: o canal abre no
- * carregamento da página, e seria esquisito o operador digitar o código e o
- * celular dizer que não achou ninguém por causa de dois frames de React.
+ * O canal abre com a página, então o celular já conecta aqui e vê o PIN
+ * valendo. Sem teclas de propósito: o gesto que libera o áudio tem que ser
+ * físico, no Chromebook, e o celular não consegue dar esse gesto (ver o
+ * `aceitaTeclas` no useRemoto).
  */
-export function estadoDeCarregamento(turma: string): EstadoRemoto {
+export function estadoDeAtivacao(turma: string): EstadoRemoto {
   return {
     turma,
-    cenaId: 'carregando',
-    cenaTitulo: 'CARREGANDO',
+    cenaId: 'ativacao',
+    cenaTitulo: 'ATIVAÇÃO',
     proximaTitulo: 'espera',
-    instrucao: 'Carregando os sistemas de bordo...',
+    instrucao: 'Aperte qualquer tecla NO TECLADO do Chromebook pra ativar os sistemas',
     teclasDisponiveis: [],
-    modo: 'espera',
+    modo: 'ativacao',
     audioDestravado: false,
   }
 }

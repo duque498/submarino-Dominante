@@ -1887,63 +1887,58 @@ por desenho** e não é segredo — ela está no HTML que qualquer um baixa. Que
 protege a sessão é o código de 4 dígitos, que muda a cada carregamento e só
 aparece na tela do Chromebook.
 
-### A cena de espera, e por que o áudio é separado de começar
+### Duas telas antes de começar, e por quê
 
-A primeira cena de toda turma é `espera`: o submarino ligado e parado, com o
-nome da turma, o PIN grande e o estado do canal. Nada acontece até o operador
-apertar **→**.
+Antes era uma tecla só, e ela fazia duas coisas ao mesmo tempo: liberava o
+áudio do navegador **e** começava a apresentação. Na prática isso significava
+que o operador não podia encostar na máquina — um clique pra pôr em tela cheia,
+com a plateia entrando, acordava a IA no meio da arrumação.
 
-Ela existe porque antes disso uma tecla só fazia duas coisas ao mesmo tempo —
-liberar o áudio do navegador e **começar** a apresentação. Na prática isso
-significava que o operador não podia encostar na máquina: um clique pra pôr em
-tela cheia, com a plateia entrando, acordava a IA no meio da arrumação.
+Agora são dois passos:
 
-Agora são duas coisas separadas:
+**1. `PRESSIONE QUALQUER TECLA`** — a tela de sempre, com o PIN do celular.
+Qualquer gesto físico serve: tecla, clique, toque. Ele **não** começa nada: só
+tira o cadeado do áudio e passa pro standby.
 
-- **Liberar o áudio é invisível.** Qualquer gesto de verdade na página —
-  tecla, clique, toque — destrava as duas camadas de som e some. Não há tela
-  pedindo isso, e o operador nem percebe que aconteceu.
-- **Começar é só o →.** Na cena de espera, clique, toque, Enter e espaço não
-  fazem nada. Só a seta direita, do teclado ou do celular.
+**2. Standby** — o submarino ligado e parado, com a turma, o PIN grande e o
+estado do canal. Aqui clique, toque, Enter e espaço não fazem nada. Só a **seta
+direita** inicia, e ela pode vir do teclado **ou do celular**.
 
-O canal do celular abre junto com a página, antes de tudo isso, então o PIN já
-está valendo na primeira tela.
+É a cena `espera`, primeira do roteiro das três turmas. O validador exige que
+ela exista, que seja só uma, e na primeira posição.
 
 ### O passo que não dá pra fazer pelo celular
 
-Um detalhe do Chrome que decide o desenho inteiro: uma tecla **criada por
-script** — que é o que o celular manda — não conta como gesto do usuário. Se
-ela liberasse o áudio, o `AudioContext` ficaria suspenso e a apresentação
-rodaria **muda do começo ao fim, sem nenhum aviso**, e só dava pra consertar
-recarregando.
+Um detalhe do Chrome decide o desenho: uma tecla **criada por script** — que é
+o que o celular manda — não conta como gesto do usuário. Se ela passasse da
+tela de ativação, o `AudioContext` ficaria suspenso e a apresentação rodaria
+**muda do começo ao fim, sem nenhum aviso**, só consertável recarregando.
 
-Por isso, se o → chegar do celular e ninguém tiver encostado no Chromebook
-ainda, a apresentação **não começa**. Aparece um recado discreto no rodapé da
-tela de espera, por 3 segundos, e o celular mostra o mesmo em âmbar: *toque na
-tela do Chromebook uma vez, depois aperte →*. Um toque resolve, e nunca mais
-aparece na sessão.
+Por isso o `cmd` do celular é ignorado enquanto a tela 1 está no ar, e o
+celular mostra, em vez dos botões: *"este passo é no Chromebook — alguém
+precisa apertar uma tecla lá"*. Assim que alguém encosta na máquina, o celular
+vira pro standby sozinho e o **→ AVANÇAR** acende.
 
-Se o → vier do teclado físico, o próprio keydown já destrava e inicia no mesmo
-gesto — esse aviso nunca aparece.
-
-> Uma nota pra quem for mexer nisso: o app **não** usa
+> Duas redes de segurança que continuam no código mesmo sem aparecer no caminho
+> normal: a cena de espera recusa um → que chegue sem nenhum gesto físico na
+> página (com um recado de 3 s nos dois lados), e o app **não** usa
 > `navigator.userActivation.hasBeenActive`, que seria a resposta oficial do
-> navegador. Medido aqui, ele já nasce `true` numa página que ninguém tocou. Um
-> falso positivo custa a apresentação inteira muda; um falso negativo custa um
-> toque a mais. O app conta só os gestos que ele mesmo viu chegar.
+> navegador — medido aqui, ele já nasce `true` numa página que ninguém tocou.
+> Um falso positivo custa a apresentação inteira muda; um falso negativo custa
+> um toque a mais.
 
 ### O que o F11 faz (e não faz)
 
 Se o operador puser em tela cheia pelo **F11 do navegador**, esse atalho é do
-Chrome e pode não chegar na página — então pode não contar como gesto. Não é
-problema: qualquer clique na tela conta, e a cena de espera não avança com
-clique. **A receita do dia é simples: abriu, clicou uma vez na tela, pronto.**
+Chrome e pode não chegar na página. Não é problema: um clique na tela também
+passa da tela 1, e o standby não avança com clique. **A receita do dia é uma
+frase: abriu, apertou uma tecla, esperou a turma, →.**
 
 ### O código de 4 dígitos### O código de 4 dígitos
 
 Aparece em dois lugares:
 
-- na cena de **espera**, em número grande, antes de começar;
+- na tela `PRESSIONE QUALQUER TECLA` e no **standby**, antes de começar;
 - no overlay de ajuda, tecla **H**, junto com o estado da conexão.
 
 Recarregar a página do Chromebook sorteia um código novo e derruba o celular
@@ -1988,11 +1983,11 @@ deixar o 4G ligado.
 
 No Chromebook:
 
-1. Abra o `dist/index.html?turma=...`. Ele para na cena de **espera**.
-2. **Clique uma vez na tela** (e ponha em tela cheia, se quiser). Isso libera o
-   áudio e não começa nada.
-3. Anote o **código de 4 dígitos** que está na tela.
-4. Quando a turma estiver pronta, **→** inicia a IA.
+1. Abra o `dist/index.html?turma=...`. Ele para em `PRESSIONE QUALQUER TECLA`.
+2. Anote o **código de 4 dígitos** que está na tela.
+3. **Aperte qualquer tecla** (e ponha em tela cheia, se quiser). Isso libera o
+   áudio e põe o submarino em **standby** — não começa nada.
+4. Quando a turma estiver pronta, **→** inicia a IA. Pode ser pelo celular.
 
 No celular:
 
@@ -2000,8 +1995,8 @@ No celular:
 5. Toque na turma, digite o código, **CONECTAR**.
 6. Se aparecer *"Nenhum submarino respondeu"*: o código está errado, a turma
    está errada, ou o Chromebook está sem internet. Confira com **H**.
-7. Se o celular disser que *o áudio do Chromebook ainda está travado*, alguém
-   precisa encostar uma vez na tela da máquina. É o passo do item 2.
+7. Se o celular disser que *este passo é no Chromebook*, ninguém apertou a
+   tecla do item 3 ainda. Assim que apertarem, o celular acende sozinho.
 
 Durante:
 
@@ -2056,7 +2051,7 @@ manda seta pra direita e pra esquerda — o suficiente pra apresentação inteir
 public/audio/        mp3 fora do bundle: sfx/ e uma pasta por turma
 public/controle.html  a pagina do celular: HTML+CSS+JS numa folha so
 src/
-  App.tsx            seleção de turma, destrave do áudio, monta o Player
+  App.tsx            seleção de turma, tela de ativação, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
   cenas/             um componente por tipo de cena (Espera, Quiz, VF, Combate,
                      Olho, Identificacao, Emergencia, Hidrofone, Fim)
