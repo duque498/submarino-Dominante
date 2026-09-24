@@ -64,16 +64,28 @@ function audiosDoRoteiro(roteiro: Roteiro): string[] {
 
 export default function App() {
   const [turma, setTurma] = useState<Turma | null>(turmaDaUrl)
-  const [ativado, setAtivado] = useState(false)
   /**
    * Código do controle remoto, sorteado UMA vez por carregamento da página.
    *
-   * Em estado e não em módulo: assim ele aparece na tela de ativação e no
+   * Em estado e não em módulo: assim ele aparece na cena de espera e no
    * overlay H com o mesmo valor que o canal usa, e recarregar a página troca
    * o código — que é o que invalida um celular que ficou pra trás.
    */
   const [codigo] = useState(gerarCodigo)
-  const [carregando, setCarregando] = useState(false)
+  /** Os mp3 da turma já estão prontos? É o que libera o → da cena de espera. */
+  const [carregado, setCarregado] = useState(false)
+  /** O navegador liberou o áudio. Publicado pro celular e mostrado no H. */
+  const [audioDestravado, setAudioDestravado] = useState(false)
+  /**
+   * Passou da tela de ativação?
+   *
+   * São dois passos de propósito, e cada um resolve um problema diferente:
+   * ATIVAR é o gesto que o Chrome exige pra liberar o som, e tem que ser
+   * físico, nesta máquina; INICIAR é a ordem de começar a apresentação, e essa
+   * pode vir do celular. Juntar os dois numa tecla só — como era antes — fazia
+   * o operador não poder encostar no Chromebook sem acordar a IA.
+   */
+  const [ativado, setAtivado] = useState(false)
   // Uma instância só pra toda a sessão: o desbloqueio do áudio mora nela.
   const engine = useRef(new AudioEngine()).current
 
@@ -87,10 +99,57 @@ export default function App() {
       : { roteiro: bruto as Roteiro, problemas: [] as string[] }
   }, [turma])
 
-  const ativar = useCallback(async () => {
-    if (!resultado?.roteiro || carregando) return
-    setCarregando(true)
-    await engine.desbloquear()
+  /**
+   * Houve ALGUM gesto físico nesta página?
+   *
+   * É a pergunta que o Chrome chama de "sticky activation", e é o que decide
+   * se o áudio pode tocar. Em ref e não em estado porque a resposta precisa
+   * estar certa DENTRO do mesmo evento em que é consultada — um estado do
+   * React só chegaria no render seguinte.
+   *
+   * Aqui NÃO usamos `navigator.userActivation.hasBeenActive`, que seria a
+   * resposta oficial do navegador: medido neste Chromium, ele já nasce `true`
+   * numa página que ninguém tocou. Um falso positivo aqui custa a apresentação
+   * inteira rodando muda e sem aviso; um falso negativo custa ao operador um
+   * toque a mais na tela. Entre os dois, ficamos com o que observamos
+   * diretamente — um evento confiável que chegou até esta página.
+   */
+  const refGestoFisico = useRef(false)
+  const houveGestoFisico = useCallback(() => refGestoFisico.current, [])
+
+  // Destravar o áudio virou invisível: acontece no primeiro gesto de verdade,
+  // qualquer um, sem tela dedicada e sem pedir nada. Em CAPTURA porque este
+  // listener precisa rodar antes do useTeclado — é ele que marca o gesto que a
+  // cena de espera vai consultar no mesmo evento.
+  useEffect(() => {
+    if (audioDestravado) return
+    const liberar = (evento: Event) => {
+      // Evento fabricado por script (o `cmd` do celular) NÃO conta como gesto
+      // do usuário pro Chrome. Se contasse aqui, o AudioContext ficaria
+      // suspenso e a apresentação inteira rodaria muda, sem nenhum aviso.
+      if (!evento.isTrusted) return
+      refGestoFisico.current = true
+      // Sai da tela de ativação AGORA, sem esperar o desbloqueio terminar: o
+      // que o operador pediu foi passar de tela, e o áudio é assunto de bastidor.
+      setAtivado(true)
+      void engine.desbloquear().then(() => setAudioDestravado(true))
+    }
+    const gestos = ['keydown', 'pointerdown', 'click', 'touchstart'] as const
+    for (const nome of gestos) {
+      window.addEventListener(nome, liberar, { capture: true, passive: true })
+    }
+    return () => {
+      for (const nome of gestos) {
+        window.removeEventListener(nome, liberar, { capture: true })
+      }
+    }
+  }, [audioDestravado, engine])
+
+  // Preparar os áudios não precisa de gesto nenhum (baixar e decodificar são
+  // livres; só TOCAR é que exige). Então isto roda no carregamento da página, e
+  // quando o operador chega no → já está tudo pronto.
+  const preparar = useCallback(async () => {
+    if (!resultado?.roteiro) return
     const audios = audiosDoRoteiro(resultado.roteiro)
     // As silhuetas são amostradas aqui, não na hora de morfar: dez getImageData
     // no meio da apresentação seriam um engasgo visível.
@@ -113,14 +172,15 @@ export default function App() {
         `sfx ${sfxProprio > 0 ? 'de arquivo' : 'sintético'} · ` +
         `voz ${AUDIO.voz.ganho} (${dbVoz} dB)`,
     )
-    // Bipe de confirmação: a primeira tecla já produz som. Serve de UX e de
-    // diagnóstico — se isso não sai, o problema é o áudio da máquina, não o app.
-    engine.tocarSfx('ok')
-    setAtivado(true)
-  }, [resultado, carregando, engine])
+    setCarregado(true)
+  }, [resultado, engine])
+
+  useEffect(() => {
+    void preparar()
+  }, [preparar])
 
   // O receptor mora AQUI e não no Player de propósito: ele precisa estar no ar
-  // antes do gesto inicial, junto com o PIN que a tela de ativação mostra. O
+  // antes de o Player montar, junto com o PIN que a cena de espera mostra. O
   // Player, quando monta, só empresta a ele quem sabe ler a cena.
   const refLeitor = useRef<(() => EstadoRemoto | null) | null>(null)
   const refComandoRemoto = useRef<((texto: string) => void) | null>(null)
@@ -129,10 +189,14 @@ export default function App() {
     turma: turma ?? '',
     codigo,
     ativo: turma !== null,
+    // Na tela de ativação o celular não manda tecla nenhuma: o gesto que libera
+    // o áudio tem que ser físico, e um `cmd` daqui gastaria a tela sem
+    // desbloquear nada. Depois dela, tudo que o celular pode fazer é filtrado
+    // pela lista de teclas de cada cena.
     aceitaTeclas: ativado,
     aoComando: (texto) => refComandoRemoto.current?.(texto),
     lerEstado: () =>
-      refLeitor.current ? refLeitor.current() : estadoDeAtivacao(turma ?? ''),
+      ativado && refLeitor.current ? refLeitor.current() : estadoDeAtivacao(turma ?? ''),
   })
 
   const remoto = useMemo<ConexaoRemota>(
@@ -149,11 +213,12 @@ export default function App() {
     [statusRemoto, publicarRemoto],
   )
 
-  // Sair da ativação é uma troca de estado que o celular precisa ver na hora:
-  // é o instante em que os botões dele deixam de estar apagados.
+  // Os instantes em que o celular precisa saber na hora: quando alguém ativa o
+  // Chromebook (a tela dele deixa de dizer "é no teclado de lá") e quando os
+  // áudios ficam prontos (o → acende).
   useEffect(() => {
     publicarRemoto()
-  }, [publicarRemoto, ativado])
+  }, [publicarRemoto, ativado, carregado, audioDestravado])
 
   if (!turma) return <TelaSelecao aoEscolher={setTurma} />
 
@@ -161,18 +226,20 @@ export default function App() {
     return <TelaErro turma={turma} problemas={resultado.problemas} />
   }
 
-  if (!ativado)
-    return (
-      <TelaAtivacao
-        carregando={carregando}
-        aoAtivar={ativar}
-        codigo={codigo}
-        remoto={statusRemoto}
-      />
-    )
+  if (!ativado) {
+    return <TelaAtivacao codigo={codigo} carregado={carregado} remoto={statusRemoto} />
+  }
 
   return (
-    <Player roteiro={resultado!.roteiro!} engine={engine} codigo={codigo} remoto={remoto} />
+    <Player
+      roteiro={resultado!.roteiro!}
+      engine={engine}
+      codigo={codigo}
+      remoto={remoto}
+      carregado={carregado}
+      audioDestravado={audioDestravado}
+      houveGestoFisico={houveGestoFisico}
+    />
   )
 }
 
@@ -209,60 +276,41 @@ function TelaSelecao({ aoEscolher }: { aoEscolher: (turma: Turma) => void }) {
 }
 
 /**
- * Gesto obrigatório: o Chrome só libera áudio depois de uma interação.
- * Qualquer tecla serve, então aqui o listener é cru — não passa pelo useTeclado.
+ * A tela do gesto: "pressione qualquer tecla".
+ *
+ * Ela NÃO inicia a apresentação — só tira o cadeado do áudio e põe o
+ * submarino em standby. Não tem listener próprio: quem escuta é o efeito lá em
+ * cima, que já precisa ouvir todo gesto físico da página pra destravar o som.
+ * Dois listeners pro mesmo evento seriam duas regras pra manter em dia.
  */
 function TelaAtivacao({
-  carregando,
-  aoAtivar,
   codigo,
+  carregado,
   remoto,
 }: {
-  carregando: boolean
-  aoAtivar: () => void
-  /** Código do controle remoto desta sessão, pra digitar no celular. */
   codigo: string
+  carregado: boolean
   remoto: StatusRemoto
 }) {
-  useEffect(() => {
-    if (carregando) return
-    // `isTrusted` separa o dedo de uma pessoa de um evento feito por script. O
-    // Chrome só libera o áudio no primeiro; um evento sintético aqui gastaria
-    // a tela de ativação SEM desbloquear o AudioContext, e a voz não sairia
-    // mais. O celular é barrado antes disso (ver `aceitaTeclas`), e esta linha
-    // é a garantia local: quem lê este listener não precisa confiar no outro.
-    const disparar = (evento: Event) => {
-      if (!evento.isTrusted) return
-      aoAtivar()
-    }
-    window.addEventListener('keydown', disparar)
-    window.addEventListener('pointerdown', disparar)
-    return () => {
-      window.removeEventListener('keydown', disparar)
-      window.removeEventListener('pointerdown', disparar)
-    }
-  }, [carregando, aoAtivar])
-
   return (
     <Hud rota="STANDBY" sonar="DESLIGADO" rodapeEsquerda="submarino domi" remoto={remoto}>
       <div className="centro">
-        {carregando ? (
-          <p className="chamada">carregando sistemas de bordo...</p>
-        ) : (
-          <>
-            <p className="chamada">
-              pressione qualquer tecla
-              <br />
-              para ativar os sistemas de bordo
-            </p>
-            {/* Código do controle pelo celular. Fica aqui porque esta é a
-                única tela que o operador olha com calma antes de começar — no
-                meio da apresentação ele consulta pelo H. */}
-            <p className="codigo-remoto">
-              controle pelo celular · código <strong>{codigo}</strong>
-            </p>
-          </>
-        )}
+        <p className="chamada">
+          pressione qualquer tecla
+          <br />
+          para ativar os sistemas de bordo
+        </p>
+        <p className="dica">
+          {carregado
+            ? 'nada começa ainda — o submarino fica em espera'
+            : 'carregando os áudios da turma...'}
+        </p>
+        {/* Código do controle pelo celular. Fica aqui porque esta é a única
+            tela que o operador olha com calma antes de começar — no meio da
+            apresentação ele consulta pelo H. */}
+        <p className="codigo-remoto">
+          controle pelo celular · código <strong>{codigo}</strong>
+        </p>
       </div>
     </Hud>
   )

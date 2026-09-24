@@ -591,7 +591,23 @@ export type CenaFim = CenaBase & {
   tela: { titulo: string; subtitulo: string; nota?: string }
 }
 
+/**
+ * A primeira cena de toda turma: o submarino ligado e parado, esperando.
+ *
+ * Existe pra separar duas coisas que antes eram a mesma tecla — destravar o
+ * áudio do navegador e COMEÇAR a apresentação. O operador precisa poder clicar
+ * na tela (pra pôr em tela cheia, por exemplo) sem que a IA acorde no meio do
+ * público entrando. Aqui ele clica à vontade; a apresentação só começa no →.
+ *
+ * Não tem áudio nem texto de roteiro: o que ela mostra (turma, PIN, estado dos
+ * sistemas) é do app, não da professora.
+ */
+export type CenaEspera = CenaBase & {
+  tipo: 'espera'
+}
+
 export type Cena =
+  | CenaEspera
   | CenaFala
   | CenaIdentificacao
   | CenaApresentacao

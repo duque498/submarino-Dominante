@@ -3881,3 +3881,57 @@ body {
     opacity: 0.25;
   }
 }
+
+/* --- cena de espera (Fase 6.2) --------------------------------------------
+   A tela de antes de começar. Sem nada piscando: a plateia ainda está
+   entrando, e o que estiver animado aqui vai cansar antes da IA falar. */
+.espera {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+.espera__marca {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: #eafdff;
+}
+.espera__estado {
+  margin: 0 0 1.1rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(120, 190, 205, 0.75);
+}
+.espera__pin {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  color: rgba(120, 190, 205, 0.9);
+}
+.espera__pin strong {
+  font-size: 2.2rem;
+  letter-spacing: 0.3em;
+  color: #38e8ff;
+}
+.espera__remoto,
+.espera__partida {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(120, 190, 205, 0.55);
+}
+.espera__partida {
+  margin-top: 1.1rem;
+  color: rgba(77, 255, 166, 0.8);
+}
+.espera__aviso {
+  margin: 0.9rem 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: #ffc24d;
+}

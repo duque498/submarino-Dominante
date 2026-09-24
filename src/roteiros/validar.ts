@@ -20,6 +20,7 @@ import { CACHE_TOTAL, TURMAS } from './tipos'
 // qual cena e qual campo estao errados, em portugues.
 
 const TIPOS_VALIDOS = [
+  'espera',
   'fala',
   'apresentacao',
   'transicao',
@@ -626,6 +627,10 @@ export function validarRoteiro(dado: unknown): string[] {
     }
 
     switch (cena.tipo) {
+      // A espera não declara nada: ela é o app parado, não conteúdo. O que ela
+      // exige é POSIÇÃO — ver a conferência de posição logo abaixo do laço.
+      case 'espera':
+        break
       case 'fala': {
         if (!ehListaDeLinhas(cena.tela?.linhas)) {
           erros.push(`${onde}: "tela.linhas" precisa ser uma lista de falas nao vazia.`)
@@ -787,6 +792,28 @@ export function validarRoteiro(dado: unknown): string[] {
       }
     }
   })
+
+  // A espera tem que ser a PRIMEIRA cena, e so uma. Ela e o que impede a
+  // apresentacao de comecar num clique acidental: fora da posicao zero, o
+  // clique pra tela cheia cairia direto na primeira fala da IA.
+  const esperas = roteiro.cenas.filter((c) => (c as Cena)?.tipo === 'espera')
+  if (esperas.length === 0) {
+    erros.push(
+      'O roteiro precisa comecar com uma cena { "tipo": "espera" }: e ela que ' +
+        'segura a apresentacao ate o operador apertar a seta direita.',
+    )
+  } else if (esperas.length > 1) {
+    erros.push(
+      `Ha ${esperas.length} cenas do tipo "espera" (${esperas
+        .map((c) => `"${(c as Cena).id}"`)
+        .join(', ')}). So pode existir uma, e na primeira posicao.`,
+    )
+  } else if ((roteiro.cenas[0] as Cena)?.tipo !== 'espera') {
+    erros.push(
+      `A cena "espera" precisa ser a primeira do roteiro, mas a primeira e ` +
+        `"${(roteiro.cenas[0] as Cena)?.id}". Mova-a pro topo da lista.`,
+    )
+  }
 
   // Um reparo que aponta pra um subsistema que nao existe nao acende nada e
   // nao reclama: o operador aperta a tecla no meio da apresentacao e fica sem
