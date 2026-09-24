@@ -12,8 +12,15 @@
 import type { Cena } from '../roteiros/tipos'
 import type { EstadoRemoto, ModoRemoto } from './protocolo'
 
-/** Teclas que existem em qualquer cena. Avançar é a que importa. */
-const SEMPRE = ['ArrowRight', 'ArrowLeft', ' ']
+/**
+ * Teclas que existem em qualquer cena. Avançar é a que importa.
+ *
+ * Escape entra aqui porque é a saída de emergência do operador: fecha o painel
+ * que a IA abriu e tira o Diretor do volante até a próxima cena. É justamente
+ * quando ele está longe do Chromebook, com o celular na mão, que essa tecla
+ * faz mais falta — um painel aberto na hora errada fica na frente da plateia.
+ */
+const SEMPRE = ['ArrowRight', 'ArrowLeft', ' ', 'Escape']
 
 function modoDaCena(cena: Cena, mergulhando: boolean): ModoRemoto {
   // A espera vem antes do mergulho de propósito: ela é a cena parada, e nada
