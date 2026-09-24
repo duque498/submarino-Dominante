@@ -433,19 +433,22 @@
       }
       .secundarias {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.45rem;
         margin-bottom: 0.5rem;
       }
+      /* Rótulo empilhado como no resto, e não lado a lado: com três colunas a
+         375 px de tela, "espaço pular fala" numa linha só não cabe. */
       .secundarias .tecla {
         min-height: 48px;
-        flex-direction: row;
-        gap: 0.4rem;
+        gap: 0.1rem;
+        padding: 0.35rem 0.15rem;
         background: none;
         border-color: rgba(27, 106, 120, 0.45);
         color: var(--fraco);
       }
-      .secundarias .tecla b { font-size: 0.95rem; }
+      .secundarias .tecla b { font-size: 0.9rem; }
+      .secundarias .tecla i { font-size: 0.6rem; }
       .avancar {
         display: block;
         width: 100%;
@@ -662,6 +665,7 @@
         <div class="secundarias">
           <button class="tecla" data-tecla="ArrowLeft"><b>←</b><i>voltar</i></button>
           <button class="tecla" data-tecla=" "><b>espaço</b><i>pular fala</i></button>
+          <button class="tecla" data-tecla="Escape"><b>esc</b><i>fechar painel</i></button>
         </div>
         <button class="avancar" data-tecla="ArrowRight">→ avançar</button>
       </div>

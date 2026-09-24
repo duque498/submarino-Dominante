@@ -2006,8 +2006,11 @@ da cena com a colinha em letra grande (e a próxima cena embaixo, apagada), a
 polegar acha o → AVANÇAR no mesmo ponto.
 
 - O botão **→ AVANÇAR** é 90% da apresentação, então é o maior elemento da
-  página e mora na zona do polegar. `←` e `espaço` ficam logo acima, num par de
-  botões baixos, claramente secundários.
+  página e mora na zona do polegar. `←`, `espaço` e `esc` ficam logo acima,
+  numa fileira de botões baixos, claramente secundários. O **esc** é a saída de
+  emergência: fecha o painel que a IA abriu e tira o Diretor do volante até a
+  próxima cena — é a tecla que mais faz falta justamente quando o operador está
+  longe do Chromebook.
 - A área do meio muda sozinha conforme a cena — no quiz 1–4, no combate os três
   setores com as barras de recarga, casco e contato, na pane as luzes dos
   subsistemas — e **rola por dentro** se precisar, sem nunca empurrar o
