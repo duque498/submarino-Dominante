@@ -517,46 +517,65 @@ function agua(ctx: AudioContext, destino: AudioNode, t: number) {
 }
 
 /**
- * Reserva do rugido que se afasta.
+ * Reserva do rugido, pra quando a gravação não estiver embutida.
  *
- * O bom mesmo é a gravação (`audio/sfx/rugido.mp3`): isto existe pra o caso de
- * ela não estar embutida, e o que ele precisa acertar é o GESTO, não o timbre —
- * um grave que ruge e vai ficando longe. A distância é feita com as duas coisas
- * que a água faz de verdade: o volume cai e o agudo some antes do grave.
+ * O bom mesmo é `audio/sfx/rugido.mp3`; isto existe pro caso de ela não chegar,
+ * e o que ele precisa acertar é o GESTO — um grave que ruge, SUSTENTA, e só
+ * então vai embora.
+ *
+ * A primeira versão disto usava o `envelope()` dos outros efeitos, que é
+ * percussivo: uma rampa exponencial de 74 dB até quase zero. Numa pancada de
+ * 0,2 s isso é certo; num rugido de 4 s, a curva passa quase todo o tempo perto
+ * do fundo. Medido num render offline: -16 dB aos 0,5 s e -45 dB aos 2 s, ou
+ * seja, o comecinho e mais nada. Por isso o ganho aqui é escrito à mão, com
+ * corpo declarado.
  */
 function rugido(ctx: AudioContext, destino: AudioNode, t: number) {
+  const ataque = 0.3
+  /** Até onde ele se sustenta antes de começar a ir embora. */
+  const corpo = 2.6
   const dura = 4.2
 
-  // O corpo: dois graves desafinados. O batimento entre eles é o que dá a
-  // textura de garganta, em vez de uma nota de sintetizador.
-  for (const [hz, fim, ganho] of [
-    [62, 38, 0.5],
-    [93, 57, 0.28],
+  const sustentar = (g: GainNode, pico: number) => {
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(pico, t + ataque)
+    // Só -3 dB ao longo do corpo inteiro: é isso que faz o som DURAR.
+    g.gain.exponentialRampToValueAtTime(pico * 0.7, t + corpo)
+    // A saída em dois trechos, e não num só: uma rampa exponencial direta pro
+    // zero despenca 20 dB no primeiro quarto do caminho, e o que se ouve é um
+    // corte. Passando por um ponto intermediário ela vira uma descida.
+    g.gain.exponentialRampToValueAtTime(pico * 0.1, t + dura - 0.4)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dura)
+  }
+
+  // O corpo: dois graves desafinados descendo. O batimento entre eles é o que
+  // dá textura de garganta, em vez de uma nota de sintetizador.
+  for (const [hz, fim, pico] of [
+    [62, 38, 0.55],
+    [93, 57, 0.34],
   ] as const) {
     const osc = ctx.createOscillator()
     osc.type = 'sawtooth'
     osc.frequency.setValueAtTime(hz, t)
     osc.frequency.exponentialRampToValueAtTime(fim, t + dura)
     const g = ctx.createGain()
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.exponentialRampToValueAtTime(ganho, t + 0.35)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dura)
+    sustentar(g, pico)
     osc.connect(g).connect(destino)
     limpar(osc, g)
     osc.start(t)
     osc.stop(t + dura + 0.1)
   }
 
-  // O ar: ruído filtrado que desce junto. É ele que faz soar animal.
+  // O ar: ruído filtrado que desce junto. É ele que faz soar animal, e não
+  // órgão. O agudo sumindo antes do grave é a assinatura da água.
   const sopro = ctx.createBufferSource()
-  sopro.buffer = ruidoModelado(ctx, dura, (i, n) => (1 - i / n) ** 1.6)
+  sopro.buffer = ruidoModelado(ctx, dura, () => 1)
   const banda = ctx.createBiquadFilter()
   banda.type = 'lowpass'
-  // O agudo sumindo primeiro é a assinatura da distância dentro d'água.
   banda.frequency.setValueAtTime(1800, t)
-  banda.frequency.exponentialRampToValueAtTime(240, t + dura)
+  banda.frequency.exponentialRampToValueAtTime(260, t + dura)
   const gSopro = ctx.createGain()
-  envelope(gSopro, t, 0.3, 0.25, dura)
+  sustentar(gSopro, 0.34)
   sopro.connect(banda).connect(gSopro).connect(destino)
   limpar(sopro, banda, gSopro)
   sopro.start(t)
@@ -680,6 +699,7 @@ export const SEQUENCIA_TESTE: NomeSfx[] = [
   'impacto',
   'pulso',
   'whoosh',
+  'rugido',
   'presenca',
 ]
 
@@ -692,15 +712,17 @@ export function tocarTesteDeSom(ctx: AudioContext, destino: AudioNode): number {
   for (const nome of SEQUENCIA_TESTE) {
     SINTETIZADORES[nome](ctx, destino, t)
     t +=
-      nome === 'presenca'
-        ? 3.7
-        : nome === 'alarme'
-          ? 1.5
-          : nome === 'pressurizacao'
-            ? 1.8
-            : nome === 'pulso'
-              ? 1.3
-              : 0.9
+      nome === 'rugido'
+        ? 4.4
+        : nome === 'presenca'
+          ? 3.7
+          : nome === 'alarme'
+            ? 1.5
+            : nome === 'pressurizacao'
+              ? 1.8
+              : nome === 'pulso'
+                ? 1.3
+                : 0.9
   }
   return Math.round((t - ctx.currentTime) * 1000)
 }

@@ -638,6 +638,21 @@ estiver embutida.
 > tempo — estar alto, estar no momento do acontecimento, e ter o palco vazio.
 > Faltavam as três.
 
+O sintetizado de reserva também já esteve quebrado, e de um jeito que vale
+registrar: ele usava o `envelope()` dos outros efeitos, que é **percussivo** —
+uma rampa exponencial de 74 dB até quase zero. Numa pancada de 0,2 s isso é
+certo; num rugido de 4 s, a curva passa quase todo o tempo perto do fundo.
+Medido num render offline: **−16 dB aos 0,5 s e −45 dB aos 2 s** — o comecinho
+e mais nada. Agora o ganho é escrito à mão, com corpo declarado: ataque em
+0,3 s, sustentação até 2,6 s caindo só 3 dB, e a saída em dois trechos (uma
+rampa direta pro zero despenca 20 dB no primeiro quarto do caminho, e o que se
+ouve é um corte). Medido de novo: **−10,5 dB aos 0,5 s, −13,8 aos 2,5 s,
+−27,6 aos 3,5 s**.
+
+> **Quando a reserva entra?** Quando a gravação não está embutida no
+> `audios.js` — e aí ela entra pra TODOS os efeitos gravados, não só pro
+> rugido. É mais um motivo pro `audios.js` estar versionado.
+
 > Ele toca **sem panorâmico**, e isso não é descuido: `tocarSfx` manda pro
 > caminho sintético todo efeito com `pan`, porque um `<audio>` não tem pra onde
 > apontar. Com lado, tocaria a imitação em vez da gravação — e centralizado é o
@@ -1884,7 +1899,8 @@ somar acima de 1 e distorcer.
 O **→** que inicia a apresentação já dá um **bipe duplo** de confirmação. Se
 esse bipe não sai, o problema é o áudio da máquina, não o app.
 
-Pra um teste completo, `/` e depois `som`: toca os efeitos em sequência e
+Pra um teste completo, `/` e depois `som`: toca os efeitos em sequência —
+inclusive o `rugido`, que fora dali só aparece se a turma vencer o combate — e
 escreve no log o estado do `AudioContext`. `running` significa que o navegador
 liberou o áudio.
 
