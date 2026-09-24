@@ -1,0 +1,91 @@
+{
+  "baleia": {
+    "titulo": "Baleia",
+    "dados": {
+      "Grupo": "Mamífero marinho (cetáceo)",
+      "Respiração": "sobe à superfície e solta um jato",
+      "Cauda": "horizontal, bate de cima pra baixo",
+      "Porte": "as maiores passam de 20 m",
+      "Onde vive": "todos os oceanos"
+    }
+  },
+  "tartaruga": {
+    "titulo": "Tartaruga",
+    "dados": {
+      "Grupo": "Réptil marinho",
+      "Respiração": "pulmões: sobe à superfície",
+      "Corpo": "casco e quatro nadadeiras em remo",
+      "Reprodução": "põe ovos na areia da praia",
+      "Onde vive": "mares tropicais e subtropicais"
+    }
+  },
+  "agua-viva": {
+    "titulo": "Água-viva",
+    "dados": {
+      "Filo": "Cnidaria",
+      "Corpo": "cerca de 95% de água",
+      "Estrutura": "sem cérebro, coração ou pulmões",
+      "Defesa": "cnidócitos, células urticantes",
+      "Locomoção": "contração do sino e correntes"
+    }
+  },
+  "coral": {
+    "titulo": "Coral",
+    "dados": {
+      "Classe": "Anthozoa (animal, não planta)",
+      "Simbiose": "zooxantelas, algas que vivem no tecido",
+      "Gênero endêmico do Brasil": "Mussismilia",
+      "Maior recife do Atlântico Sul": "Abrolhos, BA",
+      "Ameaça": "branqueamento pelo aquecimento da água"
+    }
+  },
+  "peixe": {
+    "titulo": "Peixe-papagaio",
+    "dados": {
+      "Família": "Scaridae",
+      "Alimentação": "algas raspadas do substrato do recife",
+      "Papel no recife": "produz sedimento calcário (areia)",
+      "Ocorrência no Brasil": "recifes do Nordeste e Abrolhos"
+    }
+  },
+  "mergulhador": {
+    "titulo": "Mergulho autônomo",
+    "dados": {
+      "Limite recreativo": "40 m de profundidade",
+      "Ar comprimido": "cerca de 21% O₂ e 78% N₂",
+      "Parada de segurança": "3 min a 5 m na subida",
+      "Risco principal": "doença descompressiva"
+    }
+  },
+  "megalodonte": {
+    "titulo": "Otodus megalodon",
+    "dados": {
+      "Nome": "Otodus megalodon",
+      "Período": "Mioceno–Plioceno (~23 a 3,6 milhões de anos)",
+      "Comprimento estimado": "15 a 20 m (estimativas variam)",
+      "Dentes": "até ~18 cm",
+      "Status": "extinto"
+    },
+    "credito": "[PENDENTE] crédito da imagem — autor, licença e fonte"
+  },
+  "golfinho": {
+    "titulo": "Golfinho",
+    "dados": {
+      "Grupo": "Mamífero marinho (cetáceo)",
+      "Respiração": "orifício no alto da cabeça",
+      "Comportamento": "vive em grupo",
+      "Orientação": "por som",
+      "Onde vive": "todos os oceanos"
+    }
+  },
+  "tubarao": {
+    "titulo": "Tubarão",
+    "dados": {
+      "Grupo": "Peixe cartilaginoso",
+      "Esqueleto": "cartilagem, não osso",
+      "Dentes": "em fileiras, repostos a vida toda",
+      "Respiração": "fendas branquiais",
+      "Onde vive": "todos os oceanos"
+    }
+  }
+}

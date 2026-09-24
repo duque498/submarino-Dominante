@@ -1,0 +1,446 @@
+{
+  "arte-intro": {
+    "duracaoMs": 23496,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1536
+      },
+      {
+        "inicio": 2136,
+        "fim": 8088
+      },
+      {
+        "inicio": 8688,
+        "fim": 10968
+      },
+      {
+        "inicio": 11568,
+        "fim": 18360
+      },
+      {
+        "inicio": 18960,
+        "fim": 20664
+      },
+      {
+        "inicio": 21264,
+        "fim": 23256
+      }
+    ]
+  },
+  "bio-intro": {
+    "duracaoMs": 8544,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2568
+      },
+      {
+        "inicio": 3168,
+        "fim": 5160
+      },
+      {
+        "inicio": 5760,
+        "fim": 8448
+      }
+    ]
+  },
+  "ef-intro": {
+    "duracaoMs": 14040,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2064
+      },
+      {
+        "inicio": 2664,
+        "fim": 4560
+      },
+      {
+        "inicio": 5160,
+        "fim": 11760
+      },
+      {
+        "inicio": 12360,
+        "fim": 13896
+      }
+    ]
+  },
+  "entrada": {
+    "duracaoMs": 30096,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2184
+      },
+      {
+        "inicio": 2784,
+        "fim": 4200
+      },
+      {
+        "inicio": 4800,
+        "fim": 6096
+      },
+      {
+        "inicio": 6696,
+        "fim": 8808
+      },
+      {
+        "inicio": 9408,
+        "fim": 21384
+      },
+      {
+        "inicio": 21984,
+        "fim": 25512
+      },
+      {
+        "inicio": 26112,
+        "fim": 29808
+      }
+    ]
+  },
+  "ident-acerto-1": {
+    "duracaoMs": 2016,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2016
+      }
+    ]
+  },
+  "ident-acerto-2": {
+    "duracaoMs": 2736,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2736
+      }
+    ]
+  },
+  "ident-acerto-3": {
+    "duracaoMs": 2136,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2136
+      }
+    ]
+  },
+  "ident-baleia-pista-1": {
+    "duracaoMs": 3144,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3144
+      }
+    ]
+  },
+  "ident-baleia-pista-2": {
+    "duracaoMs": 2880,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2880
+      }
+    ]
+  },
+  "ident-baleia-pista-3": {
+    "duracaoMs": 2928,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2928
+      }
+    ]
+  },
+  "ident-baleia-sobre": {
+    "duracaoMs": 19224,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4440
+      },
+      {
+        "inicio": 5040,
+        "fim": 13176
+      },
+      {
+        "inicio": 13776,
+        "fim": 19128
+      }
+    ]
+  },
+  "ident-golfinho-pista-1": {
+    "duracaoMs": 4200,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4200
+      }
+    ]
+  },
+  "ident-golfinho-pista-2": {
+    "duracaoMs": 3528,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3528
+      }
+    ]
+  },
+  "ident-golfinho-pista-3": {
+    "duracaoMs": 2736,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2736
+      }
+    ]
+  },
+  "ident-golfinho-sobre": {
+    "duracaoMs": 15048,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4248
+      },
+      {
+        "inicio": 4848,
+        "fim": 9072
+      },
+      {
+        "inicio": 9672,
+        "fim": 14952
+      }
+    ]
+  },
+  "ident-inicio-1": {
+    "duracaoMs": 2136,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2136
+      }
+    ]
+  },
+  "ident-inicio-2": {
+    "duracaoMs": 2808,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2808
+      }
+    ]
+  },
+  "ident-inicio-3": {
+    "duracaoMs": 3144,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3144
+      }
+    ]
+  },
+  "ident-intro": {
+    "duracaoMs": 13776,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3528
+      },
+      {
+        "inicio": 4128,
+        "fim": 6888
+      },
+      {
+        "inicio": 7488,
+        "fim": 13680
+      }
+    ]
+  },
+  "ident-revelado-1": {
+    "duracaoMs": 1992,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1992
+      }
+    ]
+  },
+  "ident-revelado-2": {
+    "duracaoMs": 3528,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3528
+      }
+    ]
+  },
+  "ident-tartaruga-pista-1": {
+    "duracaoMs": 3336,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3336
+      }
+    ]
+  },
+  "ident-tartaruga-pista-2": {
+    "duracaoMs": 2160,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2160
+      }
+    ]
+  },
+  "ident-tartaruga-pista-3": {
+    "duracaoMs": 2736,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2736
+      }
+    ]
+  },
+  "ident-tartaruga-sobre": {
+    "duracaoMs": 19992,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 7896
+      },
+      {
+        "inicio": 8496,
+        "fim": 13776
+      },
+      {
+        "inicio": 14376,
+        "fim": 19896
+      }
+    ]
+  },
+  "ident-tubarao-pista-1": {
+    "duracaoMs": 3120,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3120
+      }
+    ]
+  },
+  "ident-tubarao-pista-2": {
+    "duracaoMs": 4152,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4152
+      }
+    ]
+  },
+  "ident-tubarao-pista-3": {
+    "duracaoMs": 3528,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3528
+      }
+    ]
+  },
+  "ident-tubarao-sobre": {
+    "duracaoMs": 15984,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4272
+      },
+      {
+        "inicio": 4872,
+        "fim": 10176
+      },
+      {
+        "inicio": 10776,
+        "fim": 15888
+      }
+    ]
+  },
+  "pane-entrada": {
+    "duracaoMs": 17784,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1800
+      },
+      {
+        "inicio": 2400,
+        "fim": 5472
+      },
+      {
+        "inicio": 6072,
+        "fim": 7104
+      },
+      {
+        "inicio": 7704,
+        "fim": 9048
+      },
+      {
+        "inicio": 9648,
+        "fim": 11568
+      },
+      {
+        "inicio": 12168,
+        "fim": 14664
+      },
+      {
+        "inicio": 15264,
+        "fim": 17496
+      }
+    ]
+  },
+  "pane-retorno": {
+    "duracaoMs": 10776,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1608
+      },
+      {
+        "inicio": 2208,
+        "fim": 3696
+      },
+      {
+        "inicio": 4296,
+        "fim": 6168
+      },
+      {
+        "inicio": 6768,
+        "fim": 8304
+      },
+      {
+        "inicio": 8904,
+        "fim": 10584
+      }
+    ]
+  },
+  "transicao-2b": {
+    "duracaoMs": 10704,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3048
+      },
+      {
+        "inicio": 3648,
+        "fim": 5016
+      },
+      {
+        "inicio": 5616,
+        "fim": 7392
+      },
+      {
+        "inicio": 7992,
+        "fim": 10560
+      }
+    ]
+  }
+}

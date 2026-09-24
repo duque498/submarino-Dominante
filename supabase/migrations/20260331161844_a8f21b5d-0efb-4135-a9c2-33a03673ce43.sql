@@ -1,2 +1,0 @@
-ALTER TABLE public.signals DROP CONSTRAINT signals_strategy_id_fkey;
-ALTER TABLE public.signals ADD CONSTRAINT signals_strategy_id_fkey FOREIGN KEY (strategy_id) REFERENCES public.strategies(id) ON DELETE SET NULL;

@@ -1,31 +1,52 @@
 <!doctype html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Radar Alpha Bybit — Análise de Trades e Alertas 24/7</title>
-    <meta name="description" content="Plataforma profissional de análise de trades cripto com alertas inteligentes 24/7, integrada à Bybit.">
-    
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#1E90FF" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Radar Alpha" />
-    <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
-    
-    <meta property="og:type" content="website" />
-  
-  <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2c7f2fc6-3c61-4cb3-b8c9-ba16255fa0f8/id-preview-927b0f8c--f675c9c1-6375-4132-b240-fec7a191f932.lovable.app-1774990570631.png">
-  <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2c7f2fc6-3c61-4cb3-b8c9-ba16255fa0f8/id-preview-927b0f8c--f675c9c1-6375-4132-b240-fec7a191f932.lovable.app-1774990570631.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta property="og:title" content="Radar Alpha Bybit — Análise de Trades e Alertas 24/7">
-  <meta name="twitter:title" content="Radar Alpha Bybit — Análise de Trades e Alertas 24/7">
-  <meta property="og:description" content="Plataforma profissional de análise de trades cripto com alertas inteligentes 24/7, integrada à Bybit.">
-  <meta name="twitter:description" content="Plataforma profissional de análise de trades cripto com alertas inteligentes 24/7, integrada à Bybit.">
-</head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Submarino DOMI</title>
+  </head>
   <body>
     <div id="root"></div>
+    <!--
+      Camada A do áudio: gerado por scripts/embutir_audios.py, define
+      window.__AUDIOS com os mp3 em data URL. Script clássico de propósito —
+      é o que carrega via file://. Se o arquivo não existir, o Chrome só
+      registra um 404 e o app cai na camada B sozinho.
+    -->
+    <script>
+      // Injetado por JS em vez de uma tag estática: o Vite tenta resolver
+      // <script src> do index.html em tempo de build e removeria a tag, já que
+      // o audios.js só existe depois que o script Python roda.
+      ;(function () {
+        var tag = document.createElement('script')
+        tag.src = './audios.js'
+        tag.async = false
+        window.__AUDIOS_PRONTO = new Promise(function (resolve) {
+          tag.onload = function () { resolve() }
+          tag.onerror = function () { resolve() }
+        })
+        document.head.appendChild(tag)
+      })()
+    </script>
+    <!--
+      Biblioteca do controle remoto (Fase 6). Mesma tática do audios.js: script
+      clássico injetado por JS, versão PINADA, e falha em silêncio. Sem rede,
+      sem CDN ou com o script bloqueado, `window.supabase` simplesmente não
+      existe e o app roda idêntico ao que era antes — o controle pelo celular é
+      um extra, nunca um requisito.
+    -->
+    <script>
+      ;(function () {
+        var tag = document.createElement('script')
+        tag.src =
+          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js'
+        tag.async = false
+        tag.onerror = function () {
+          console.warn('[remoto] supabase-js não carregou — o controle pelo celular fica off')
+        }
+        document.head.appendChild(tag)
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

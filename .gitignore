@@ -1,24 +1,26 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
 node_modules
 dist
-dist-ssr
+.DS_Store
 *.local
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# cache intermediário do gerador de áudio (um mp3 por linha, por hash)
+scripts/.cache.json
+scripts/.cache/
+
+# modelo neural do motor kokoro (~350 MB). Baixado do release do GitHub na
+# primeira execução do gerar_audios.py; não faz sentido versionar.
+scripts/.modelos/
+
+# Os mp3 finais e o tempos.json FICAM no repositório de propósito: quem
+# apresenta usa Chromebook e não tem terminal pra rodar o gerar_audios.py.
+# public/audios.js continua fora — é a mesma coisa em base64, pesa o triplo e
+# sai do build.
+public/audios.js
+
+# gerado por scripts/embutir_audios.py (camada A) — pesa dezenas de MB
+public/audios.js
+scripts/__pycache__/
+
+# zip do build, gerado so pra entregar a pasta pronta a quem vai apresentar.
+# E o dist/ compactado: conteudo gerado, e dist ja esta ignorado acima.
+*.zip

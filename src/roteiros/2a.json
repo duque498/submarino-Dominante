@@ -1,0 +1,514 @@
+{
+  "turma": "2A",
+  "cenas": [
+    {
+      "id": "entrada",
+      "tipo": "fala",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "audio": "./audio/2a/entrada.mp3",
+      "tela": {
+        "titulo": "SUBMARINO DOMI",
+        "status": "INICIALIZANDO SISTEMAS",
+        "linhas": [
+          "Sistemas de bordo ativados...",
+          "Sonar funcionando.",
+          {
+            "texto": "Rota definida.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "mapa",
+                "args": "costa-sudeste",
+                "ate": {
+                  "linha": 4
+                }
+              }
+            ]
+          },
+          "Bem-vindos ao Submarino DOMI.",
+          "Hoje, nossa missão é embarcar em uma expedição pelas profundezas do oceano, explorando suas formas de vida, suas relações com o ser humano e diferentes maneiras de compreender esse imenso ambiente.",
+          "Tripulação, preparem-se. Nossa expedição vai começar.",
+          "Iniciando apresentação do 2º ano do Ensino Médio A."
+        ]
+      },
+      "log": [
+        "Inicializando núcleo de bordo...",
+        "Checando integridade dos sensores... OK",
+        "Tripulação identificada: 2º ano A",
+        "Plano de mergulho carregado"
+      ],
+      "profundidade": 50
+    },
+    {
+      "id": "bio-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/bio-intro.mp3",
+      "tela": {
+        "titulo": "SETOR LOCALIZADO",
+        "status": "AJUSTANDO PROFUNDIDADE",
+        "linhas": [
+          {
+            "texto": "Primeiro setor localizado: Biologia.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "sonar",
+                "ate": {
+                  "linha": 1
+                }
+              }
+            ]
+          },
+          "Ajustando profundidade...",
+          "Iniciando exploração da vida nos oceanos."
+        ]
+      },
+      "log": [
+        "Carregando setor: BIOLOGIA",
+        "Consultando catálogo de espécies...",
+        "Profundidade alvo: 120 m",
+        "Lanternas externas: ligadas"
+      ]
+    },
+    {
+      "id": "bio",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": {
+        "titulo": "SETOR: BIOLOGIA",
+        "status": "EXPLORAÇÃO EM CURSO"
+      },
+      "orbe": "palco",
+      "formas": [
+        "esfera",
+        "circulo",
+        "triangulo",
+        "letra-d"
+      ],
+      "profundidade": 120
+    },
+    {
+      "id": "arte-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/arte-intro.mp3",
+      "tela": {
+        "titulo": "PRÓXIMO SETOR",
+        "status": "PREPARANDO NOVA EXPLORAÇÃO",
+        "linhas": [
+          "Exploração concluída.",
+          "O oceano também pode ser observado, interpretado e representado de diferentes maneiras.",
+          {
+            "texto": "Mas nem toda cor chega ao fundo.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "espectro",
+                "quando": "fim",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "A luz vermelha se apaga nos primeiros metros. Quanto mais fundo a expedição desce, menos cores a água deixa passar.",
+          "Próximo setor: Arte.",
+          "Preparando nova exploração."
+        ]
+      },
+      "log": [
+        "Setor BIOLOGIA arquivado",
+        "Carregando setor: ARTE",
+        "Indexando registros visuais da expedição...",
+        "Calibrando câmeras de documentação"
+      ]
+    },
+    {
+      "id": "arte",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": {
+        "titulo": "SETOR: ARTE",
+        "status": "EXPLORAÇÃO EM CURSO"
+      },
+      "orbe": "palco",
+      "profundidade": 300,
+      "formas": [
+        "esfera",
+        "peixe",
+        "tartaruga",
+        "baleia",
+        "agua-viva",
+        "onda"
+      ]
+    },
+    {
+      "id": "ident-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/ident-intro.mp3",
+      "profundidade": 450,
+      "tela": {
+        "titulo": "BANCO DE ESPÉCIES",
+        "status": "INTEGRIDADE COMPROMETIDA",
+        "linhas": [
+          "Confirmado. Demonstração de identificação de espécies.",
+          {
+            "texto": "Banco de espécies corrompido durante a descida.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "cache",
+                "quando": "fim",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "Tripulação: vou mostrar o que as câmeras captam. Identifiquem a espécie. Digam o nome assim que souberem."
+        ]
+      },
+      "log": [
+        "ERRO: catálogo de espécies corrompido",
+        "Registros recuperáveis: 0 de 240.112",
+        "Iniciando recalibração assistida",
+        "Câmera de proa: prioridade máxima"
+      ]
+    },
+    {
+      "id": "ident",
+      "tipo": "identificacao",
+      "avanco": "manual",
+      "cameras": false,
+      "orbe": "canto",
+      "tela": {
+        "titulo": "IDENTIFICAÇÃO DE ESPÉCIES",
+        "status": "AGUARDANDO A TRIPULAÇÃO"
+      },
+      "especies": [
+        {
+          "id": "tartaruga",
+          "nome": "Tartaruga",
+          "aceitos": [
+            "tartaruga",
+            "tartarugas",
+            "tartaruga marinha"
+          ],
+          "pistas": [
+            "Réptil que vive no mar e precisa subir para respirar.",
+            "Põe os ovos na areia da praia.",
+            "Tem casco e nada com quatro nadadeiras."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-tartaruga-pista-1.mp3",
+            "./audio/2a/ident-tartaruga-pista-2.mp3",
+            "./audio/2a/ident-tartaruga-pista-3.mp3"
+          ],
+          "curiosidade": [
+            "Tartarugas marinhas nadam nestes mares há mais de cem milhões de anos. Já estavam aqui antes de os dinossauros desaparecerem.",
+            "Passam a vida inteira na água. Só as fêmeas voltam à terra, para enterrar os ovos na areia.",
+            "E a temperatura da areia decide quantos filhotes nascem machos e quantos nascem fêmeas."
+          ],
+          "audioCuriosidade": "./audio/2a/ident-tartaruga-sobre.mp3",
+          "intervaloPistas": 7,
+          "profundidade": 20,
+          "ambiente": "recife",
+          "incrementoCache": 50000
+        },
+        {
+          "id": "golfinho",
+          "nome": "Golfinho",
+          "aceitos": [
+            "golfinho",
+            "golfinhos",
+            "boto",
+            "delfim"
+          ],
+          "pistas": [
+            "Mamífero que vive em grupo e respira por um orifício no alto da cabeça.",
+            "Usa sons para se orientar e achar comida na água escura.",
+            "Tem focinho alongado e salta fora d’água."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-golfinho-pista-1.mp3",
+            "./audio/2a/ident-golfinho-pista-2.mp3",
+            "./audio/2a/ident-golfinho-pista-3.mp3"
+          ],
+          "curiosidade": [
+            "Golfinhos enxergam com som. Soltam estalos e escutam o eco voltar.",
+            "É o mesmo princípio do sonar deste submarino. Eles chegaram primeiro.",
+            "Vivem em grupo e caçam juntos, e muitos têm um assobio próprio que funciona como um nome."
+          ],
+          "audioCuriosidade": "./audio/2a/ident-golfinho-sobre.mp3",
+          "intervaloPistas": 7,
+          "profundidade": 15,
+          "ambiente": "aberto",
+          "incrementoCache": 60000
+        },
+        {
+          "id": "tubarao",
+          "nome": "Tubarão",
+          "aceitos": [
+            "tubarão",
+            "tubarao",
+            "tubarões",
+            "cação",
+            "cacao"
+          ],
+          "pistas": [
+            "Peixe com esqueleto de cartilagem, e não de osso.",
+            "Troca os dentes a vida inteira: atrás de cada fileira vem outra.",
+            "Barbatana triangular nas costas cortando a superfície."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-tubarao-pista-1.mp3",
+            "./audio/2a/ident-tubarao-pista-2.mp3",
+            "./audio/2a/ident-tubarao-pista-3.mp3"
+          ],
+          "curiosidade": [
+            "Tubarões estão nos oceanos há mais de quatrocentos milhões de anos.",
+            "O esqueleto deles não é de osso: é de cartilagem, mais leve, e por isso afundam menos.",
+            "E os dentes se repõem a vida inteira. Atrás de cada fileira já vem outra pronta."
+          ],
+          "audioCuriosidade": "./audio/2a/ident-tubarao-sobre.mp3",
+          "intervaloPistas": 7,
+          "profundidade": 30,
+          "ambiente": "aberto",
+          "incrementoCache": 60112
+        },
+        {
+          "id": "baleia",
+          "nome": "Baleia",
+          "aceitos": [
+            "baleia",
+            "baleias"
+          ],
+          "pistas": [
+            "Mamífero enorme. O maior animal desta expedição.",
+            "Sobe para respirar e solta um jato visível.",
+            "Tem cauda horizontal e bate nela para nadar."
+          ],
+          "audioPistas": [
+            "./audio/2a/ident-baleia-pista-1.mp3",
+            "./audio/2a/ident-baleia-pista-2.mp3",
+            "./audio/2a/ident-baleia-pista-3.mp3"
+          ],
+          "curiosidade": [
+            "Baleias são mamíferos como nós: respiram ar e amamentam os filhotes.",
+            "Os ancestrais delas viveram em terra e voltaram para o mar. É por isso que a cauda bate de cima para baixo, e não de lado como a dos peixes.",
+            "Algumas espécies fazem sons tão graves que atravessam centenas de quilômetros de oceano."
+          ],
+          "audioCuriosidade": "./audio/2a/ident-baleia-sobre.mp3",
+          "intervaloPistas": 7,
+          "profundidade": 40,
+          "ambiente": "aberto",
+          "incrementoCache": 70000
+        }
+      ],
+      "falas": {
+        "inicio": [
+          [
+            "Contato biológico. Câmera um."
+          ],
+          [
+            "Forma em movimento no facho. Identifiquem."
+          ],
+          [
+            "Sensores registram vida. A imagem é o que tenho."
+          ]
+        ],
+        "acerto": [
+          [
+            "Identificação confirmada."
+          ],
+          [
+            "Registro recuperado. Catálogo avançando."
+          ],
+          [
+            "Confere. Dado gravado no banco."
+          ]
+        ],
+        "revelado": [
+          [
+            "Registrado por sensores."
+          ],
+          [
+            "Sem confirmação da tripulação. Arquivando mesmo assim."
+          ]
+        ]
+      },
+      "audio": {
+        "inicio": [
+          "./audio/2a/ident-inicio-1.mp3",
+          "./audio/2a/ident-inicio-2.mp3",
+          "./audio/2a/ident-inicio-3.mp3"
+        ],
+        "acerto": [
+          "./audio/2a/ident-acerto-1.mp3",
+          "./audio/2a/ident-acerto-2.mp3",
+          "./audio/2a/ident-acerto-3.mp3"
+        ],
+        "revelado": [
+          "./audio/2a/ident-revelado-1.mp3",
+          "./audio/2a/ident-revelado-2.mp3"
+        ]
+      },
+      "log": [
+        "Câmera de proa em captação contínua",
+        "Turbidez da água acima do previsto",
+        "Cruzando silhueta com catálogo residual...",
+        "Aguardando confirmação da tripulação"
+      ]
+    },
+    {
+      "id": "ef-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2a/ef-intro.mp3",
+      "tela": {
+        "titulo": "PRÓXIMO SETOR",
+        "status": "INICIANDO EXPLORAÇÃO",
+        "linhas": [
+          {
+            "texto": "Banco de espécies recalibrado.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "cache",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "Nossa expedição continua.",
+          {
+            "texto": "O próximo setor nos leva a uma relação diferente entre o ser humano e o ambiente marinho. Educação Física.",
+            "acoes": [
+              {
+                "tipo": "painel",
+                "nome": "mapa",
+                "args": "abrolhos",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "Iniciando exploração."
+        ]
+      },
+      "log": [
+        "Catálogo de espécies restaurado",
+        "Registros: 240.112 de 240.112",
+        "Carregando setor: EDUCAÇÃO FÍSICA",
+        "Monitorando sinais vitais da tripulação"
+      ]
+    },
+    {
+      "id": "ef",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "tela": {
+        "titulo": "SETOR: EDUCAÇÃO FÍSICA",
+        "status": "EXPLORAÇÃO EM CURSO"
+      },
+      "orbe": "palco",
+      "formas": [
+        "esfera",
+        "mergulhador",
+        "prancha",
+        "onda",
+        "barco"
+      ],
+      "profundidade": 600,
+      "log": [
+        "Medindo resistência da corrente...",
+        "Coluna de água: estável",
+        "Reserva de oxigênio: nominal"
+      ]
+    },
+    {
+      "id": "transicao-2b",
+      "tipo": "transicao",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "destino": "2º ano B",
+      "audio": "./audio/2a/transicao-2b.mp3",
+      "tela": {
+        "linhas": [
+          {
+            "texto": "Setores do 2º ano A explorados com sucesso.",
+            "acoes": [
+              {
+                "tipo": "mergulho",
+                "para": 900
+              }
+            ]
+          },
+          {
+            "texto": "Alterando rota...",
+            "acoes": [
+              {
+                "tipo": "mapa",
+                "marcador": "abrolhos",
+                "ate": "fimCena"
+              }
+            ]
+          },
+          "Destino: 2º ano B.",
+          {
+            "texto": "Preparando transferência da expedição.",
+            "acoes": [
+              {
+                "tipo": "mapa",
+                "marcador": "fernando-de-noronha"
+              }
+            ]
+          }
+        ]
+      },
+      "log": [
+        "Consolidando dados do 2º ano A",
+        "Traçando nova rota...",
+        "Destino travado: 2º ano B",
+        "Transferência de expedição autorizada"
+      ],
+      "profundidade": 900
+    },
+    {
+      "id": "pane",
+      "tipo": "pane",
+      "sfx": "alarme",
+      "subsistemas": [
+        "SONAR",
+        "NAVEGAÇÃO",
+        "COMUNICAÇÃO"
+      ],
+      "estados": [
+        "OFFLINE",
+        "INSTÁVEL",
+        "INTERROMPIDA"
+      ],
+      "falaEntrada": [
+        "Processando informações...",
+        "Analisando dados coletados durante a expedição...",
+        "Atenção.",
+        "Pressão instável.",
+        "Sonar apresentando falhas.",
+        "Sistema de navegação comprometido.",
+        "ALERTA. FALHA NO SISTEMA DE BORDO."
+      ],
+      "falaRetorno": [
+        "...sistema reiniciado.",
+        "Sonar restaurado.",
+        "Comunicação estabelecida.",
+        "Rota recalculada.",
+        "Expedição retomada."
+      ],
+      "audio": {
+        "entrada": "./audio/2a/pane-entrada.mp3",
+        "retorno": "./audio/2a/pane-retorno.mp3"
+      },
+      "log": [
+        "Verificando barramento principal...",
+        "Diagnóstico automático iniciado"
+      ]
+    }
+  ]
+}

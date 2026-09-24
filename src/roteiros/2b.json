@@ -1,0 +1,375 @@
+{
+  "turma": "2B",
+  "cenas": [
+    {
+      "id": "chegada",
+      "tipo": "fala",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "profundidade": 900,
+      "audio": "./audio/2b/chegada.mp3",
+      "tela": {
+        "titulo": "SUBMARINO DOMI",
+        "status": "NOVA TRIPULAÇÃO IDENTIFICADA",
+        "linhas": [
+          "Nova tripulação identificada.",
+          "2º ano B conectado.",
+          "A expedição continua.",
+          {
+            "texto": "Iniciando descida.",
+            "acoes": [
+              {
+                "tipo": "mergulho",
+                "para": 1800
+              }
+            ]
+          }
+        ]
+      },
+      "log": [
+        "Handshake com a tripulação do 2B concluído",
+        "Perfil de missão: exploração"
+      ]
+    },
+    {
+      "id": "g1-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2b/g1-intro.mp3",
+      "tela": {
+        "linhas": [
+          "Setor localizado: temperatura e submarinos. Iniciando exploração."
+        ]
+      }
+    },
+    {
+      "id": "g1",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "orbe": "palco",
+      "formas": [
+        "esfera",
+        "submarino",
+        "baleia"
+      ],
+      "tela": {
+        "titulo": "SETOR: TEMPERATURA",
+        "status": "EXPLORAÇÃO EM CURSO"
+      },
+      "sementes": {
+        "agua": [
+          8,
+          4
+        ],
+        "avisos": [
+          "WARN: Tensão térmica no casco: leve",
+          "WARN: Viscosidade do lastro alterada",
+          "WARN: Compensação térmica fora da faixa nominal"
+        ]
+      },
+      "log": [
+        "Sensor de temperatura externo: leitura contínua",
+        "Perfil térmico da coluna atualizado"
+      ]
+    },
+    {
+      "id": "g2-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2b/g2-intro.mp3",
+      "tela": {
+        "linhas": [
+          "Setor localizado: inteligência artificial e clima. Iniciando exploração."
+        ]
+      }
+    },
+    {
+      "id": "g2",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "orbe": "palco",
+      "formas": [
+        "esfera",
+        "boia",
+        "satelite"
+      ],
+      "tela": {
+        "titulo": "SETOR: MONITORAMENTO",
+        "status": "EXPLORAÇÃO EM CURSO"
+      },
+      "log": [
+        "Rede de boias: 214 estações respondendo",
+        "Telemetria de superfície sincronizada"
+      ]
+    },
+    {
+      "id": "pane-2b",
+      "tipo": "emergencia",
+      "avanco": "auto",
+      "subsistemas": [
+        "CASCO",
+        "SONAR",
+        "COMUNICAÇÃO"
+      ],
+      "audio": {
+        "queda": "./audio/2b/pane-2b-queda.mp3",
+        "retorno": "./audio/2b/pane-2b-retorno.mp3"
+      },
+      "falasQueda": [
+        "Processando informações...",
+        "Analisando dados coletados durante a expedição...",
+        "Atenção.",
+        "Pressão instável.",
+        "Sonar apresentando falhas.",
+        "Sistema de navegação comprometido.",
+        "ALERTA. FALHA NO SISTEMA DE BORDO."
+      ],
+      "tela": {
+        "linhas": [
+          "FALHA DE SISTEMA",
+          "SONAR: OFFLINE",
+          "NAVEGAÇÃO: INSTÁVEL",
+          "COMUNICAÇÃO: INTERROMPIDA"
+        ]
+      },
+      "falasRetorno": [
+        "...operando em modo reduzido.",
+        "Casco, sonar e comunicação: offline.",
+        "Preciso dos dados desta tripulação para restaurar os sistemas.",
+        "Prosseguindo com a exploração."
+      ]
+    },
+    {
+      "id": "g3-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2b/g3-intro.mp3",
+      "tela": {
+        "linhas": [
+          "Setor localizado: flutuação e acústica. Iniciando exploração."
+        ]
+      }
+    },
+    {
+      "id": "g3",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "orbe": "discreto",
+      "tela": {
+        "titulo": "SETOR: FÍSICA DO MAR",
+        "status": "MODO REDUZIDO"
+      },
+      "reparos": [
+        {
+          "tecla": "1",
+          "subsistema": "CASCO",
+          "fala": [
+            "Dados de densidade e empuxo recebidos. Casco estabilizado."
+          ],
+          "audio": "./audio/2b/reparo-casco.mp3"
+        },
+        {
+          "tecla": "2",
+          "subsistema": "SONAR",
+          "fala": [
+            "Ressonância acústica recalibrada. Sonar restaurado."
+          ],
+          "audio": "./audio/2b/reparo-sonar.mp3"
+        }
+      ],
+      "log": [
+        "Aguardando dados de densidade",
+        "Modelo de empuxo: incompleto"
+      ]
+    },
+    {
+      "id": "g4-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2b/g4-intro.mp3",
+      "tela": {
+        "linhas": [
+          "Setor localizado: baleias. Iniciando exploração."
+        ]
+      }
+    },
+    {
+      "id": "g4",
+      "tipo": "apresentacao",
+      "avanco": "manual",
+      "orbe": "palco",
+      "formas": [
+        "esfera",
+        "baleia",
+        "baleia-azul",
+        "orca"
+      ],
+      "tela": {
+        "titulo": "SETOR: BALEIAS",
+        "status": "COMUNICAÇÃO OFFLINE"
+      },
+      "log": [
+        "Banco de vocalizações: acessível",
+        "Canal de superfície: sem portadora"
+      ]
+    },
+    {
+      "id": "hidro-intro",
+      "tipo": "fala",
+      "avanco": "auto",
+      "audio": "./audio/2b/hidro-intro.mp3",
+      "tela": {
+        "linhas": [
+          "Tentando restabelecer comunicação com a superfície.",
+          "Sinal fora de alcance. Preciso de uma frequência que atravesse essa distância.",
+          "Ativando hidrofone. Tripulação: identifiquem os sons que chegam."
+        ]
+      }
+    },
+    {
+      "id": "hidro",
+      "tipo": "hidrofone",
+      "avanco": "auto",
+      "cameras": false,
+      "sons": [
+        {
+          "id": "chuva",
+          "nome": "Chuva na superfície",
+          "aceitos": [
+            "chuva",
+            "tempestade",
+            "água caindo"
+          ],
+          "pista": "Vem lá de cima, da superfície. São milhões de gotinhas de água caindo no mar.",
+          "audioPista": "./audio/2b/hidro-chuva-pista.mp3",
+          "distanciaKm": 1.8,
+          "origem": "superficie"
+        },
+        {
+          "id": "navio",
+          "nome": "Navio",
+          "aceitos": [
+            "navio",
+            "barco",
+            "motor",
+            "hélice",
+            "embarcação"
+          ],
+          "pista": "Isso é máquina, não é bicho. Tem motor, e uma hélice girando embaixo d'água.",
+          "audioPista": "./audio/2b/hidro-navio-pista.mp3",
+          "distanciaKm": 12,
+          "origem": "navio"
+        },
+        {
+          "id": "baleia",
+          "nome": "Canto de baleia",
+          "aceitos": [
+            "baleia",
+            "canto de baleia",
+            "jubarte",
+            "cachalote"
+          ],
+          "pista": "Esse é um animal, e é o maior do mar inteiro. Ele está cantando.",
+          "audioPista": "./audio/2b/hidro-baleia-pista.mp3",
+          "distanciaKm": 800,
+          "origem": "animal"
+        }
+      ],
+      "falas": {
+        "inicio": [
+          [
+            "Sinal recebido."
+          ],
+          [
+            "Novo sinal no hidrofone."
+          ],
+          [
+            "Captando."
+          ]
+        ],
+        "acerto": [
+          [
+            "Confirmado. Chuva na superfície, a um vírgula oito quilômetros."
+          ],
+          [
+            "Confirmado. Navio a doze quilômetros. Hélice em rotação constante."
+          ],
+          [
+            "Confirmado. Canto de baleia, a oitocentos quilômetros daqui."
+          ]
+        ],
+        "revelado": [
+          [
+            "Registrado pelos sensores."
+          ],
+          [
+            "Fonte classificada sem confirmação."
+          ]
+        ]
+      },
+      "audio": {
+        "inicio": [
+          "./audio/2b/hidro-inicio-1.mp3",
+          "./audio/2b/hidro-inicio-2.mp3",
+          "./audio/2b/hidro-inicio-3.mp3"
+        ],
+        "acerto": [
+          "./audio/2b/hidro-acerto-1.mp3",
+          "./audio/2b/hidro-acerto-2.mp3",
+          "./audio/2b/hidro-acerto-3.mp3"
+        ],
+        "revelado": [
+          "./audio/2b/hidro-revelado-1.mp3",
+          "./audio/2b/hidro-revelado-2.mp3"
+        ]
+      },
+      "log": [
+        "Hidrofone de proa: ganho máximo",
+        "Filtro de banda: 20 Hz – 8 kHz"
+      ]
+    },
+    {
+      "id": "hidro-fim",
+      "tipo": "fala",
+      "avanco": "auto",
+      "sfx": "ok",
+      "audio": "./audio/2b/hidro-fim.mp3",
+      "tela": {
+        "linhas": [
+          "Canto de baleia identificado. Ajustando transmissão para a mesma frequência.",
+          "Comunicação estabelecida.",
+          "Rota recalculada.",
+          "Expedição retomada."
+        ]
+      },
+      "log": [
+        "Portadora de superfície: travada",
+        "Enlace de dados: 100%"
+      ]
+    },
+    {
+      "id": "transicao-3a",
+      "tipo": "transicao",
+      "avanco": "auto",
+      "sfx": "sonar",
+      "destino": "3º ano",
+      "audio": "./audio/2b/transicao-3a.mp3",
+      "tela": {
+        "linhas": [
+          "Exploração do 2º ano B concluída.",
+          "Rota recalculada.",
+          "Próximo destino: 3º ano do Ensino Médio.",
+          {
+            "texto": "Preparando nova etapa da expedição.",
+            "acoes": [
+              {
+                "tipo": "mergulho",
+                "para": 3000
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

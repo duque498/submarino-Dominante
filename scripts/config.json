@@ -1,0 +1,27 @@
+{
+  "padrao": {
+    "voz": "pt-BR-FranciscaNeural",
+    "rate": "-8%",
+    "pitch": "-2Hz"
+  },
+  "turmas": {
+    "2a": {},
+    "2b": {},
+    "3a": {}
+  },
+  "_comentario": "Cada turma pode sobrescrever voz, rate e pitch. Ex.: \"2b\": { \"voz\": \"pt-BR-AntonioNeural\" }. Vozes pt-BR disponíveis: pt-BR-FranciscaNeural, pt-BR-AntonioNeural, pt-BR-ThalitaNeural. Liste todas com: edge-tts --list-voices | grep pt-BR",
+  "espeak": {
+    "voz": "pt-br+f2",
+    "velocidade": 138,
+    "tom": 48,
+    "amplitude": 200,
+    "pausa": 10
+  },
+  "_comentario_espeak": "Motor offline (--motor espeak). 'voz' aceita variantes do espeak-ng: pt-br+f1..f4 (femininas), pt-br+m1..m7 (masculinas). Liste com: espeak-ng --voices=pt",
+  "kokoro": {
+    "voz": "pf_dora",
+    "velocidade": 0.95,
+    "idioma": "pt-br"
+  },
+  "_comentario_kokoro": "Motor padrao (--motor kokoro): rede neural rodando na propria maquina. Vozes pt-BR do modelo: pf_dora (feminina), pm_alex e pm_santa (masculinas). 'velocidade' e multiplicador: 1.0 e o natural, 0.95 desacelera um pouco pra dar peso de computador de bordo. O modelo (~350 MB) e baixado na primeira execucao e fica em scripts/.modelos/, fora do repositorio."
+}

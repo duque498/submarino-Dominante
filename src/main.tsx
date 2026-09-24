@@ -1,24 +1,18 @@
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App'
+import { Escotilha } from './ui/Escotilha'
+import { ligarCapturaDeFalhas } from './ui/falhas'
+import './estilos.css'
 
-// PWA service worker guard — don't register in preview/iframe contexts
-const isInIframe = (() => {
-  try {
-    return window.self !== window.top;
-  } catch (e) {
-    return true;
-  }
-})();
+// Antes de montar: erro em laço de animação ou em promessa não passa pelo
+// error boundary, e sem isto some sem deixar rastro.
+ligarCapturaDeFalhas()
 
-const isPreviewHost =
-  window.location.hostname.includes("id-preview--") ||
-  window.location.hostname.includes("lovableproject.com");
-
-if (isPreviewHost || isInIframe) {
-  navigator.serviceWorker?.getRegistrations().then((registrations) => {
-    registrations.forEach((r) => r.unregister());
-  });
-}
-
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Escotilha>
+      <App />
+    </Escotilha>
+  </StrictMode>,
+)

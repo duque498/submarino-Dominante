@@ -1,0 +1,92 @@
+{
+  "ajuda": {
+    "duracaoMs": 2496,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2496
+      }
+    ]
+  },
+  "avancando": {
+    "duracaoMs": 1128,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1128
+      }
+    ]
+  },
+  "desconhecido": {
+    "duracaoMs": 2952,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2952
+      }
+    ]
+  },
+  "esfera": {
+    "duracaoMs": 1848,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1848
+      }
+    ]
+  },
+  "espectro": {
+    "duracaoMs": 1992,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1992
+      }
+    ]
+  },
+  "paineisEncerrados": {
+    "duracaoMs": 1632,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1632
+      }
+    ]
+  },
+  "paneAlerta": {
+    "duracaoMs": 2232,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2232
+      }
+    ]
+  },
+  "reiniciado": {
+    "duracaoMs": 1608,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1608
+      }
+    ]
+  },
+  "retornando": {
+    "duracaoMs": 1080,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1080
+      }
+    ]
+  },
+  "tracoInterpretado": {
+    "duracaoMs": 2352,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2352
+      }
+    ]
+  }
+}

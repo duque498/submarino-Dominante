@@ -1,0 +1,42 @@
+{
+  "_comentario": "Dicionario dos gatilhos semanticos: palavra que a IA diz -> o que aparece na tela. Editavel por quem nao programa. Regras: casa palavra INTEIRA (mar nao casa marcador), sem acento e sem maiuscula na comparacao, e expressao de varias palavras vale (mar aberto). Prioridade quando mais de um casa na mesma linha: marcadores > paineis > formas. Uma forma e um painel por linha, o primeiro na ordem do texto.",
+
+  "formas": {
+    "baleia": ["baleia", "baleias", "cetáceo", "jubarte"],
+    "tartaruga": ["tartaruga", "tartarugas"],
+    "coral": ["coral", "corais", "recife", "recifes"],
+    "agua-viva": ["água-viva", "águas-vivas", "medusa"],
+    "peixe": ["peixe", "peixes", "cardume"],
+    "mergulhador": ["mergulhador", "mergulho", "mergulhar"],
+    "onda": ["onda", "ondas", "mar aberto", "superfície"],
+    "submarino": ["submarino", "DOMI", "expedição", "tripulação"]
+  },
+
+  "paineis": {
+    "sonar": ["sonar", "varredura", "detectado", "localizado"],
+    "mapa": [
+      "rota",
+      "destino",
+      "Brasil",
+      "Abrolhos",
+      "Amazônia",
+      "manguezal",
+      "manguezais",
+      "litoral"
+    ],
+    "status": [
+      "sistemas de bordo",
+      "sistema de bordo",
+      "pressão",
+      "navegação",
+      "comunicação"
+    ],
+    "espectro": ["cor", "cores", "luz"],
+    "camera": ["profundezas", "ao redor", "lá fora", "ambiente marinho"]
+  },
+
+  "marcadores": {
+    "abrolhos": ["Abrolhos"],
+    "amazonia": ["Amazônia", "manguezais", "manguezal"]
+  }
+}

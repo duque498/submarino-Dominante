@@ -1,0 +1,289 @@
+{
+  "chegada": {
+    "duracaoMs": 9312,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2352
+      },
+      {
+        "inicio": 2952,
+        "fim": 4848
+      },
+      {
+        "inicio": 5448,
+        "fim": 7128
+      },
+      {
+        "inicio": 7728,
+        "fim": 9168
+      }
+    ]
+  },
+  "g1-intro": {
+    "duracaoMs": 4344,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4344
+      }
+    ]
+  },
+  "g2-intro": {
+    "duracaoMs": 4752,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4752
+      }
+    ]
+  },
+  "g3-intro": {
+    "duracaoMs": 4104,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4104
+      }
+    ]
+  },
+  "g4-intro": {
+    "duracaoMs": 3192,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3192
+      }
+    ]
+  },
+  "hidro-acerto-1": {
+    "duracaoMs": 3816,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3816
+      }
+    ]
+  },
+  "hidro-acerto-2": {
+    "duracaoMs": 4272,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4272
+      }
+    ]
+  },
+  "hidro-acerto-3": {
+    "duracaoMs": 3792,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3792
+      }
+    ]
+  },
+  "hidro-baleia-pista": {
+    "duracaoMs": 3624,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3624
+      }
+    ]
+  },
+  "hidro-chuva-pista": {
+    "duracaoMs": 4920,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4920
+      }
+    ]
+  },
+  "hidro-fim": {
+    "duracaoMs": 11952,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4920
+      },
+      {
+        "inicio": 5520,
+        "fim": 7392
+      },
+      {
+        "inicio": 7992,
+        "fim": 9528
+      },
+      {
+        "inicio": 10128,
+        "fim": 11808
+      }
+    ]
+  },
+  "hidro-inicio-1": {
+    "duracaoMs": 1320,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1320
+      }
+    ]
+  },
+  "hidro-inicio-2": {
+    "duracaoMs": 1752,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1752
+      }
+    ]
+  },
+  "hidro-inicio-3": {
+    "duracaoMs": 1032,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1032
+      }
+    ]
+  },
+  "hidro-intro": {
+    "duracaoMs": 13368,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3360
+      },
+      {
+        "inicio": 3960,
+        "fim": 8688
+      },
+      {
+        "inicio": 9288,
+        "fim": 13272
+      }
+    ]
+  },
+  "hidro-navio-pista": {
+    "duracaoMs": 4512,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4512
+      }
+    ]
+  },
+  "hidro-revelado-1": {
+    "duracaoMs": 2064,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2064
+      }
+    ]
+  },
+  "hidro-revelado-2": {
+    "duracaoMs": 2592,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2592
+      }
+    ]
+  },
+  "pane-2b-queda": {
+    "duracaoMs": 17784,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1800
+      },
+      {
+        "inicio": 2400,
+        "fim": 5472
+      },
+      {
+        "inicio": 6072,
+        "fim": 7104
+      },
+      {
+        "inicio": 7704,
+        "fim": 9048
+      },
+      {
+        "inicio": 9648,
+        "fim": 11568
+      },
+      {
+        "inicio": 12168,
+        "fim": 14664
+      },
+      {
+        "inicio": 15264,
+        "fim": 17496
+      }
+    ]
+  },
+  "pane-2b-retorno": {
+    "duracaoMs": 12240,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 1848
+      },
+      {
+        "inicio": 2448,
+        "fim": 4968
+      },
+      {
+        "inicio": 5568,
+        "fim": 9624
+      },
+      {
+        "inicio": 10224,
+        "fim": 12096
+      }
+    ]
+  },
+  "reparo-casco": {
+    "duracaoMs": 4104,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 4104
+      }
+    ]
+  },
+  "reparo-sonar": {
+    "duracaoMs": 3456,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 3456
+      }
+    ]
+  },
+  "transicao-3a": {
+    "duracaoMs": 11808,
+    "linhas": [
+      {
+        "inicio": 0,
+        "fim": 2616
+      },
+      {
+        "inicio": 3216,
+        "fim": 4752
+      },
+      {
+        "inicio": 5352,
+        "fim": 8496
+      },
+      {
+        "inicio": 9096,
+        "fim": 11664
+      }
+    ]
+  }
+}

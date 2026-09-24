@@ -1,0 +1,3883 @@
+/* ==========================================================================
+   Estética de terminal / HUD de submarino.
+   Tudo pensado pra ser lido a 15 metros: fonte monoespaçada, fundo escuro,
+   verde/ciano fosforescente, pouca coisa na tela por vez, zero scroll.
+   ========================================================================== */
+
+:root {
+  --fundo: #020a0c;
+  --fundo-painel: #04161a;
+  --verde: #4dffa6;
+  --ciano: #38e8ff;
+  --ciano-fraco: #1b6a78;
+  --ambar: #ffc24d;
+  --vermelho: #ff4d5e;
+  --texto: #bdfff0;
+  --mono: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", Menlo, Consolas,
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--mono);
+  /* Sem seleção acidental: a apresentação é 100% teclado. */
+  user-select: none;
+  cursor: none;
+}
+
+/* --- moldura + scanlines ------------------------------------------------- */
+
+.hud {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: clamp(12px, 2vh, 28px);
+  background:
+    radial-gradient(ellipse at 50% 40%, #063038 0%, var(--fundo) 70%);
+}
+
+/* Linhas horizontais sutis, imitando um CRT. */
+.hud::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.22) 3px,
+    rgba(0, 0, 0, 0.22) 4px
+  );
+  z-index: 5;
+}
+
+.hud__moldura {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border: 2px solid var(--ciano-fraco);
+  border-radius: 6px;
+  background: rgba(2, 20, 24, 0.55);
+  box-shadow:
+    inset 0 0 60px rgba(56, 232, 255, 0.08),
+    0 0 30px rgba(56, 232, 255, 0.06);
+}
+
+/* Cantinhos tipo mira de sonar. */
+.hud__canto {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ciano);
+  opacity: 0.7;
+}
+.hud__canto--ne {
+  top: -2px;
+  right: -2px;
+  border-left: none;
+  border-bottom: none;
+}
+.hud__canto--no {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+.hud__canto--se {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+}
+.hud__canto--so {
+  bottom: -2px;
+  left: -2px;
+  border-right: none;
+  border-top: none;
+}
+
+.hud__barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(12px, 3vw, 40px);
+  padding: clamp(8px, 1.4vh, 16px) clamp(14px, 2vw, 28px);
+  border-bottom: 1px solid var(--ciano-fraco);
+  color: var(--ciano);
+  font-size: clamp(0.7rem, 1.5vh, 1.05rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hud__barra--rodape {
+  border-top: 1px solid var(--ciano-fraco);
+  border-bottom: none;
+  justify-content: space-between;
+  opacity: 0.75;
+}
+
+.hud__campo strong {
+  color: var(--verde);
+  font-weight: 700;
+}
+
+.hud__corpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: clamp(12px, 2vh, 28px) clamp(14px, 2.2vw, 36px);
+}
+
+/* --- tipografia das cenas ------------------------------------------------ */
+
+.titulo {
+  margin: 0 0 clamp(12px, 2.5vh, 32px);
+  color: var(--verde);
+  font-size: clamp(1.8rem, 6vh, 4.6rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+  text-shadow: 0 0 24px rgba(77, 255, 166, 0.45);
+  text-transform: uppercase;
+}
+
+.status {
+  margin: 0;
+  color: var(--ciano);
+  font-size: clamp(1rem, 3vh, 2.2rem);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+/* --- palco: orbe + texto + log --------------------------------------------
+   O orbe e o log ficam montados a sessao inteira e sao irmaos da cena; se
+   morassem dentro do componente de cada cena, remontariam a cada troca de tipo
+   e a animacao (e o historico do log) reiniciaria do zero.
+   -------------------------------------------------------------------------- */
+
+.palco {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(190px, 22%, 330px);
+  gap: clamp(12px, 2vw, 32px);
+  flex: 1;
+  min-height: 0;
+}
+
+.palco__cena {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.6vh, 20px);
+  min-width: 0;
+  min-height: 0;
+}
+
+.palco__texto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1.2vh, 16px);
+  width: 100%;
+  min-height: 0;
+  text-align: center;
+}
+
+.orbe {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Modo central: orbe grande, legenda logo abaixo. Canvas quadrado — a esfera
+   e desenhada a partir da menor dimensao, entao um canvas largo so desperdicaria
+   pixels dos lados. */
+.palco--central .orbe {
+  flex: 0 1 auto;
+  width: auto;
+  height: 40vh;
+  min-height: 0;
+  max-width: 100%;
+  aspect-ratio: 1;
+}
+
+/* Modo palco: a apresentacao em que o orbe e o cenario do que os alunos estao
+   falando. Titulo vira rotulo e sobe pro topo; o orbe ocupa o resto. */
+.palco--palco .orbe {
+  flex: 0 1 auto;
+  width: auto;
+  height: 52vh;
+  min-height: 0;
+  max-width: 100%;
+  aspect-ratio: 1;
+}
+
+.palco--palco .palco__texto {
+  order: -1;
+  flex: 0 0 auto;
+  gap: clamp(2px, 0.5vh, 6px);
+}
+
+/* Indicador so pro operador: qual forma esta no ar e a posicao na lista. */
+.palco__forma {
+  margin: 0;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.6rem, 1.3vh, 0.85rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Modo canto: a tela e dos alunos, o orbe so marca presenca. */
+.palco--canto .orbe {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: clamp(110px, 14vw, 190px);
+  height: clamp(110px, 14vw, 190px);
+  opacity: 0.75;
+}
+
+.palco--canto .palco__texto {
+  flex: 1;
+  justify-content: center;
+}
+
+.palco__rotulo {
+  margin: 0;
+  color: var(--ciano);
+  font-size: clamp(0.75rem, 1.7vh, 1.15rem);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.palco__status {
+  margin: 0;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.75rem, 1.7vh, 1.1rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* --- legenda -------------------------------------------------------------
+   O DOM das palavras e montado pelo componente; aqui so mora a aparencia e as
+   transicoes, que sao de graca comparadas a animar por JS.
+   -------------------------------------------------------------------------- */
+
+.legenda__caixa {
+  position: relative;
+  width: 100%;
+}
+
+.legenda {
+  --brilho: 0;
+  position: relative;
+  display: grid;
+  width: 100%;
+  /* Altura fixa: a legenda nao pode empurrar o orbe quando a frase e longa. */
+  min-height: clamp(70px, 13vh, 140px);
+  padding: 0 clamp(8px, 3vw, 48px);
+  place-items: center;
+}
+
+/* Entrando e saindo ocupam a mesma celula: uma passa por cima da outra. */
+.legenda__linha {
+  grid-area: 1 / 1;
+  color: var(--texto);
+  font-size: clamp(1.1rem, 3.2vh, 2.4rem);
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: balance;
+  /* O brilho acompanha o nivel de audio, escrito pelo rAF da legenda. */
+  text-shadow: 0 0 calc(10px + var(--brilho) * 26px)
+    rgba(77, 255, 166, calc(0.18 + var(--brilho) * 0.5));
+}
+
+.legenda__linha--saindo {
+  animation: legenda-sair 250ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes legenda-sair {
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.85);
+  }
+}
+
+/* Cada palavra se materializa: fade + subida + desfoque saindo. */
+.legenda__palavra {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(4px);
+  transform: translateY(6px);
+}
+
+.legenda__palavra--visivel {
+  animation: palavra-entrar 120ms ease-out forwards;
+}
+
+@keyframes palavra-entrar {
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+/* Cursor so enquanto a IA fala. */
+.legenda__cursor {
+  display: none;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 0.1em;
+  background: var(--verde);
+  vertical-align: text-bottom;
+}
+
+.legenda--falando .legenda__cursor {
+  display: inline-block;
+  animation: piscar 1s steps(2, start) infinite;
+}
+
+@keyframes piscar {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Glitch curto de entrada de cena: RGB split + fatias. Nunca no meio da fala. */
+.legenda__linha--glitch {
+  animation: legenda-glitch 200ms steps(1) 1;
+}
+
+.legenda__linha--glitch::before,
+.legenda__linha--glitch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.legenda__linha--glitch::before {
+  background: rgba(56, 232, 255, 0.16);
+  animation: fatia-a 200ms steps(1) 1;
+}
+
+.legenda__linha--glitch::after {
+  background: rgba(255, 77, 94, 0.14);
+  animation: fatia-b 200ms steps(1) 1;
+}
+
+@keyframes legenda-glitch {
+  0% {
+    transform: translateX(-7px);
+    clip-path: inset(12% 0 46% 0);
+  }
+  33% {
+    transform: translateX(9px);
+    clip-path: inset(58% 0 8% 0);
+  }
+  66% {
+    transform: translateX(-4px);
+    clip-path: inset(30% 0 30% 0);
+  }
+  100% {
+    transform: none;
+    clip-path: none;
+  }
+}
+
+@keyframes fatia-a {
+  0% {
+    clip-path: inset(20% 0 62% 0);
+    transform: translateX(-10px);
+  }
+  50% {
+    clip-path: inset(70% 0 14% 0);
+    transform: translateX(6px);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fatia-b {
+  0% {
+    clip-path: inset(52% 0 28% 0);
+    transform: translateX(8px);
+  }
+  50% {
+    clip-path: inset(6% 0 78% 0);
+    transform: translateX(-7px);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.legenda__contador {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.6rem, 1.3vh, 0.85rem);
+  letter-spacing: 0.15em;
+}
+
+/* Fala avulsa da IA: resposta de comando, feedback de dinamica, alerta da pane.
+   Fica ancorada no rodape da area e por cima do painel — senao o feedback do
+   quiz sumiria atras da propria janela da pergunta. */
+.palco__resposta {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9;
+  padding-top: clamp(20px, 4vh, 48px);
+  background: linear-gradient(transparent, rgba(2, 12, 15, 0.94) 45%);
+  pointer-events: none;
+}
+
+.palco__resposta .legenda {
+  min-height: clamp(50px, 9vh, 96px);
+}
+
+.palco__resposta .legenda__linha {
+  color: var(--verde);
+}
+
+/* Resposta e sempre uma linha so: o contador "1/1" seria ruido. */
+.palco__resposta .legenda__contador {
+  display: none;
+}
+
+/* --- log de sistemas ----------------------------------------------------- */
+
+.log {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-left: clamp(10px, 1.4vw, 20px);
+  border-left: 1px solid var(--ciano-fraco);
+  color: var(--ciano);
+  font-size: clamp(0.62rem, 1.35vh, 0.92rem);
+  line-height: 1.5;
+  transition: opacity 400ms ease;
+}
+
+.log--apagado {
+  opacity: 0.5;
+}
+
+.log--erro {
+  border-left-color: var(--vermelho);
+  color: var(--vermelho);
+}
+
+.log__cabecalho {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  margin-bottom: 0.5em;
+}
+
+.log__titulo {
+  flex: 1;
+  margin: 0;
+  color: var(--ciano-fraco);
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.log__rec {
+  color: var(--vermelho);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  animation: piscar-rec 1.4s ease-in-out infinite;
+}
+
+@keyframes piscar-rec {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.log__contador {
+  color: var(--ciano);
+  letter-spacing: 0.08em;
+}
+
+.log__telemetria {
+  margin-bottom: 0.6em;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.5);
+}
+
+.log__rotulo-spark {
+  display: block;
+  color: var(--ciano-fraco);
+  font-size: 0.85em;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.log__spark {
+  display: block;
+  width: 100%;
+  height: 24px;
+}
+
+.log__sufixo {
+  color: var(--verde);
+}
+
+/* Cursor da linha que esta sendo digitada. */
+.log__cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.95em;
+  background: currentColor;
+  vertical-align: text-bottom;
+  animation: piscar 0.8s steps(2, start) infinite;
+}
+
+/* Destaques momentaneos ao terminar de digitar. */
+.log__linha--ok {
+  animation: destaque-ok 700ms ease-out 1;
+}
+.log__linha--warn {
+  animation: destaque-warn 500ms ease-out 2;
+}
+.log__linha--err {
+  color: var(--vermelho);
+  animation: destaque-err 300ms linear 1;
+}
+
+@keyframes destaque-ok {
+  0%,
+  40% {
+    color: var(--verde);
+    text-shadow: 0 0 10px rgba(77, 255, 166, 0.7);
+  }
+}
+
+@keyframes destaque-warn {
+  0%,
+  50% {
+    color: var(--ambar);
+  }
+}
+
+@keyframes destaque-err {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1px);
+  }
+  75% {
+    transform: translateX(1px);
+  }
+}
+
+.log__lista {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.25em;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.log__linha {
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  /* A altura e animada pelo componente (0 -> natural) pra as linhas antigas
+     deslizarem pra cima em vez de pular. */
+  transition: height 240ms ease-out;
+  animation: entrar-log 300ms ease-out;
+}
+
+/* As mais antigas somem por cima. */
+.log__lista .log__linha:nth-child(1) {
+  opacity: 0.2;
+}
+.log__lista .log__linha:nth-child(2) {
+  opacity: 0.35;
+}
+.log__lista .log__linha:nth-child(3) {
+  opacity: 0.55;
+}
+.log__lista .log__linha:nth-child(4) {
+  opacity: 0.75;
+}
+
+.log__linha--erro {
+  color: var(--vermelho);
+}
+
+.log__hora {
+  color: var(--ciano-fraco);
+}
+
+.log--erro .log__hora {
+  color: rgba(255, 77, 94, 0.6);
+}
+
+@keyframes entrar-log {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* --- telas de abertura --------------------------------------------------- */
+
+.centro {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 4vh, 48px);
+  text-align: center;
+}
+
+.chamada {
+  color: var(--verde);
+  font-size: clamp(1.2rem, 4.5vh, 3.2rem);
+  letter-spacing: 0.12em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  animation: pulsar 1.6s ease-in-out infinite;
+}
+
+@keyframes pulsar {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(16px, 3vw, 40px);
+  justify-content: center;
+}
+
+.opcao {
+  padding: clamp(14px, 3vh, 36px) clamp(24px, 5vw, 64px);
+  border: 2px solid var(--ciano);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--verde);
+  font-family: inherit;
+  font-size: clamp(1.6rem, 6vh, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.opcao:hover,
+.opcao:focus-visible {
+  background: rgba(56, 232, 255, 0.12);
+  outline: none;
+}
+
+.dica {
+  color: var(--ciano-fraco);
+  font-size: clamp(0.8rem, 1.8vh, 1.2rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* --- transição ----------------------------------------------------------- */
+
+.transicao__destino {
+  margin: 0;
+  color: var(--ambar);
+  font-size: clamp(1.6rem, 5.5vh, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 0 24px rgba(255, 194, 77, 0.4);
+}
+
+/* Faixa que corre da esquerda pra direita, sugerindo deslocamento. */
+.transicao__trilho {
+  position: relative;
+  width: min(100%, 640px);
+  height: 4px;
+  margin-top: clamp(8px, 1.5vh, 20px);
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(56, 232, 255, 0.15);
+}
+
+.transicao__trilho::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--ciano), transparent);
+  animation: deslocar 2.2s linear infinite;
+}
+
+@keyframes deslocar {
+  to {
+    left: 100%;
+  }
+}
+
+/* --- console de comandos -------------------------------------------------
+   O que o operador digita aparece pra plateia: e parte do show, entao a fonte
+   e grande e o campo brilha.
+   -------------------------------------------------------------------------- */
+
+.console {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  /* Acima de painel e fala: com o console aberto, quem manda e o operador. */
+  z-index: 12;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  padding: clamp(8px, 1.6vh, 16px) clamp(10px, 1.6vw, 22px);
+  border: 1px solid var(--verde);
+  border-radius: 5px;
+  background: rgba(2, 18, 22, 0.93);
+  box-shadow:
+    0 0 26px rgba(77, 255, 166, 0.2),
+    inset 0 0 30px rgba(77, 255, 166, 0.06);
+  font-size: clamp(1rem, 2.8vh, 2rem);
+  animation: console-abrir 180ms ease-out;
+}
+
+@keyframes console-abrir {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.console--travado {
+  border-color: var(--ciano);
+  box-shadow: 0 0 26px rgba(56, 232, 255, 0.25);
+}
+
+.console__prompt {
+  color: var(--ciano);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* O fantasma fica atras do input, alinhado caractere a caractere: a parte ja
+   digitada e transparente e so o resto da sugestao aparece. */
+.console__campo {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.console__fantasma {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--ciano-fraco);
+  pointer-events: none;
+  white-space: pre;
+}
+
+.console__fantasma-digitado {
+  visibility: hidden;
+}
+
+.console__input {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--verde);
+  font: inherit;
+  letter-spacing: 0.04em;
+  outline: none;
+  caret-color: var(--verde);
+}
+
+.console--travado .console__input {
+  color: var(--ciano);
+}
+
+.console__cursor {
+  width: 0.5em;
+  height: 1em;
+  background: var(--verde);
+  animation: piscar 1s steps(2, start) infinite;
+}
+
+/* Tremor do orbe quando o comando nao e reconhecido. */
+.orbe--tremor {
+  animation: orbe-tremor 420ms ease-in-out;
+}
+
+@keyframes orbe-tremor {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* --- paineis -------------------------------------------------------------- */
+
+.painel {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(4px, 1vh, 12px);
+  /* Escurece o que fica atras: com o painel aberto, a legenda vazando pelas
+     bordas parecia defeito. */
+  background: rgba(2, 10, 12, 0.72);
+  pointer-events: none;
+  animation: painel-fundo 220ms ease-out;
+}
+
+@keyframes painel-fundo {
+  from {
+    background: rgba(2, 10, 12, 0);
+  }
+}
+
+.painel__moldura {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 780px);
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--ciano);
+  border-radius: 6px;
+  background: rgba(2, 18, 22, 0.95);
+  box-shadow: 0 0 44px rgba(0, 0, 0, 0.65);
+  animation: painel-abrir 300ms ease-out;
+}
+
+@keyframes painel-abrir {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+    clip-path: inset(46% 0 46% 0);
+  }
+  40% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  55% {
+    transform: scale(0.985) translateX(5px);
+  }
+  70% {
+    transform: scale(1) translateX(-3px);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.painel__cabecalho {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.7em 1em;
+  border-bottom: 1px solid var(--ciano-fraco);
+  color: var(--ciano);
+  font-size: clamp(0.65rem, 1.5vh, 0.95rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.painel__fechar {
+  color: var(--ciano-fraco);
+}
+
+.painel__corpo {
+  flex: 1;
+  min-height: 0;
+  padding: clamp(10px, 2vh, 22px);
+  overflow: hidden;
+}
+
+.painel__legenda {
+  margin: 0.6em 0 0;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.65rem, 1.4vh, 0.9rem);
+  letter-spacing: 0.22em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.painel__vazio {
+  margin: 0;
+  color: var(--ambar);
+  font-size: clamp(0.8rem, 1.8vh, 1.1rem);
+  text-align: center;
+}
+
+/* Sonar e mapa sao canvas: sem altura minima eles encolhem ate sumir, porque a
+   altura do painel vem do conteudo. */
+.painel__sonar,
+.painel__mapa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-height: clamp(200px, 38vh, 420px);
+}
+
+.painel__sonar-canvas {
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: 1;
+}
+
+.painel__mapa-canvas {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+/* status */
+.painel__status {
+  display: grid;
+  gap: 0.7em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(0.7rem, 1.7vh, 1.05rem);
+}
+
+.painel__status-item {
+  display: grid;
+  /* A ultima coluna precisa caber "INTERROMPIDA" sem cortar. */
+  grid-template-columns: 9em 1fr 4em 8.5em;
+  align-items: center;
+  gap: 0.8em;
+}
+
+.painel__status-nome {
+  color: var(--ciano);
+  letter-spacing: 0.12em;
+}
+
+.painel__status-trilho {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(56, 232, 255, 0.14);
+}
+
+.painel__status-barra {
+  display: block;
+  height: 100%;
+  background: var(--verde);
+  box-shadow: 0 0 10px rgba(77, 255, 166, 0.5);
+  transition: width 220ms linear;
+}
+
+.painel__status-valor {
+  color: var(--texto);
+  text-align: right;
+}
+
+.painel__status-estado {
+  color: var(--verde);
+  letter-spacing: 0.14em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+/* ficha */
+.painel__ficha {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: clamp(10px, 2vw, 28px);
+  align-items: start;
+}
+
+.painel__ficha--sem-silhueta {
+  grid-template-columns: 1fr;
+}
+
+.painel__ficha-titulo {
+  margin: 0 0 0.7em;
+  color: var(--verde);
+  font-size: clamp(1rem, 2.6vh, 1.7rem);
+  letter-spacing: 0.06em;
+}
+
+.painel__ficha-lista {
+  display: grid;
+  gap: 0.5em;
+  margin: 0;
+  font-size: clamp(0.72rem, 1.7vh, 1.05rem);
+}
+
+.painel__ficha-item {
+  display: grid;
+  grid-template-columns: 13em 1fr;
+  gap: 0.8em;
+}
+
+.painel__ficha-item dt {
+  color: var(--ciano-fraco);
+}
+
+.painel__ficha-item dd {
+  margin: 0;
+  color: var(--texto);
+}
+
+.painel__ficha-silhueta {
+  width: clamp(90px, 14vh, 150px);
+  height: clamp(90px, 14vh, 150px);
+  opacity: 0.85;
+}
+
+/* --- feeds de camera ------------------------------------------------------
+   Canvas em resolucao baixa (256x144) escalado: barato e ainda parece camera.
+   -------------------------------------------------------------------------- */
+
+.palco {
+  --feed-largura: clamp(170px, 19vw, 262px);
+}
+
+.feed {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--ciano-fraco);
+  border-radius: 4px;
+  background: #030a0d;
+  color: var(--ciano);
+  font-size: clamp(0.45rem, 1vh, 0.62rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.feed__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Scanlines mais fortes que as do resto da tela, mais vinheta. */
+.feed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 1px,
+      rgba(0, 0, 0, 0.34) 2px,
+      rgba(0, 0, 0, 0.34) 3px
+    ),
+    radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.feed--mini {
+  position: absolute;
+  bottom: 0;
+  z-index: 3;
+  width: var(--feed-largura);
+  aspect-ratio: 16 / 9;
+}
+
+.feed--bombordo {
+  left: 0;
+}
+.feed--estibordo {
+  right: 0;
+}
+
+.feed--grande {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  font-size: clamp(0.55rem, 1.3vh, 0.85rem);
+}
+
+.feed__barra {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35em 0.5em;
+}
+
+.feed__barra--topo {
+  top: 0;
+  background: linear-gradient(rgba(2, 12, 15, 0.72), transparent);
+}
+
+.feed__barra--base {
+  bottom: 0;
+  color: var(--verde);
+  background: linear-gradient(transparent, rgba(2, 12, 15, 0.72));
+}
+
+.feed__rec {
+  color: var(--vermelho);
+  animation: piscar-rec 1.4s ease-in-out infinite;
+}
+
+/* Cruz fina no centro. */
+.feed__cruz {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  background:
+    linear-gradient(var(--ciano), var(--ciano)) center / 1px 100% no-repeat,
+    linear-gradient(var(--ciano), var(--ciano)) center / 100% 1px no-repeat;
+  opacity: 0.35;
+}
+
+/* Reticulo que segue a fauna grande atravessando o quadro. */
+.feed__reticulo {
+  position: absolute;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px solid var(--ambar);
+  opacity: 0;
+  transition:
+    left 120ms linear,
+    top 120ms linear,
+    opacity 200ms;
+  clip-path: polygon(
+    0 0, 34% 0, 34% 12%, 12% 12%, 12% 34%, 0 34%, 0 0,
+    100% 0, 100% 34%, 88% 34%, 88% 12%, 66% 12%, 66% 0, 100% 0,
+    100% 100%, 66% 100%, 66% 88%, 88% 88%, 88% 66%, 100% 66%, 100% 100%,
+    0 100%, 0 66%, 12% 66%, 12% 88%, 34% 88%, 34% 100%, 0 100%
+  );
+}
+
+.feed__reticulo--ativo {
+  opacity: 1;
+}
+
+.feed__alvo {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  padding-top: 0.3em;
+  color: var(--ambar);
+  white-space: nowrap;
+}
+
+.feed__perdido {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  color: var(--ambar);
+  opacity: 0;
+  text-align: center;
+}
+
+.feed__perdido--ativo {
+  opacity: 1;
+}
+
+/* Com os feeds no ar, o conteudo em fluxo reserva a faixa deles embaixo, e o
+   que e ancorado no rodape recua pelos lados. Sem isso a legenda da cena cai
+   por cima da CAM 01. */
+.palco--cameras .palco__cena {
+  padding-bottom: calc(var(--feed-largura) * 0.5625 + 10px);
+}
+
+.palco--cameras .palco__resposta,
+.palco--cameras .console {
+  right: calc(var(--feed-largura) + 12px);
+  left: calc(var(--feed-largura) + 12px);
+}
+
+/* --- dinamicas: quiz e verdadeiro/falso ----------------------------------
+   Mesma janela dos paineis, pra a plateia reconhecer o padrao.
+   -------------------------------------------------------------------------- */
+
+.dinamica .painel__moldura {
+  width: min(100%, 940px);
+  border-color: var(--verde);
+  /* Os cards precisam de clique, ao contrario dos paineis decorativos. */
+  pointer-events: auto;
+}
+
+.dinamica__corpo {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 2vh, 24px);
+}
+
+.dinamica__topo {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 28px);
+}
+
+.dinamica__pergunta {
+  flex: 1;
+  margin: 0;
+  color: var(--texto);
+  font-size: clamp(1rem, 3vh, 2.1rem);
+  font-weight: 400;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.dinamica__timer {
+  flex: 0 0 auto;
+}
+
+.timer {
+  display: block;
+  width: clamp(64px, 11vh, 112px);
+  height: clamp(64px, 11vh, 112px);
+}
+
+.dinamica__cards {
+  display: grid;
+  gap: clamp(8px, 1.4vh, 16px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dinamica__cards--vf {
+  grid-template-columns: 1fr 1fr;
+}
+
+.dinamica__card {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 22px);
+  width: 100%;
+  padding: clamp(8px, 1.6vh, 18px) clamp(10px, 1.6vw, 22px);
+  border: 1px solid var(--ciano-fraco);
+  border-radius: 5px;
+  background: rgba(56, 232, 255, 0.05);
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  transition:
+    border-color 200ms,
+    background 200ms,
+    opacity 200ms;
+}
+
+.dinamica__numero {
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.9em;
+  height: 1.9em;
+  border: 1px solid var(--ciano);
+  border-radius: 4px;
+  color: var(--ciano);
+  font-size: clamp(0.85rem, 2.1vh, 1.4rem);
+  font-weight: 700;
+  place-items: center;
+}
+
+.dinamica__texto {
+  font-size: clamp(0.95rem, 2.6vh, 1.8rem);
+}
+
+/* Feedback: o certo pisca verde, o marcado errado pisca vermelho. */
+.dinamica__card--certo {
+  border-color: var(--verde);
+  background: rgba(77, 255, 166, 0.12);
+  color: var(--verde);
+  animation: card-certo 500ms ease-out 2;
+}
+
+.dinamica__card--certo .dinamica__numero {
+  border-color: var(--verde);
+  color: var(--verde);
+}
+
+.dinamica__card--errado {
+  border-color: var(--vermelho);
+  background: rgba(255, 77, 94, 0.12);
+  color: var(--vermelho);
+  animation: card-errado 500ms ease-out 2;
+}
+
+.dinamica__card--errado .dinamica__numero {
+  border-color: var(--vermelho);
+  color: var(--vermelho);
+}
+
+.dinamica__card--apagado {
+  opacity: 0.35;
+}
+
+@keyframes card-certo {
+  50% {
+    background: rgba(77, 255, 166, 0.34);
+    box-shadow: 0 0 26px rgba(77, 255, 166, 0.45);
+  }
+}
+
+@keyframes card-errado {
+  50% {
+    background: rgba(255, 77, 94, 0.3);
+    box-shadow: 0 0 26px rgba(255, 77, 94, 0.4);
+  }
+}
+
+.dinamica__restaura {
+  margin: 0;
+  color: var(--verde);
+  font-size: clamp(0.7rem, 1.6vh, 1rem);
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* --- pane ----------------------------------------------------------------- */
+
+.palco__resposta--alerta .legenda__linha {
+  color: var(--vermelho);
+  text-shadow: 0 0 22px rgba(255, 77, 94, 0.45);
+}
+
+.painel__status-item--caido .painel__status-nome,
+.painel__status-item--caido .painel__status-valor {
+  color: var(--vermelho);
+}
+
+.painel__status-item--caido .painel__status-estado {
+  color: var(--vermelho);
+  animation: piscar-rec 1s ease-in-out infinite;
+}
+
+.painel__status-item--caido .painel__status-barra {
+  background: var(--vermelho);
+  box-shadow: none;
+}
+
+/* Pulso de aprovacao do orbe (acerto numa dinamica). */
+.orbe--pulso {
+  animation: orbe-pulso 600ms ease-out;
+}
+
+@keyframes orbe-pulso {
+  40% {
+    transform: scale(1.07);
+    filter: brightness(1.5);
+  }
+}
+
+/* --- overlay de ajuda (tecla H) ------------------------------------------ */
+
+.ajuda {
+  position: fixed;
+  right: clamp(16px, 3vw, 48px);
+  bottom: clamp(48px, 8vh, 96px);
+  z-index: 10;
+  max-width: min(92vw, 420px);
+  padding: clamp(12px, 2vh, 22px) clamp(14px, 2vw, 26px);
+  border: 1px solid var(--ciano);
+  border-radius: 6px;
+  background: rgba(2, 16, 20, 0.94);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  color: var(--texto);
+  font-size: clamp(0.7rem, 1.5vh, 0.95rem);
+}
+
+.ajuda__titulo {
+  margin: 0 0 0.8em;
+  color: var(--ciano);
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.ajuda__lista {
+  display: grid;
+  gap: 0.3em;
+  margin: 0;
+}
+
+.ajuda__item {
+  display: grid;
+  grid-template-columns: 8em 1fr;
+  gap: 0.8em;
+}
+
+.ajuda__item dt {
+  color: var(--verde);
+}
+
+.ajuda__item dd {
+  margin: 0;
+  color: var(--texto);
+  opacity: 0.85;
+}
+
+.ajuda__estado {
+  margin: 1em 0 0;
+  padding-top: 0.8em;
+  border-top: 1px solid var(--ciano-fraco);
+  color: var(--ciano-fraco);
+}
+
+.ajuda__estado strong {
+  color: var(--ciano);
+  font-weight: 400;
+}
+
+/* --- erro de roteiro ----------------------------------------------------- */
+
+.erro {
+  padding: clamp(16px, 4vh, 48px);
+  color: var(--vermelho);
+  overflow-y: auto;
+}
+
+.erro h1 {
+  font-size: clamp(1.4rem, 4vh, 2.6rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.erro ul {
+  font-size: clamp(0.9rem, 2.2vh, 1.4rem);
+  line-height: 1.6;
+}
+
+.erro__pilha {
+  margin-top: 1em;
+  color: var(--ciano-fraco);
+  font-size: clamp(0.65rem, 1.5vh, 0.9rem);
+  white-space: pre-wrap;
+}
+
+.erro__ajuda {
+  color: var(--ambar);
+  font-size: clamp(0.85rem, 2vh, 1.2rem);
+}
+
+/* --- cena ainda não implementada (Fase 2) -------------------------------- */
+
+.pendente {
+  color: var(--ambar);
+  font-size: clamp(1rem, 3vh, 2rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   Painel de traço — o aluno desenha, a IA interpreta
+   -------------------------------------------------------------------------- */
+
+/* O .painel tem pointer-events: none pra não roubar clique de nada. Este é o
+   único painel em que o aluno precisa de fato tocar na tela, então a moldura
+   dele volta a receber ponteiro. */
+.painel--traco .painel__moldura {
+  pointer-events: auto;
+}
+
+.traco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.traco__tela {
+  display: block;
+  width: 100%;
+  height: clamp(220px, 44vh, 400px);
+  border: 1px solid var(--ciano-fraco);
+  border-radius: 4px;
+  /* Claro de propósito: quem lê este canvas é o amostrador de silhueta, que
+     corta por luminância. Tinta escura sobre fundo claro não deixa dúvida. */
+  background: #e8f6ef;
+  /* Sem isto o gesto de desenhar vira rolagem da página no touch. */
+  touch-action: none;
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><circle cx="20" cy="20" r="12" fill="none" stroke="%2304161a" stroke-width="2"/><path d="M20 3v9M20 28v9M3 20h9M28 20h9" stroke="%2304161a" stroke-width="2"/></svg>')
+      20 20,
+    crosshair;
+}
+
+.traco__rodape {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.traco__botao {
+  font-family: inherit;
+  font-size: clamp(11px, 1.3vh, 14px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border: 1px solid var(--verde);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--verde);
+  cursor: pointer;
+  transition: background 140ms linear, color 140ms linear;
+}
+
+.traco__botao:hover:not(:disabled) {
+  background: var(--verde);
+  color: var(--fundo);
+}
+
+.traco__botao:focus-visible {
+  outline: 2px solid var(--ciano);
+  outline-offset: 2px;
+}
+
+.traco__botao:disabled {
+  border-color: var(--ciano-fraco);
+  color: var(--ciano-fraco);
+  cursor: default;
+}
+
+.traco__dica {
+  font-size: clamp(10px, 1.2vh, 13px);
+  letter-spacing: 0.08em;
+  color: var(--ciano-fraco);
+}
+
+/* --------------------------------------------------------------------------
+   Painel de espectro — as cores que o oceano apaga
+   -------------------------------------------------------------------------- */
+
+.espectro {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.6vh, 16px);
+}
+
+.espectro__topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.espectro__medida {
+  font-size: clamp(22px, 4vh, 40px);
+  font-weight: 700;
+  color: var(--verde);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(77, 255, 166, 0.3);
+}
+
+.espectro__dica {
+  font-size: clamp(10px, 1.2vh, 13px);
+  letter-spacing: 0.08em;
+  color: var(--ciano-fraco);
+}
+
+.espectro__faixas {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.9vh, 9px);
+}
+
+.espectro__faixa {
+  display: grid;
+  grid-template-columns: clamp(64px, 9vw, 92px) 1fr clamp(76px, 11vw, 110px);
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 16px);
+}
+
+.espectro__nome {
+  font-size: clamp(10px, 1.3vh, 14px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto);
+}
+
+.espectro__barra {
+  height: clamp(12px, 2.4vh, 22px);
+  border: 1px solid #0d2f38;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #061a20;
+}
+
+.espectro__preenche {
+  height: 100%;
+  width: 100%;
+  /* A cor muda continuamente com a profundidade: a transição existe pra o olho
+     acompanhar o apagamento em vez de ver um salto. */
+  transition: background 220ms linear;
+}
+
+.espectro__sumico {
+  font-size: clamp(9px, 1.15vh, 12px);
+  letter-spacing: 0.06em;
+  color: var(--ciano-fraco);
+  text-align: right;
+}
+
+.espectro__resultado {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2vw, 20px);
+  padding-top: clamp(6px, 1.2vh, 12px);
+  border-top: 1px solid #0d2f38;
+  flex-wrap: wrap;
+}
+
+.espectro__pergunta {
+  flex: 1 1 260px;
+  font-size: clamp(10px, 1.35vh, 14px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto);
+}
+
+.espectro__amostra {
+  width: clamp(88px, 15vw, 150px);
+  height: clamp(30px, 5vh, 52px);
+  border: 1px solid var(--ciano-fraco);
+  border-radius: 3px;
+  transition: background 220ms linear;
+}
+
+/* --------------------------------------------------------------------------
+   Painel aberto pela fala — faixa de cima, legenda intacta embaixo
+   -------------------------------------------------------------------------- */
+
+/* A regra é essa e não tem exceção: painel que o Diretor abre no meio de uma
+   fala ocupa a metade de cima da área central. A legenda continua inteira
+   embaixo. Se o painel não couber na faixa, ele encolhe — a legenda nunca
+   some, porque é ela que carrega o texto da professora. */
+.painel--faixa {
+  inset: 0 0 46% 0;
+  align-items: center;
+}
+
+.painel--faixa .painel__moldura {
+  width: min(100%, 620px);
+  max-height: 100%;
+}
+
+.painel--faixa .painel__corpo {
+  overflow: auto;
+  padding: clamp(6px, 1.2vh, 12px) clamp(8px, 1.4vw, 16px);
+}
+
+/* Na faixa o mostrador fica achatado; deixa o canvas acompanhar em vez de
+   estourar pra fora da moldura. */
+.painel--faixa .painel__sonar-canvas,
+.painel--faixa .painel__mapa-canvas {
+  max-height: clamp(130px, 26vh, 230px);
+}
+
+.painel--faixa .espectro__medida {
+  font-size: clamp(18px, 3vh, 28px);
+}
+
+/* Saída: o painel que fecha fica ~200 ms se desfazendo. Corte seco faz a troca
+   parecer falha de render; com a saída, ela parece direção. */
+.painel--saindo {
+  animation: painel-sair 200ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes painel-sair {
+  to {
+    opacity: 0;
+    background: rgba(2, 10, 12, 0);
+  }
+}
+
+.painel--saindo .painel__moldura {
+  animation: moldura-sair 200ms ease-in forwards;
+}
+
+@keyframes moldura-sair {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+    clip-path: inset(46% 0 46% 0);
+  }
+}
+
+/* Painel que o Diretor ENCERROU sai devagar e com a moldura se fechando por
+   inteiro. É o oposto do corte: aqui não entra nada no lugar, então a saída
+   precisa ser lida como decisão. O log escreve "Encerrando ..." junto. */
+.painel--saindo.painel--encerrando {
+  animation: painel-encerrar 520ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes painel-encerrar {
+  40% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    background: rgba(2, 10, 12, 0);
+  }
+}
+
+.painel--saindo.painel--encerrando .painel__moldura {
+  animation: moldura-encerrar 520ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* A faixa colapsa no meio, como um mostrador desligando: a imagem some antes
+   da caixa, e por um instante sobra só a linha. */
+@keyframes moldura-encerrar {
+  0% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  45% {
+    opacity: 0.85;
+    clip-path: inset(0 0 0 0);
+  }
+  80% {
+    opacity: 0.5;
+    clip-path: inset(49.4% 0 49.4% 0);
+  }
+  to {
+    opacity: 0;
+    transform: scaleX(0.6);
+    clip-path: inset(49.8% 0 49.8% 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .painel--saindo,
+  .painel--saindo .painel__moldura,
+  .painel--saindo.painel--encerrando,
+  .painel--saindo.painel--encerrando .painel__moldura {
+    animation-duration: 1ms;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Sequência de mergulho
+   -------------------------------------------------------------------------- */
+
+/* A moldura inteira inclina 1,5° na fase de inclinação e volta. É pouco de
+   propósito: o suficiente pro corpo sentir que algo se moveu, pouco o bastante
+   pra ninguém ficar enjoado olhando um projetor por cinco minutos. */
+/* Girar a moldura inteira é girar seis canvases junto. Sem promover a camada
+   antes, o navegador rerasteriza tudo a cada quadro do giro: medido, 48 fps
+   contra 56 sem a inclinação. O `will-change` entra com a classe do mergulho —
+   antes do giro começar, que é a única hora em que ele adianta alguma coisa —
+   e sai no fim, porque camada promovida custa memória de vídeo e o Chromebook
+   da escola não tem de sobra. */
+.hud--mergulhando .hud__moldura {
+  will-change: transform;
+}
+
+.hud--inclinado .hud__moldura {
+  transform: rotate(1.5deg);
+}
+
+.hud__moldura {
+  transition: transform 460ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+/* Coluna d'água: borda esquerda, fora do caminho da legenda (embaixo) e do
+   log de sistemas (à direita). */
+.coluna {
+  position: absolute;
+  top: 4%;
+  bottom: 18%;
+  left: 0;
+  z-index: 7;
+  width: 90px;
+  pointer-events: none;
+  animation: coluna-entrar 320ms ease-out;
+}
+
+.coluna__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--linha, #0d2f38);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  background: rgba(2, 10, 12, 0.55);
+}
+
+@keyframes coluna-entrar {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud__moldura {
+    transition-duration: 1ms;
+  }
+  .hud--inclinado .hud__moldura {
+    transform: none;
+  }
+  .coluna {
+    animation-duration: 1ms;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Rodapé de depuração do Diretor (?debugDiretor=1)
+   -------------------------------------------------------------------------- */
+
+/* Fica por cima de tudo, encostado no rodapé, e é feio de propósito: é
+   ferramenta de ensaio, não parte do cenário. Se alguém esquecer a flag ligada
+   na feira, tem que ficar óbvio na hora. */
+.depuracao-diretor {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 12px calc(5px + env(safe-area-inset-bottom, 0px));
+  background: rgba(2, 10, 12, 0.9);
+  border-top: 1px solid rgba(255, 194, 77, 0.5);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(214, 240, 245, 0.92);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.depuracao-diretor__marca {
+  color: #ffc24d;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 10px;
+  flex: none;
+}
+
+.depuracao-diretor__cena {
+  color: rgba(77, 255, 166, 0.9);
+  flex: none;
+}
+
+.depuracao-diretor__frase {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.depuracao-diretor__forma {
+  color: rgba(189, 255, 240, 0.65);
+  flex: none;
+}
+
+/* --------------------------------------------------------------------------
+   Visor rachado (3A)
+   -------------------------------------------------------------------------- */
+
+/* A fratura fica por cima do canvas e por cima da estática: o vidro continua
+   na frente da lente mesmo quando não há imagem nenhuma. Abaixo das barras de
+   rótulo, que são HUD e não estão do lado de fora. */
+.rachadura {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.rachadura--parcial {
+  opacity: 0.72;
+}
+
+/* Rótulo do visor quebrado. Fica no lugar do "sinal fraco", em âmbar de alerta
+   em vez do ciano de sempre: não é interferência, é avaria. */
+.feed__comprometido {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 110, 90, 0.75);
+  background: rgba(2, 10, 12, 0.8);
+  color: #ff8a70;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: comprometido-piscar 2.4s steps(1, end) infinite;
+}
+
+@keyframes comprometido-piscar {
+  0%,
+  72% {
+    opacity: 1;
+  }
+  76%,
+  84% {
+    opacity: 0.25;
+  }
+  88%,
+  100% {
+    opacity: 1;
+  }
+}
+
+.feed--grande .feed__comprometido {
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed__comprometido {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Combate acústico (3A)
+   -------------------------------------------------------------------------- */
+
+/* O combate ocupa a área central inteira: o mostrador é o que a plateia lê
+   pra responder, e os 780px do painel comum deixavam a roda do tamanho de um
+   ícone. A legenda continua embaixo, fora da moldura, como sempre. */
+.combate .painel__moldura {
+  width: min(100%, 1180px);
+  height: min(100%, 560px);
+}
+
+.combate__corpo {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) 1fr minmax(150px, 210px);
+  gap: 18px;
+  align-items: center;
+  height: 100%;
+  min-height: 0;
+}
+
+.combate__barras {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.combate__barra {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+}
+
+.combate__barra-rotulo {
+  grid-column: 1;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.7);
+}
+
+.combate__barra-valor {
+  grid-column: 2;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: #bdfff0;
+}
+
+.combate__barra-trilho {
+  grid-column: 1 / -1;
+  height: 9px;
+  background: rgba(8, 26, 32, 0.9);
+  border: 1px solid rgba(27, 106, 120, 0.7);
+  overflow: hidden;
+}
+
+.combate__barra-nivel {
+  display: block;
+  height: 100%;
+  /* Transição, não corte: a barra caindo é a informação. */
+  transition: width 420ms cubic-bezier(0.3, 0, 0.2, 1);
+  background: #4dffa6;
+}
+
+.combate__barra--alerta .combate__barra-nivel {
+  background: #ffc24d;
+}
+
+.combate__barra--critico .combate__barra-nivel {
+  background: #ff6e5a;
+  animation: barra-critica 900ms ease-in-out infinite;
+}
+
+.combate__barra--contato .combate__barra-nivel {
+  background: #ff6e5a;
+}
+
+@keyframes barra-critica {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.combate__leitura {
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-family: ui-monospace, monospace;
+}
+
+.combate__leitura div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.4);
+  padding-bottom: 4px;
+}
+
+.combate__leitura dt {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.55);
+}
+
+.combate__leitura dd {
+  margin: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #38e8ff;
+  text-align: right;
+}
+
+.combate__recarga {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 8px;
+  border: 1px solid rgba(27, 106, 120, 0.45);
+  border-radius: 3px;
+  background: rgba(4, 22, 26, 0.5);
+}
+
+.combate__recarga-rotulo {
+  font-family: ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.55);
+}
+
+.combate__recarga-trilho {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(10, 44, 50, 0.9);
+  overflow: hidden;
+}
+
+.combate__recarga-nivel {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #2ad3c8;
+  /* Sem transição: a largura vem do laço, quadro a quadro. Uma transição por
+     cima disso atrasaria a barra em relação ao cooldown real. */
+}
+
+/* Recarregando: a barra enche e o rótulo avisa. Enquanto isso a tecla não
+   vale, e é isto que diz por quê. */
+.combate__recarga--ativa .combate__recarga-rotulo {
+  color: rgba(255, 196, 120, 0.85);
+}
+
+.combate__recarga--ativa .combate__recarga-nivel {
+  background: rgba(255, 176, 90, 0.9);
+}
+
+/* Recusa: a tecla foi apertada durante a recarga. Pisca uma vez, seco. */
+.combate__recarga--recusa {
+  border-color: rgba(255, 110, 90, 0.85);
+  background: rgba(46, 12, 10, 0.6);
+}
+
+.combate__recarga--recusa .combate__recarga-rotulo {
+  color: rgba(255, 130, 110, 0.95);
+}
+
+.combate__rodadas {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.5);
+}
+
+.combate__mostrador {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.combate__canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+}
+
+.combate__setores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.combate__setor {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(8, 26, 32, 0.8);
+  border: 1px solid rgba(27, 106, 120, 0.8);
+  color: #bdfff0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.combate__tecla {
+  font-family: ui-monospace, monospace;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: #38e8ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.combate__setor-nome {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.combate__setor--certo {
+  border-color: #4dffa6;
+  background: rgba(16, 60, 44, 0.85);
+}
+
+.combate__setor--certo .combate__tecla {
+  color: #4dffa6;
+}
+
+.combate__setor--errado {
+  border-color: #ff6e5a;
+  background: rgba(60, 20, 18, 0.85);
+}
+
+.combate__setor--errado .combate__tecla {
+  color: #ff6e5a;
+}
+
+.combate__setor--apagado {
+  opacity: 0.35;
+}
+
+/* Impacto: a tela inteira treme e as bordas piscam vermelho. É a única vez em
+   que o HUD sai do lugar — por isso são poucos pixels e pouco tempo. */
+.hud--impacto {
+  animation: hud-impacto 400ms steps(2, end) 2;
+}
+
+@keyframes hud-impacto {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-4px, 3px);
+  }
+  50% {
+    transform: translate(3px, -3px);
+  }
+  75% {
+    transform: translate(-2px, -2px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.hud--impacto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  box-shadow: inset 0 0 90px 22px rgba(255, 60, 40, 0.55);
+  animation: impacto-borda 800ms ease-out forwards;
+}
+
+@keyframes impacto-borda {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud--impacto,
+  .hud--impacto::after {
+    animation-duration: 1ms;
+  }
+  .combate__barra--critico .combate__barra-nivel {
+    animation: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .combate__corpo {
+    grid-template-columns: minmax(150px, 190px) 1fr minmax(120px, 160px);
+    gap: 12px;
+  }
+  .combate__tecla {
+    font-size: 24px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tela final
+   -------------------------------------------------------------------------- */
+
+.fim {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  height: 100%;
+  text-align: center;
+  padding: 0 24px;
+}
+
+.fim__titulo {
+  margin: 0;
+  font-size: clamp(38px, 6vw, 74px);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #bdfff0;
+  text-shadow: 0 0 34px rgba(77, 255, 166, 0.45);
+  /* Uma entrada longa e só uma: a tela vai ficar minutos na frente da plateia. */
+  animation: fim-entrar 1600ms cubic-bezier(0.2, 0, 0.1, 1) both;
+}
+
+.fim__subtitulo {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: clamp(14px, 1.8vw, 20px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #38e8ff;
+  animation: fim-entrar 1600ms cubic-bezier(0.2, 0, 0.1, 1) 450ms both;
+}
+
+.fim__nota {
+  margin: 12px 0 0;
+  font-size: clamp(14px, 1.7vw, 19px);
+  color: rgba(214, 240, 245, 0.8);
+  animation: fim-entrar 1600ms cubic-bezier(0.2, 0, 0.1, 1) 1000ms both;
+}
+
+@keyframes fim-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fim__titulo,
+  .fim__subtitulo,
+  .fim__nota {
+    animation-duration: 1ms;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Painéis novos: zonas e eco
+   -------------------------------------------------------------------------- */
+
+.painel__zonas,
+.painel__eco {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+.painel__zonas-canvas,
+.painel__eco-canvas {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+}
+
+.eco__conta {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.eco__formula {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ui-monospace, monospace;
+  font-size: clamp(14px, 1.7vw, 20px);
+  color: #bdfff0;
+}
+
+.eco__var {
+  font-style: italic;
+  color: #38e8ff;
+}
+
+.eco__igual {
+  opacity: 0.6;
+}
+
+.eco__fracao {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.35;
+}
+
+.eco__cima {
+  border-bottom: 1px solid rgba(189, 255, 240, 0.7);
+  padding: 0 8px 2px;
+}
+
+.eco__baixo {
+  padding: 2px 8px 0;
+}
+
+.eco__valor {
+  color: #4dffa6;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.eco__cronometro {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  color: rgba(189, 255, 240, 0.65);
+  font-variant-numeric: tabular-nums;
+}
+
+.eco__rodape strong {
+  color: #38e8ff;
+  font-weight: 600;
+}
+
+/* Mini-feed: a fratura entra mais discreta. O desenho é o mesmo, mas num
+   quadro de 258 px ela chega a cobrir a imagem — e na subida o que importa é
+   ver a câmera voltando POR TRÁS do vidro rachado. */
+.feed--mini .rachadura {
+  opacity: 0.6;
+}
+
+.feed--mini .rachadura--parcial {
+  opacity: 0.44;
+}
+
+/* --------------------------------------------------------------------------
+   O olho (3A)
+   -------------------------------------------------------------------------- */
+
+/* Tempos 1 a 3: a câmera grande.
+   Mesma caixa do olho — a área central inteira, que é o maior quadro que cabe
+   sem passar por cima do log. Não é decisão de estética: é a cena inteira
+   dependendo de a plateia conseguir MEDIR o bicho, e num mini-feed de 200 px
+   ele atravessa a tela sem que ninguém entenda o tamanho. */
+.olho-camera {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #02080b;
+  border: 1px solid rgba(27, 106, 120, 0.7);
+  pointer-events: none;
+  animation: olho-entrar 420ms ease-out;
+}
+
+.olho-camera .feed--olho {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  font-size: clamp(0.55rem, 1.3vh, 0.85rem);
+}
+
+.olho-camera .feed--olho .feed__canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Estática leve por cima: o sinal está ruim, não morto. Uma faixa de linhas
+   fina o bastante pra a silhueta continuar legível. */
+.olho-camera::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    rgba(255, 255, 255, 0.035) 0 1px,
+    rgba(0, 0, 0, 0) 1px 3px
+  );
+  opacity: 0.8;
+  animation: olho-camera-ruido 3.1s steps(9) infinite;
+}
+
+@keyframes olho-camera-ruido {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Tempo 3: o escuro. A câmera continua lá, sem nada nela. O corte é rápido
+   (180 ms) porque o silêncio começa AGORA — desvanecer seria despedida. */
+.olho-camera--escuro {
+  background: #010507;
+}
+
+.olho-camera--escuro .feed--olho,
+.olho-camera--escuro::after {
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .olho-camera,
+  .olho-camera::after {
+    animation: none;
+  }
+  .olho-camera--escuro .feed--olho,
+  .olho-camera--escuro::after {
+    transition: none;
+  }
+}
+
+/* Ocupa a área central inteira, como um painel de câmera em tela cheia — mas
+   sem moldura de painel: o que se vê é a câmera, não o sistema. */
+.olho {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  overflow: hidden;
+  background: #02080b;
+  border: 1px solid rgba(27, 106, 120, 0.7);
+  pointer-events: none;
+  animation: olho-entrar 420ms ease-out;
+}
+
+@keyframes olho-entrar {
+  from {
+    opacity: 0;
+  }
+}
+
+.olho__canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.olho__barra {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: linear-gradient(rgba(2, 10, 12, 0.8), rgba(2, 10, 12, 0));
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.7);
+}
+
+.olho__rec {
+  color: #ff6e5a;
+}
+
+/* --------------------------------------------------------------------------
+   Dossiê (3A)
+   -------------------------------------------------------------------------- */
+
+/* O corpo vira flex e a grade do dossiê é o filho que estica.
+   Com `height: 100%` a grade media 308 px dentro de um corpo de 274: a coluna
+   da esquerda passava do rodapé da moldura e a silhueta era cortada no meio.
+   Altura por flex resolve contra a caixa real, não contra uma porcentagem que
+   depende de o pai ter altura declarada. */
+.painel--dossie .painel__corpo {
+  display: flex;
+}
+
+.dossie {
+  display: grid;
+  /* 44% e não 38%: os dados são três linhas curtas e sobrava espaço à direita,
+     enquanto a foto (um recorte em pé) era espremida numa caixa deitada. */
+  grid-template-columns: minmax(180px, 44%) 1fr;
+  gap: 22px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.dossie__dados {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  /* Os dados não esticam: eles começam no topo, junto com a foto. */
+  align-self: start;
+}
+
+.dossie__silhueta {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dossie__canvas {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+}
+
+/* Carimbo torto, como carimbo de verdade. Pisca devagar: é um aviso que
+   acompanha a leitura, não um alarme.
+   No canto, e não no meio: centrado ele caía em cima do corpo do bicho, que é
+   a única coisa que se move no painel. */
+.dossie__carimbo {
+  position: absolute;
+  right: 2%;
+  bottom: 3%;
+  transform: rotate(-7deg);
+  padding: 4px 12px;
+  border: 2px solid rgba(255, 110, 90, 0.8);
+  border-radius: 3px;
+  color: #ff8a70;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: carimbo-piscar 2.8s ease-in-out infinite;
+}
+
+@keyframes carimbo-piscar {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.dossie__titulo {
+  margin: 0 0 14px;
+  font-size: clamp(18px, 2.4vw, 27px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #ffc24d;
+  font-style: italic;
+}
+
+.dossie__lista {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+/* Cada dado entra sozinho, no ritmo da fala. A transição é curta: quem está
+   lendo em voz alta não pode esperar a animação. */
+.dossie__item {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr;
+  gap: 4px 14px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.45);
+  opacity: 0;
+  transform: translateX(-10px);
+  transition:
+    opacity 260ms ease-out,
+    transform 260ms ease-out;
+}
+
+.dossie__item--visivel {
+  opacity: 1;
+  transform: none;
+}
+
+.dossie__item dt {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.6);
+  align-self: center;
+}
+
+.dossie__item dd {
+  margin: 0;
+  font-size: clamp(13px, 1.5vw, 17px);
+  color: #bdfff0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dossie__carimbo,
+  .olho {
+    animation: none;
+  }
+  .dossie__item {
+    transition: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .dossie {
+    grid-template-columns: minmax(140px, 34%) 1fr;
+    gap: 14px;
+  }
+}
+
+/* A animação de abertura do painel é TRANSFORM + clip-path, e transform no pai
+   deforma tudo que está dentro — inclusive a foto. No dossiê ela vira só
+   opacidade: o painel continua entrando, a imagem não entorta. Era esta a
+   fonte do tremor. */
+.painel--dossie .painel__moldura {
+  animation: dossie-abrir 260ms ease-out;
+}
+
+@keyframes dossie-abrir {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Dossiê com imagem: a foto em cima, a silhueta nadando embaixo. Sem imagem,
+   a silhueta ocupa a coluna inteira e nada muda de lugar. */
+.dossie__visual {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Com foto o painel VIRA: a imagem é um recorte EM PÉ, e empilhá-la numa
+   moldura deitada desperdiçava metade da caixa — a cabeça saía com 114 px de
+   largura num quadro de 256. Aqui ela ocupa a coluna da esquerda inteira, de
+   cima a baixo, e os dados ficam com a direita. O crédito ganha a última
+   linha, atravessando as duas colunas. */
+.dossie--com-imagem {
+  grid-template-columns: minmax(160px, 34%) 1fr;
+  grid-template-rows: 1fr auto;
+  column-gap: 22px;
+  row-gap: 10px;
+}
+
+/* `contents` promove a foto pra grade do painel sem mexer no JSX — sem foto,
+   o `.dossie__visual` continua sendo a coluna de sempre, com a silhueta. */
+.dossie--com-imagem .dossie__visual {
+  display: contents;
+}
+
+.dossie--com-imagem .dossie__foto {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.dossie--com-imagem .dossie__dados {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.dossie--com-imagem .dossie__credito {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin: 0;
+}
+
+.dossie__foto {
+  position: relative;
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(27, 106, 120, 0.8);
+  background: #041014;
+}
+
+.dossie__foto img {
+  width: 100%;
+  height: 100%;
+  /* `contain`, e não `cover`: a foto é um RECORTE com fundo transparente, e
+     cortar um recorte come o focinho ou a mandíbula. Assim a cabeça flutua
+     inteira sobre o fundo do painel, que é como uma prancha de dossiê é. */
+  object-fit: contain;
+  display: block;
+  /* Só acerta o tom com o resto do HUD — SEM hue-rotate.
+     O filtro antigo girava 155° pra puxar uma foto em cores naturais pro ciano.
+     A foto que entrou já é azul-esverdeada, e girar de novo jogava ela no
+     magenta: o painel inteiro ficava rosa. Aqui só desce um pouco a saturação
+     e firma o contraste. */
+  filter: saturate(0.8) contrast(1.12) brightness(0.92);
+  /* A foto é ESTÁTICA. Só isto: 400 ms de fade e nada mais. Nenhum transform,
+     nenhum ruído, nenhum glitch — uma reconstrução científica que treme lê
+     como render de videogame, e o painel inteiro perde a autoridade que os
+     dados dele têm. */
+  animation: foto-entrar 400ms ease-out both;
+  /* O fade da revelação em dois tempos passa por aqui. 800 ms: tempo de a
+     plateia ver a foto ACONTECENDO, e não de ela já estar lá. */
+  transition: filter 800ms ease-out;
+}
+
+/* Primeiro tempo: a mesma foto, preta. É a silhueta que a IA compilou dos
+   sensores antes de aceitar de quem ela é. `brightness(0)` zera o pixel e o
+   alfa continua valendo, então o que sobra é o recorte — sem precisar de um
+   segundo arquivo.
+
+   O seletor precisa do `.dossie__foto` na frente: a regra de cor lá em cima é
+   `.dossie__foto img`, que tem elemento na conta e ganharia de uma classe
+   sozinha. Medido na tela: com `.dossie__img--escura` puro a foto aparecia
+   inteira no primeiro tempo e a cena entregava o bicho duas falas antes. */
+.dossie__foto img.dossie__img--escura {
+  filter: brightness(0) saturate(0);
+}
+
+@keyframes foto-entrar {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Scanline por cima, parada. É a única coisa que a foto ganha do HUD: ela diz
+   "isto está sendo exibido num monitor de bordo" sem mexer num pixel da
+   imagem. Fixa de propósito — scanline rolando é efeito, e efeito na foto é o
+   que se está tirando daqui. */
+.dossie__foto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    rgba(2, 12, 14, 0) 0px,
+    rgba(2, 12, 14, 0) 2px,
+    rgba(2, 12, 14, 0.28) 3px,
+    rgba(2, 12, 14, 0.28) 4px
+  );
+}
+
+.dossie__rotulo-foto {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 8px;
+  background: linear-gradient(rgba(2, 10, 12, 0), rgba(2, 10, 12, 0.88));
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.8);
+}
+
+.dossie__credito {
+  margin: 14px 0 0;
+  min-width: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  line-height: 1.5;
+  color: rgba(189, 255, 240, 0.45);
+  max-width: 62ch;
+}
+
+/* --------------------------------------------------------------------------
+   Apagão do combate
+   -------------------------------------------------------------------------- */
+
+/* A tela CAI. Preto por cima de tudo, inclusive do painel de combate, e a luz
+   de emergência piscando três vezes por trás — o casco levou uma pancada e a
+   energia foi junto. 400 ms: o suficiente pra assustar, curto o bastante pra
+   ninguém achar que o projetor desligou. */
+.apagao {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+  background: #000;
+  animation: apagao-luz 400ms steps(1, end) 1;
+}
+
+@keyframes apagao-luz {
+  0%,
+  100% {
+    background: #000;
+  }
+  14%,
+  46%,
+  78% {
+    /* Os três flashes da luz de emergência. Vermelha e fraca: é a bateria, não
+       a iluminação principal. */
+    background: radial-gradient(circle at 50% 46%, rgba(120, 18, 10, 0.85), #000 62%);
+  }
+}
+
+/* A energia voltando: a moldura se firma. Dois pulos rápidos de opacidade e um
+   deslocamento de meio pixel, que é o que um sinal instável faz. */
+.hud--religando .hud__moldura {
+  animation: religando 520ms steps(2, end) 1;
+}
+
+@keyframes religando {
+  0% {
+    opacity: 0.15;
+    transform: translateX(-2px);
+    filter: brightness(2.4) saturate(0.2);
+  }
+  20% {
+    opacity: 0.9;
+    transform: translateX(2px);
+  }
+  40% {
+    opacity: 0.3;
+    transform: translateX(-1px);
+    filter: brightness(1.8);
+  }
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Fake-out: o mostrador fica sozinho com o silêncio. */
+.combate__silencio {
+  grid-column: 1 / -1;
+  margin: 0;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(255, 110, 90, 0.75);
+  animation: silencio-pulsar 2s ease-in-out infinite;
+}
+
+@keyframes silencio-pulsar {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apagao,
+  .hud--religando .hud__moldura,
+  .combate__silencio {
+    animation-duration: 1ms;
+  }
+}
+
+/* Sonar vazio depois de um acerto: a moldura recua um pouco e o mostrador
+   fica sozinho. São os 2 a 3 s em que a plateia procura. */
+.combate[data-fase='perdido'] .painel__moldura {
+  border-color: rgba(27, 106, 120, 0.35);
+}
+
+.combate .painel__moldura {
+  transition:
+    opacity 300ms ease-in,
+    border-color 300ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combate .painel__moldura {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Expedição de identificação (2A)
+   -------------------------------------------------------------------------- */
+
+/* A câmera grande é o palco, como na cena do olho — mesma caixa, e por isso a
+   mesma classe. O que muda é que aqui ela fica atrás do HUD da dinâmica. */
+.olho-camera--ident {
+  z-index: 4;
+  animation: none;
+}
+
+/* O HUD da identificação divide a área central com a câmera: cabeçalho e
+   calibração em cima, pistas (ou a ficha) embaixo. No meio fica a água — que
+   é onde a plateia tem que estar olhando. */
+.ident {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(10px, 1.8vh, 20px) clamp(14px, 2vw, 26px);
+  pointer-events: none;
+  font-family: ui-monospace, monospace;
+}
+
+.ident__topo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ident__cabecalho {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.7);
+  text-shadow: 0 1px 6px rgba(2, 10, 12, 0.9);
+}
+
+.ident__calibracao {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ident__calibracao-rotulo {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.6);
+}
+
+.ident__calibracao-trilho {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(6, 30, 36, 0.8);
+  overflow: hidden;
+}
+
+.ident__calibracao-nivel {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #2ad3c8;
+  /* Sem transição: a largura vem do laço, quadro a quadro. */
+}
+
+/* No piso ela para de cair. A cor muda pra dizer que parou — e não pra alarmar:
+   quem demorou perde tamanho de recompensa, não perde a vez. */
+.ident__calibracao--piso .ident__calibracao-nivel {
+  background: rgba(255, 194, 77, 0.85);
+}
+
+.ident__pistas {
+  list-style: none;
+  /* Acima da legenda da IA, que ocupa o rodapé do palco. */
+  margin: 0 0 clamp(52px, 11vh, 96px);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 62ch;
+  align-self: center;
+  text-align: center;
+}
+
+.ident__pistas li {
+  padding: 5px 12px;
+  border-left: 2px solid rgba(56, 232, 255, 0.5);
+  background: rgba(2, 12, 16, 0.72);
+  font-size: clamp(12px, 1.5vh, 15px);
+  line-height: 1.45;
+  color: rgba(189, 255, 240, 0.9);
+}
+
+/* A pista que acabou de sair entra: sem isto, três linhas iguais aparecem e
+   ninguém sabe qual é a nova. */
+.ident__pista--nova {
+  animation: ident-pista 420ms ease-out;
+  border-left-color: #38e8ff;
+}
+
+@keyframes ident-pista {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* A ficha vai pro LADO, não pro rodapé: embaixo ela batia na legenda da IA.
+   Coluna à esquerda, centro vertical — o bicho fica com o resto do quadro. */
+.ident__revelacao {
+  position: absolute;
+  left: clamp(14px, 2vw, 26px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(190px, 25%, 300px);
+  padding: 10px 14px;
+  border: 1px solid rgba(27, 106, 120, 0.7);
+  background: rgba(2, 14, 18, 0.88);
+  animation: ident-revelar 520ms ease-out;
+}
+
+@keyframes ident-revelar {
+  from {
+    opacity: 0;
+  }
+}
+
+.ident__nome {
+  margin: 0 0 8px;
+  font-size: clamp(14px, 1.6vw, 19px);
+  font-style: italic;
+  font-weight: 600;
+  color: #ffc24d;
+  text-align: center;
+}
+
+.ident__sem-acerto {
+  margin: -4px 0 8px;
+  text-align: center;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 194, 77, 0.6);
+}
+
+.ident__ficha {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* As pistas na revelação: presentes, mas em segundo plano — quem manda na
+   tela agora é o bicho, e elas estão ali só pra fechar a ligação. */
+.ident__pistas-ditas {
+  list-style: none;
+  margin: 0 0 9px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ident__pistas-ditas li {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: rgba(189, 255, 240, 0.62);
+}
+
+.ident__pistas-ditas li::before {
+  content: '· ';
+  color: rgba(56, 232, 255, 0.7);
+}
+
+.ident__ficha div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.4);
+  padding-bottom: 3px;
+}
+
+.ident__ficha dt {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.55);
+}
+
+.ident__ficha dd {
+  margin: 0;
+  font-size: 12px;
+  color: #bdfff0;
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ident__pista--nova,
+  .ident__revelacao {
+    animation: none;
+  }
+}
+
+/* --- painel do cache ------------------------------------------------------
+   Canto superior direito da área central: a câmera é o palco, e o contador
+   acompanha sem tapar. Por isso ele NÃO usa a moldura central de painel. */
+.painel--cache {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: auto;
+  bottom: auto;
+  width: clamp(190px, 21vw, 260px);
+  z-index: 8;
+}
+
+.painel--cache .painel__corpo {
+  padding: 10px 12px;
+}
+
+.cache {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cache__leitura {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: ui-monospace, monospace;
+}
+
+.cache__numero {
+  font-size: clamp(18px, 2.4vw, 27px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: #38e8ff;
+}
+
+.cache__total {
+  font-size: 10px;
+  color: rgba(189, 255, 240, 0.5);
+}
+
+.cache__trilho {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(6, 30, 36, 0.9);
+  overflow: hidden;
+}
+
+.cache__nivel {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #2ad3c8;
+}
+
+.cache--corrompido .cache__numero {
+  color: #ff6e5a;
+  animation: cache-piscar 1.1s steps(2) infinite;
+}
+
+.cache__alerta {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ff6e5a;
+  animation: cache-piscar 1.1s steps(2) infinite;
+}
+
+@keyframes cache-piscar {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.cache__grade {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.cache__slot {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(27, 106, 120, 0.5);
+  border-radius: 2px;
+  background: rgba(4, 18, 22, 0.7);
+}
+
+.cache__slot--cheio {
+  border-color: rgba(56, 232, 255, 0.6);
+}
+
+.cache__vazio {
+  font-size: 11px;
+  color: rgba(189, 255, 240, 0.3);
+}
+
+.cache__miniatura {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cache--corrompido .cache__numero,
+  .cache__alerta {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   2B — modo reduzido e hidrofone
+   ========================================================================== */
+
+/* A moldura pulsando é o que diz, durante três cenas inteiras, que o submarino
+   continua avariado. Lenta e fraca de propósito: a avaria dura o tempo de dois
+   grupos apresentarem, e um alarme forte piscando atrás de alunos falando
+   deixa de ser cenário e vira incômodo. */
+.hud--emergencia .hud__moldura {
+  animation: emerg-moldura 2s ease-in-out infinite;
+}
+
+@keyframes emerg-moldura {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(255, 77, 94, 0.12);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(255, 77, 94, 0.42);
+  }
+}
+
+/* Câmeras degradadas: cor lavada e retículo desligado. O grão a mais vem do
+   motor; isto aqui é o que é propriedade do elemento, não do desenho. */
+.hud--emergencia .feed__canvas {
+  filter: saturate(0.3) contrast(1.06) brightness(0.84);
+}
+
+.hud--emergencia .feed__reticulo {
+  display: none;
+}
+
+/* --- tela de falha -------------------------------------------------------- */
+
+.emerg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  background: rgba(2, 10, 12, 0.92);
+  z-index: 8;
+}
+
+.emerg__titulo {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  letter-spacing: 0.28em;
+  color: var(--vermelho);
+  text-shadow: 0 0 18px rgba(255, 77, 94, 0.45);
+  animation: emerg-titulo 900ms steps(2) infinite;
+}
+
+@keyframes emerg-titulo {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  71%,
+  100% {
+    opacity: 0.55;
+  }
+}
+
+.emerg__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  min-width: min(28rem, 60vw);
+}
+
+.emerg__item {
+  opacity: 0;
+  padding: 0.35rem 0.9rem;
+  border-left: 2px solid rgba(255, 77, 94, 0.5);
+  background: rgba(255, 77, 94, 0.07);
+  color: rgba(189, 255, 240, 0.55);
+  letter-spacing: 0.1em;
+  transition: opacity 180ms linear;
+}
+
+.emerg__item--visivel {
+  opacity: 1;
+}
+
+/* --- as três luzes -------------------------------------------------------- */
+
+.luzes {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 6;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(255, 77, 94, 0.3);
+  background: rgba(4, 22, 26, 0.9);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  min-width: 11.5rem;
+}
+
+.luzes--encerrando {
+  border-color: rgba(77, 255, 166, 0.4);
+}
+
+.luzes__rotulo {
+  margin: 0 0 0.4rem;
+  color: rgba(189, 255, 240, 0.45);
+  text-transform: uppercase;
+}
+
+.luzes__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.luzes__item {
+  display: grid;
+  grid-template-columns: 0.6rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.luzes__led {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--vermelho);
+  box-shadow: 0 0 6px rgba(255, 77, 94, 0.6);
+}
+
+.luzes__item--caido .luzes__led {
+  animation: luz-caida 1.6s ease-in-out infinite;
+}
+
+@keyframes luz-caida {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Âmbar no meio do caminho: é o passo que faz a plateia ver o sistema
+   RELIGANDO, em vez de ver uma luz trocar de cor. */
+.luzes__item--religando .luzes__led {
+  background: var(--ambar);
+  box-shadow: 0 0 10px rgba(255, 194, 77, 0.8);
+  animation: luz-religando 300ms linear infinite;
+}
+
+@keyframes luz-religando {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.luzes__item--online .luzes__led {
+  background: var(--verde);
+  box-shadow: 0 0 8px rgba(77, 255, 166, 0.7);
+  animation: none;
+}
+
+.luzes__nome {
+  color: var(--texto);
+}
+
+.luzes__estado {
+  color: rgba(189, 255, 240, 0.4);
+}
+
+.luzes__item--online .luzes__estado {
+  color: rgba(77, 255, 166, 0.75);
+}
+
+.luzes--encerrando .luzes__led {
+  animation: luz-fechando 320ms steps(2) 4;
+}
+
+@keyframes luz-fechando {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* --- hidrofone ------------------------------------------------------------ */
+
+.hidro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 2.2rem 1rem 1rem;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.hidro__cabecalho {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: rgba(189, 255, 240, 0.5);
+  text-transform: uppercase;
+  max-width: 41.25rem;
+}
+
+/* O espectrograma é o centro da cena: é ele que mostra o que o ouvido já
+   ouviu, e é por ele que quem não reconheceu pelo som reconhece pelo desenho. */
+.hidro__espectro {
+  width: min(41.25rem, 100%);
+  height: auto;
+  border: 1px solid rgba(27, 106, 120, 0.5);
+  background: #03141a;
+  image-rendering: pixelated;
+}
+
+.hidro__onda {
+  width: min(41.25rem, 100%);
+  height: auto;
+  opacity: 0.75;
+}
+
+.hidro__pista {
+  margin: 0;
+  padding: 0.4rem 0.8rem;
+  max-width: min(41.25rem, 100%);
+  border-left: 2px solid var(--ciano);
+  background: rgba(56, 232, 255, 0.07);
+  color: var(--texto);
+  font-size: 0.92rem;
+}
+
+.hidro__fonte {
+  display: flex;
+  gap: 1.2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  max-width: min(41.25rem, 100%);
+}
+
+.hidro__nome {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: var(--verde);
+}
+
+.hidro__sem-acerto {
+  margin: 0.2rem 0 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: rgba(255, 194, 77, 0.75);
+  text-transform: uppercase;
+}
+
+.hidro__pista-dita {
+  margin: 0.4rem 0 0;
+  max-width: 18rem;
+  color: rgba(189, 255, 240, 0.55);
+  font-size: 0.82rem;
+}
+
+.hidro__mapa {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(27, 106, 120, 0.5);
+  background: rgba(4, 22, 26, 0.85);
+}
+
+.hidro__dados {
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+}
+
+.hidro__dados div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.hidro__dados dt {
+  color: rgba(189, 255, 240, 0.4);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hidro__dados dd {
+  margin: 0;
+  color: var(--ciano);
+  font-size: 0.95rem;
+}
+
+.hud__campo--agua strong {
+  color: var(--ambar);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud--emergencia .hud__moldura,
+  .emerg__titulo,
+  .luzes__item--caido .luzes__led,
+  .luzes__item--religando .luzes__led,
+  .luzes--encerrando .luzes__led {
+    animation: none;
+  }
+}
+
+/* O que vale como acerto, no overlay do operador. Fica no TOPO da ajuda: nas
+   dinâmicas de gritar a resposta é a única coisa ali que ele consulta no
+   escuro, com a sala falando junto. */
+.ajuda__aceitos {
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid rgba(27, 106, 120, 0.4);
+}
+
+.ajuda__aceitos h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.45);
+}
+
+.ajuda__aceitos p {
+  margin: 0;
+  color: var(--verde);
+  font-size: 0.95rem;
+}
+
+/* ==========================================================================
+   2A — cronômetro e enigma da Educação Física
+   ========================================================================== */
+
+.crono {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 0;
+}
+
+/* Grande de verdade: quem lê isso está no fundo da sala tentando acompanhar um
+   exercício, não olhando o painel de perto. */
+.crono__numero {
+  margin: 0;
+  font-size: clamp(3.5rem, 11vw, 7rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ciano);
+  text-shadow: 0 0 24px rgba(56, 232, 255, 0.35);
+}
+
+.crono--fim .crono__numero {
+  color: var(--ambar);
+  text-shadow: 0 0 24px rgba(255, 194, 77, 0.4);
+}
+
+.crono__unidade {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(189, 255, 240, 0.45);
+}
+
+.crono__trilho {
+  margin-top: 0.4rem;
+  width: min(22rem, 70%);
+  height: 3px;
+  background: rgba(27, 106, 120, 0.4);
+}
+
+.crono__nivel {
+  display: block;
+  height: 100%;
+  background: var(--ciano);
+  transition: width 200ms linear;
+}
+
+.crono--fim .crono__nivel {
+  background: var(--ambar);
+}
+
+/* --- enigma --------------------------------------------------------------- */
+
+.enigma {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.enigma__slots {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.enigma__slot {
+  display: grid;
+  grid-template-columns: 1.7rem 1fr;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(27, 106, 120, 0.5);
+  background: rgba(4, 22, 26, 0.6);
+}
+
+.enigma__numero {
+  font-size: 1.1rem;
+  color: rgba(189, 255, 240, 0.4);
+  text-align: center;
+}
+
+.enigma__texto {
+  color: rgba(189, 255, 240, 0.28);
+  letter-spacing: 0.3em;
+}
+
+.enigma__slot--cheio {
+  border-color: rgba(56, 232, 255, 0.55);
+  background: rgba(56, 232, 255, 0.07);
+}
+
+.enigma__slot--cheio .enigma__numero {
+  color: var(--ciano);
+}
+
+.enigma__slot--cheio .enigma__texto {
+  color: var(--texto);
+  letter-spacing: normal;
+}
+
+.enigma__rodape {
+  display: flex;
+  justify-content: center;
+  min-height: 2.4rem;
+  align-items: center;
+}
+
+.enigma__dica {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: rgba(189, 255, 240, 0.4);
+  text-transform: uppercase;
+}
+
+.enigma__relogio {
+  font-size: 2.4rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ciano);
+}
+
+.enigma__encerrado {
+  font-size: 1.3rem;
+  letter-spacing: 0.24em;
+  color: var(--ambar);
+}
+
+/* Piscam juntos no fim: é o sinal de que o tempo acabou pra todos os quatro,
+   não de que algum estava errado — quem julga o resultado são os alunos. */
+.enigma--encerrado .enigma__slot {
+  animation: enigma-fim 420ms steps(2) 4;
+}
+
+@keyframes enigma-fim {
+  0%,
+  100% {
+    border-color: rgba(255, 194, 77, 0.7);
+  }
+  50% {
+    border-color: rgba(27, 106, 120, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enigma--encerrado .enigma__slot {
+    animation: none;
+  }
+}
+
+/* --- controle remoto (Fase 6) ------------------------------------------- */
+
+/* Código da sessão na tela de ativação. Discreto: quem precisa dele já sabe
+   que ele existe, e a plateia ainda não está olhando. */
+.codigo-remoto {
+  margin-top: 2.5rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  color: rgba(120, 190, 205, 0.7);
+  text-transform: uppercase;
+}
+
+.codigo-remoto strong {
+  color: rgba(180, 240, 255, 0.95);
+  font-size: 1.5rem;
+  letter-spacing: 0.3em;
+  margin-left: 0.5rem;
+}
+
+/* Pontinho de estado do remoto, no rodapé do HUD. É a ÚNICA coisa que a
+   plateia poderia ver, e a 15 metros ela não vê: 6 px. */
+.hud__remoto {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 0.6rem;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: rgba(120, 140, 150, 0.45);
+}
+
+.hud__remoto--ligado {
+  background: rgba(77, 255, 166, 0.9);
+  box-shadow: 0 0 6px rgba(77, 255, 166, 0.6);
+}
+
+.hud__remoto--reconectando {
+  background: rgba(255, 194, 77, 0.9);
+  animation: remoto-pulsa 1.2s ease-in-out infinite;
+}
+
+@keyframes remoto-pulsa {
+  50% {
+    opacity: 0.25;
+  }
+}
