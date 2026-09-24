@@ -8,6 +8,14 @@ type Props = {
   /** Rodapé discreto: turma e posição no roteiro. */
   rodapeEsquerda?: string
   rodapeDireita?: string
+  /**
+   * Estado do controle pelo celular, como um ponto de 6 px no rodapé.
+   *
+   * Verde ligado, âmbar reconectando, cinza desligado. É a única pista visível
+   * de que existe um remoto, e é pequena de propósito: serve pro operador
+   * conferir num relance e não pra plateia reparar.
+   */
+  remoto?: 'ligado' | 'reconectando' | 'desligado'
   /** Inclina a moldura inteira 1,5° durante a fase de inclinação do mergulho. */
   inclinado?: boolean
   /** Mergulho em curso: promove a camada da moldura antes do giro começar. */
@@ -40,6 +48,7 @@ export function Hud({
   sonar = 'ATIVO',
   rodapeEsquerda,
   rodapeDireita,
+  remoto,
   inclinado = false,
   mergulhando = false,
   impacto = false,
@@ -97,7 +106,15 @@ export function Hud({
         <div className="hud__corpo">{children}</div>
 
         <div className="hud__barra hud__barra--rodape">
-          <span className="hud__campo">{rodapeEsquerda}</span>
+          <span className="hud__campo">
+            {rodapeEsquerda}
+            {remoto && (
+              <span
+                className={`hud__remoto hud__remoto--${remoto}`}
+                title={`controle pelo celular: ${remoto}`}
+              />
+            )}
+          </span>
           <span className="hud__campo">{rodapeDireita}</span>
         </div>
       </div>

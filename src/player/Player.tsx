@@ -68,6 +68,8 @@ import { POOL_COMANDO } from '../ui/logPool'
 import { duracaoDaLegenda, type TemposReais } from '../ui/ritmoLegenda'
 import { Orbe, QTD_PONTOS, type EstadoOrbe } from '../ui/Orbe'
 import type { AudioEngine } from './AudioEngine'
+import { montarEstado } from '../remoto/estado'
+import { useRemoto } from '../remoto/useRemoto'
 import { useTeclado } from './useTeclado'
 
 /** Limites do ajuste de tamanho do orbe pelo operador ([ e ]). */
@@ -345,9 +347,14 @@ type FasePane = 'caindo' | 'congelado' | 'voltando'
 type EstadoPane = { fase: FasePane; quedas: Queda[] }
 type Fala = { linhas: string[]; duracaoMs: number | null; chave: number; fixa: boolean }
 
-type Props = { roteiro: Roteiro; engine: AudioEngine }
+type Props = {
+  roteiro: Roteiro
+  engine: AudioEngine
+  /** Código de 4 dígitos da sessão, pro canal do controle remoto. */
+  codigo: string
+}
 
-export function Player({ roteiro, engine }: Props) {
+export function Player({ roteiro, engine, codigo }: Props) {
   // A pane fica no mesmo JSON, mas fora da ordem: é disparada pela tecla P a
   // qualquer momento, então some da sequência linear que as setas percorrem.
   const sequencia = useMemo(
@@ -528,6 +535,16 @@ export function Player({ roteiro, engine }: Props) {
   /** Velocidade base da investida corrente (distância ÷ tempo da rodada). */
   const refBaseVel = useRef(0)
   const lerSimCombate = useCallback(() => refSimCombate.current, [])
+  /**
+   * Publicar o estado pro celular de dentro do combate.
+   *
+   * Em ref porque o `useRemoto` é montado bem mais abaixo, e a simulação do
+   * combate roda num efeito que vem antes. Existe por um motivo só: a recarga
+   * do pulso dura 1,2 s e a publicação periódica é de 2 s — sem um empurrão no
+   * disparo, a barra do celular diria "pronto" enquanto a tela diz
+   * "recarregando", que é exatamente o erro que faz o operador apertar de novo.
+   */
+  const refPublicarRemoto = useRef<() => void>(() => {})
   /** `?debugDiretor=1`: rodapé com a decisão do Diretor ao vivo. */
   const depurarDiretor = useRef(
     /(^|[?&])debugdiretor=(1|on|true)(&|$)/i.test(window.location.search),
@@ -1212,6 +1229,7 @@ export function Player({ roteiro, engine }: Props) {
       }
       sim.prontoEm = agora + MS_COOLDOWN
       sim.pulso = { setor: marcado, em: agora }
+      refPublicarRemoto.current()
       engine.tocarSfx('pulso', 1, panDoSetor(marcado))
 
       if (marcado === setor) {
@@ -2409,6 +2427,68 @@ export function Player({ roteiro, engine }: Props) {
     !consoleAberto && !painelCapturaTeclado(painel?.nome),
   )
 
+  // --- controle pelo celular ----------------------------------------------
+  //
+  // O remoto entra DEPOIS do teclado de propósito: ele não substitui nada, só
+  // injeta teclas no mesmo listener. Se esta seção inteira for arrancada, o
+  // app volta a ser o de antes sem nenhuma outra mudança.
+
+  const { status: statusRemoto, publicar: publicarRemoto } = useRemoto({
+    turma: roteiro.turma,
+    codigo,
+    ativo: true,
+    // `false` = não mantém o console aberto: o operador está com o celular na
+    // mão, e um console aberto no Chromebook engoliria as teclas seguintes do
+    // remoto (o listener do teclado sai do ar enquanto ele está aberto).
+    aoComando: (texto) => void executarComando(texto, false),
+    lerEstado: () => {
+      const atual = sequencia[indice]
+      if (!atual) return null
+      const luzes = emergencia
+        ? {
+            // As luzes são por subsistema, na ordem que a cena declarou; o
+            // celular espelha as três do HUD.
+            casco: emergencia.estados[0] === 'online',
+            sonar: emergencia.estados[1] === 'online',
+            com: emergencia.estados[2] === 'online',
+          }
+        : undefined
+      const sim = refSimCombate.current
+      const dadosCombate =
+        combate && atual.tipo === 'combate'
+          ? {
+              casco: combate.casco,
+              contato: combate.contato,
+              setor: (Math.min(3, Math.max(1, combate.setor + 1)) as 1 | 2 | 3),
+              // 1 = acabou de disparar, 0 = pronto pra disparar. É o mesmo
+              // relógio do cooldown da tecla, então a barra do celular não
+              // pode discordar da tela.
+              recarga: Math.max(
+                0,
+                Math.min(1, (sim.prontoEm - performance.now()) / MS_COOLDOWN),
+              ),
+            }
+          : undefined
+      return montarEstado({
+        turma: roteiro.turma,
+        cena: atual,
+        proxima: sequencia[indice + 1],
+        mergulhando: mergulho !== null,
+        emergencia: luzes,
+        combate: dadosCombate,
+      })
+    },
+  })
+
+  refPublicarRemoto.current = publicarRemoto
+
+  // Troca de cena: publica na hora, em vez de esperar o tique de 2 s. A
+  // colinha do celular é o que diz ao operador o que fazer AGORA — chegar dois
+  // segundos atrasada é chegar depois de ele já ter apertado.
+  useEffect(() => {
+    publicarRemoto()
+  }, [publicarRemoto, cena?.id])
+
   // --- ciclo da cena -------------------------------------------------------
 
   useEffect(() => {
@@ -2811,6 +2891,7 @@ export function Player({ roteiro, engine }: Props) {
                 : 'ATIVO'
       }
       rodapeEsquerda={`turma ${roteiro.turma}`}
+      remoto={statusRemoto}
       inclinado={faseMergulho === 'inclinacao'}
       mergulhando={mergulho !== null}
       impacto={impacto}
@@ -3033,6 +3114,8 @@ export function Player({ roteiro, engine }: Props) {
           cena={cena.id}
           forma={formaAtual}
           escala={escala}
+          codigo={codigo}
+          remoto={statusRemoto}
           aceitos={
             cena.tipo === 'identificacao' && ident
               ? {

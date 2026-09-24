@@ -1845,10 +1845,145 @@ Pra um teste completo, `/` e depois `som`: toca os efeitos em sequência e
 escreve no log o estado do `AudioContext`. `running` significa que o navegador
 liberou o áudio.
 
+## Controle pelo celular
+
+O operador pode dirigir a apresentação pelo celular, de qualquer lugar da
+quadra. **É uma segunda fonte de teclas, não uma troca**: o teclado do
+Chromebook continua funcionando ao mesmo tempo, e se a internet cair no meio da
+feira a apresentação é exatamente a de sempre. Sem rede, nada muda — o app nem
+percebe.
+
+O celular não roda nada do app. Ele só manda a tecla; quem decide tudo continua
+sendo o Chromebook.
+
+### Como funciona por dentro
+
+O caminho é um relay do **Supabase Realtime**, em modo `broadcast` puro: sem
+tabela, sem login, sem RLS, sem migration. Nada é gravado em lugar nenhum — a
+mensagem passa pelo servidor e morre ali.
+
+```
+celular              relay Supabase              Chromebook
+  |  cmd {tecla:'2'}  ->  domi:2B:4173  ->  KeyboardEvent('keydown')
+  |                                            |
+  |  <-  estado {cena, instrucao, teclas}  <-  a cada 2 s e a cada troca de cena
+```
+
+O canal se chama `domi:<TURMA>:<CÓDIGO>` — por exemplo `domi:2B:4173`. Como cada
+Chromebook abre com `?turma=` diferente e sorteia um código de 4 dígitos
+próprio a cada carregamento da página, **um Chromebook nunca recebe um comando
+destinado a outro**: eles não compartilham canal.
+
+A tecla que chega do celular vira um `KeyboardEvent` sintético disparado na
+`window`. Isso é de propósito: ela entra pelo **mesmo caminho do `useTeclado`**
+que uma tecla física, então toda regra que já existia continua valendo sem
+nenhum caso especial — inclusive a de que o teclado fica desligado quando o
+console (`/`) está aberto. Não existe um segundo roteamento de teclas no
+projeto.
+
+As credenciais ficam em `src/remoto/config.ts` e repetidas no topo do
+`<script>` do `public/controle.html`. A chave é uma `publishable`: é **pública
+por desenho** e não é segredo — ela está no HTML que qualquer um baixa. Quem
+protege a sessão é o código de 4 dígitos, que muda a cada carregamento e só
+aparece na tela do Chromebook.
+
+### O código de 4 dígitos
+
+Aparece em dois lugares:
+
+- na tela **PRESSIONE QUALQUER TECLA**, antes de começar;
+- no overlay de ajuda, tecla **H**, junto com o estado da conexão.
+
+Recarregar a página do Chromebook sorteia um código novo e derruba o celular
+(ele fica no canal antigo, sozinho). Se isso acontecer no meio da
+apresentação: **H** no Chromebook, leia o código novo, **TROCAR TURMA** no
+celular e conecte de novo.
+
+### A bolinha do HUD
+
+No rodapé esquerdo, ao lado da turma:
+
+| bolinha | o que é |
+| --- | --- |
+| verde pulsando | conectado no relay |
+| âmbar | tentando reconectar (ele tenta sozinho a cada 5 s) |
+| cinza | sem relay — só o teclado físico |
+
+Cinza **não é erro**: é o estado normal de quem está sem internet, e a
+apresentação roda igual.
+
+### Publicando a página do celular (GitHub Pages)
+
+O `public/controle.html` é uma página só, sem build. Ela não entra no
+`dist/index.html` (o app é offline; a página do celular precisa de internet de
+qualquer jeito), então vai direto pro Pages:
+
+1. No GitHub, **Settings → Pages**.
+2. Em *Source*, escolha **Deploy from a branch**.
+3. Branch: `main`, pasta: **`/ (root)`**. Salvar.
+4. Espere um ou dois minutos e abra:
+   `https://duque498.github.io/radar-alpha-bybit/public/controle.html`
+
+Se preferir a URL curta, copie o arquivo pra raiz do repositório
+(`cp public/controle.html controle.html`) e o endereço vira
+`https://duque498.github.io/radar-alpha-bybit/controle.html`.
+
+Abra esse endereço no celular **uma vez em casa**, confirme que carrega, e
+salve na tela de início. No dia, o wi-fi da escola costuma ser o gargalo — vale
+deixar o 4G ligado.
+
+### No dia da feira
+
+No Chromebook:
+
+1. Abra o `dist/index.html`, escolha a turma.
+2. Na tela de ativação, anote o **código de 4 dígitos**.
+3. Aperte qualquer tecla e comece.
+
+No celular:
+
+4. Abra a página do controle.
+5. Toque na turma, digite o código, **CONECTAR**.
+6. Se aparecer *"Nenhum submarino respondeu"*: o código está errado, a turma
+   está errada, ou o Chromebook está sem internet. Confira com **H**.
+
+Durante:
+
+- O botão grande **→ AVANÇAR** é 90% da apresentação.
+- Os botões mudam sozinhos conforme a cena: no quiz aparecem 1–4, no combate os
+  três setores com as barras de casco e recarga, na pane as luzes dos
+  subsistemas. Tecla que não serve na cena atual fica **apagada, não some** —
+  assim o dedo não erra o alvo quando o layout muda.
+- **P PANE** e **R REINICIAR** exigem o dedo parado **2 segundos** (tem um anel
+  de progresso). São as duas que estragariam a apresentação se alguém
+  encostasse sem querer.
+- Se a faixa de cima ficar âmbar, o Chromebook está há mais de 6 s sem dar
+  notícia. Aos 12 s aparece uma tarja vermelha. **Os botões continuam
+  funcionando** — pode ser só o `estado` que atrasou.
+
+### Duas coisas que podem dar errado
+
+**O projeto do Supabase dorme.** No plano gratuito, um projeto sem nenhuma
+requisição por **7 dias** é pausado, e aí o relay simplesmente não responde —
+o celular diz "nenhum submarino respondeu" e a bolinha fica cinza. Isso não tem
+aviso prévio. **Abra a página do controle uma vez na semana da feira**, e de
+novo na véspera: qualquer conexão já conta e mantém o projeto acordado. Se ele
+tiver pausado, é um clique de *Restore* no painel do Supabase — mas leva alguns
+minutos, então não deixe pra descobrir no dia.
+
+**Plano B: teclado sem fio 2.4 GHz.** Se o wi-fi da escola não colaborar, o
+substituto é um **teclado (ou apresentador/"caneta laser") sem fio de 2.4 GHz
+com dongle USB** — não Bluetooth, que pede pareamento e some na hora errada.
+Ele aparece pro Chromebook como um teclado comum, então todas as teclas do app
+funcionam sem mudar nada, sem internet, e o alcance de ~10 m cobre a quadra.
+Custa pouco e vale ter um na mochila. O apresentador de slides mais simples
+manda seta pra direita e pra esquerda — o suficiente pra apresentação inteira.
+
 ## Estrutura
 
 ```
 public/audio/        mp3 fora do bundle: sfx/ e uma pasta por turma
+public/controle.html  a pagina do celular: HTML+CSS+JS numa folha so
 src/
   App.tsx            seleção de turma, tela de ativação, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
@@ -1863,6 +1998,8 @@ src/
   diretor/           Diretor de cena, gatilhos semânticos, mergulho e coluna d'água
   mundo/             o oceano procedural: perfil, motor, bestiário, Feed e Rachadura
   formas/            registro das silhuetas, amostragem, primitivas e dossie/
+  remoto/            config.ts, protocolo.ts, receptor.ts, estado.ts e o
+                     hook useRemoto (relay do celular)
   roteiros/          tipos.ts, validar.ts, fichas.json, gatilhos.json e os JSONs
 scripts/
   gerar_audios.py         voz da IA: kokoro/edge/espeak + ffmpeg + tempos.json

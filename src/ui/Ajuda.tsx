@@ -13,6 +13,9 @@ type Props = {
    * lista precisa estar na tela dele, não no JSON.
    */
   aceitos?: { rotulo: string; termos: string[] } | null
+  /** Código do controle pelo celular, e se o canal está de pé. */
+  codigo?: string
+  remoto?: 'ligado' | 'reconectando' | 'desligado'
 }
 
 const ATALHOS: Array<[string, string]> = [
@@ -52,7 +55,13 @@ const ATALHOS: Array<[string, string]> = [
 ]
 
 /** Overlay discreto de atalhos. Fica sempre por cima, mas sem tampar a cena. */
-export function Ajuda({ cena, forma, escala, aceitos }: Props) {
+const ESTADO_REMOTO: Record<string, string> = {
+  ligado: 'conectado',
+  reconectando: 'reconectando...',
+  desligado: 'sem conexão — use o teclado',
+}
+
+export function Ajuda({ cena, forma, escala, aceitos, codigo, remoto }: Props) {
   return (
     <div className="ajuda">
       {/* Só aqui, nunca na tela da plateia: pôr o nome do objeto no painel
@@ -81,6 +90,15 @@ export function Ajuda({ cena, forma, escala, aceitos }: Props) {
           </div>
         ))}
       </dl>
+      {/* O código é consultado AQUI no meio da apresentação: a tela de
+          ativação já saiu, e o operador pode precisar reconectar o celular ou
+          entregá-lo pra outra pessoa. */}
+      {codigo && (
+        <p className="ajuda__estado">
+          controle pelo celular · código <strong>{codigo}</strong> ·{' '}
+          {ESTADO_REMOTO[remoto ?? 'desligado']}
+        </p>
+      )}
       <p className="ajuda__estado">
         cena: <strong>{cena}</strong> · forma: <strong>{forma}</strong> · escala:{' '}
         <strong>{Math.round(escala * 100)}%</strong>

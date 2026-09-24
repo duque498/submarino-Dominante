@@ -90,6 +90,15 @@ export type CenaBase = {
   /** Mini-feeds das cameras externas. Padrao true. */
   cameras?: boolean
   /**
+   * A COLINHA: o que o operador tem que fazer agora, em uma frase.
+   *
+   * Aparece grande no celular (Fase 6) e em lugar nenhum da tela do
+   * Chromebook — e pra plateia. Sem o campo, o app gera uma frase padrao a
+   * partir do tipo da cena, que serve pra maioria; escreva aqui quando a cena
+   * tiver um combinado que so quem ensaiou sabe ("espere o grupo 3 sentar").
+   */
+  colinha?: string
+  /**
    * Estado do visor a partir desta cena. Sem o campo, herda o da cena anterior.
    */
   visor?: Visor

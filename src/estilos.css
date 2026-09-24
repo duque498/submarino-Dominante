@@ -3834,3 +3834,50 @@ body {
     animation: none;
   }
 }
+
+/* --- controle remoto (Fase 6) ------------------------------------------- */
+
+/* Código da sessão na tela de ativação. Discreto: quem precisa dele já sabe
+   que ele existe, e a plateia ainda não está olhando. */
+.codigo-remoto {
+  margin-top: 2.5rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  color: rgba(120, 190, 205, 0.7);
+  text-transform: uppercase;
+}
+
+.codigo-remoto strong {
+  color: rgba(180, 240, 255, 0.95);
+  font-size: 1.5rem;
+  letter-spacing: 0.3em;
+  margin-left: 0.5rem;
+}
+
+/* Pontinho de estado do remoto, no rodapé do HUD. É a ÚNICA coisa que a
+   plateia poderia ver, e a 15 metros ela não vê: 6 px. */
+.hud__remoto {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 0.6rem;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: rgba(120, 140, 150, 0.45);
+}
+
+.hud__remoto--ligado {
+  background: rgba(77, 255, 166, 0.9);
+  box-shadow: 0 0 6px rgba(77, 255, 166, 0.6);
+}
+
+.hud__remoto--reconectando {
+  background: rgba(255, 194, 77, 0.9);
+  animation: remoto-pulsa 1.2s ease-in-out infinite;
+}
+
+@keyframes remoto-pulsa {
+  50% {
+    opacity: 0.25;
+  }
+}

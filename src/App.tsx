@@ -10,6 +10,7 @@ import { AUDIO } from './audio/config'
 import { AudioEngine } from './player/AudioEngine'
 import { Player } from './player/Player'
 import { useTeclado } from './player/useTeclado'
+import { gerarCodigo } from './remoto/config'
 import { Hud } from './ui/Hud'
 import { QTD_PONTOS } from './ui/Orbe'
 
@@ -61,6 +62,14 @@ function audiosDoRoteiro(roteiro: Roteiro): string[] {
 export default function App() {
   const [turma, setTurma] = useState<Turma | null>(turmaDaUrl)
   const [ativado, setAtivado] = useState(false)
+  /**
+   * Código do controle remoto, sorteado UMA vez por carregamento da página.
+   *
+   * Em estado e não em módulo: assim ele aparece na tela de ativação e no
+   * overlay H com o mesmo valor que o canal usa, e recarregar a página troca
+   * o código — que é o que invalida um celular que ficou pra trás.
+   */
+  const [codigo] = useState(gerarCodigo)
   const [carregando, setCarregando] = useState(false)
   // Uma instância só pra toda a sessão: o desbloqueio do áudio mora nela.
   const engine = useRef(new AudioEngine()).current
@@ -113,9 +122,10 @@ export default function App() {
     return <TelaErro turma={turma} problemas={resultado.problemas} />
   }
 
-  if (!ativado) return <TelaAtivacao carregando={carregando} aoAtivar={ativar} />
+  if (!ativado)
+    return <TelaAtivacao carregando={carregando} aoAtivar={ativar} codigo={codigo} />
 
-  return <Player roteiro={resultado!.roteiro!} engine={engine} />
+  return <Player roteiro={resultado!.roteiro!} engine={engine} codigo={codigo} />
 }
 
 /** Sem ?turma= na URL: o operador escolhe a turma no teclado (1, 2, 3). */
@@ -157,9 +167,12 @@ function TelaSelecao({ aoEscolher }: { aoEscolher: (turma: Turma) => void }) {
 function TelaAtivacao({
   carregando,
   aoAtivar,
+  codigo,
 }: {
   carregando: boolean
   aoAtivar: () => void
+  /** Código do controle remoto desta sessão, pra digitar no celular. */
+  codigo: string
 }) {
   useEffect(() => {
     if (carregando) return
@@ -178,11 +191,19 @@ function TelaAtivacao({
         {carregando ? (
           <p className="chamada">carregando sistemas de bordo...</p>
         ) : (
-          <p className="chamada">
-            pressione qualquer tecla
-            <br />
-            para ativar os sistemas de bordo
-          </p>
+          <>
+            <p className="chamada">
+              pressione qualquer tecla
+              <br />
+              para ativar os sistemas de bordo
+            </p>
+            {/* Código do controle pelo celular. Fica aqui porque esta é a
+                única tela que o operador olha com calma antes de começar — no
+                meio da apresentação ele consulta pelo H. */}
+            <p className="codigo-remoto">
+              controle pelo celular · código <strong>{codigo}</strong>
+            </p>
+          </>
         )}
       </div>
     </Hud>

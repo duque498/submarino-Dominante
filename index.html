@@ -28,6 +28,25 @@
         document.head.appendChild(tag)
       })()
     </script>
+    <!--
+      Biblioteca do controle remoto (Fase 6). Mesma tática do audios.js: script
+      clássico injetado por JS, versão PINADA, e falha em silêncio. Sem rede,
+      sem CDN ou com o script bloqueado, `window.supabase` simplesmente não
+      existe e o app roda idêntico ao que era antes — o controle pelo celular é
+      um extra, nunca um requisito.
+    -->
+    <script>
+      ;(function () {
+        var tag = document.createElement('script')
+        tag.src =
+          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js'
+        tag.async = false
+        tag.onerror = function () {
+          console.warn('[remoto] supabase-js não carregou — o controle pelo celular fica off')
+        }
+        document.head.appendChild(tag)
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

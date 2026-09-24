@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Sem zoom: o operador vai apertar no escuro, com pressa. Um pinch sem
+         querer no meio do combate tiraria os botões do lugar. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#04141a" />
+    <title>DOMI · controle</title>
+    <style>
+      /* Mesma paleta do HUD do Chromebook: quem olha os dois não vê dois
+         aplicativos, vê o mesmo instrumento em duas telas. */
+      :root {
+        --fundo: #04141a;
+        --moldura: rgba(27, 106, 120, 0.8);
+        --ciano: #38e8ff;
+        --verde: #4dffa6;
+        --ambar: #ffc24d;
+        --vermelho: #ff6e5a;
+        --apagado: rgba(120, 150, 160, 0.35);
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--fundo);
+        color: #bdfff0;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        touch-action: manipulation;
+        overscroll-behavior: none;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+      .tela {
+        display: none;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .tela--ativa {
+        display: flex;
+      }
+
+      /* --- tela 1: seletor --- */
+      .seletor {
+        justify-content: center;
+        gap: 1.5rem;
+        padding: 1.5rem;
+      }
+      .marca {
+        text-align: center;
+        letter-spacing: 0.3em;
+        color: rgba(120, 190, 205, 0.7);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+      }
+      .turmas {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+      }
+      .turma {
+        padding: 1.4rem 0;
+        font-size: 1.6rem;
+        font-family: inherit;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: var(--ciano);
+        background: rgba(56, 232, 255, 0.07);
+        border: 1px solid var(--moldura);
+        border-radius: 4px;
+      }
+      .turma[aria-pressed='true'] {
+        background: rgba(56, 232, 255, 0.22);
+        border-color: var(--ciano);
+        color: #eafdff;
+      }
+      #codigo {
+        width: 100%;
+        padding: 1.1rem;
+        font-family: inherit;
+        font-size: 2rem;
+        letter-spacing: 0.5em;
+        text-align: center;
+        color: #eafdff;
+        background: rgba(4, 20, 26, 0.9);
+        border: 1px solid var(--moldura);
+        border-radius: 4px;
+      }
+      .primario {
+        width: 100%;
+        padding: 1.2rem;
+        font-family: inherit;
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #04141a;
+        background: var(--verde);
+        border: 0;
+        border-radius: 4px;
+      }
+      .primario:disabled {
+        opacity: 0.4;
+      }
+      .recado {
+        min-height: 3rem;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        text-align: center;
+        color: var(--ambar);
+      }
+
+      /* --- tela 2: controle --- */
+      .topo {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 0.8rem;
+        border-bottom: 1px solid var(--moldura);
+        background: rgba(4, 20, 26, 0.95);
+      }
+      .badge {
+        flex: 1;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--verde);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .badge--mudo {
+        color: var(--ambar);
+      }
+      .trocar {
+        padding: 0.5rem 0.7rem;
+        font-family: inherit;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        color: var(--ciano);
+        background: transparent;
+        border: 1px solid var(--moldura);
+        border-radius: 3px;
+      }
+      .alerta {
+        display: none;
+        padding: 0.7rem 0.8rem;
+        font-size: 0.85rem;
+        text-align: center;
+        color: #2a0b06;
+        background: var(--vermelho);
+        font-weight: 700;
+      }
+      .alerta--visivel {
+        display: block;
+      }
+      .instrucao {
+        padding: 1rem 0.9rem;
+        font-size: 1.25rem;
+        line-height: 1.35;
+        color: #eafdff;
+      }
+      .corpo {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 0 0.7rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.7rem;
+      }
+      .avancar {
+        width: 100%;
+        padding: 1.5rem 0;
+        font-family: inherit;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        color: #04141a;
+        background: var(--verde);
+        border: 0;
+        border-radius: 5px;
+      }
+      .linha {
+        display: grid;
+        gap: 0.6rem;
+      }
+      .linha--2 { grid-template-columns: repeat(2, 1fr); }
+      .linha--3 { grid-template-columns: repeat(3, 1fr); }
+      .linha--4 { grid-template-columns: repeat(4, 1fr); }
+      .tecla {
+        padding: 1rem 0.3rem;
+        font-family: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--ciano);
+        background: rgba(56, 232, 255, 0.08);
+        border: 1px solid var(--moldura);
+        border-radius: 4px;
+      }
+      .tecla--alta {
+        padding: 1.6rem 0.3rem;
+        font-size: 1.15rem;
+      }
+      .tecla:disabled {
+        color: var(--apagado);
+        border-color: rgba(27, 106, 120, 0.3);
+        background: transparent;
+      }
+      .tecla--ativa {
+        background: rgba(255, 194, 77, 0.25);
+        border-color: var(--ambar);
+        color: #fff0d0;
+      }
+      .barra {
+        height: 10px;
+        border: 1px solid var(--moldura);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .barra > i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--verde);
+        transition: width 0.15s linear;
+      }
+      /* A recarga e recalculada a cada quadro; uma transicao por cima disso
+         so atrasaria o que ja esta correto. */
+      #barra-recarga {
+        transition: none;
+      }
+      .barra--casco > i { background: var(--ambar); }
+      .barra--contato > i { background: var(--vermelho); }
+      .rotulo {
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(120, 190, 205, 0.75);
+      }
+      .luzes {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        text-align: center;
+      }
+      .luz {
+        padding: 0.6rem 0.2rem;
+        border: 1px solid var(--moldura);
+        border-radius: 4px;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        color: var(--apagado);
+      }
+      .luz--online {
+        color: var(--verde);
+        border-color: rgba(77, 255, 166, 0.6);
+        background: rgba(77, 255, 166, 0.08);
+      }
+      /* Perigosas: só disparam com o dedo parado 2 s, e o anel mostra quanto
+         falta. Um toque acidental no P no meio da apresentação derrubaria a IA
+         na frente da plateia. */
+      .perigosas {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+        margin-top: 0.3rem;
+      }
+      .longa {
+        position: relative;
+        padding: 0.9rem 0.3rem;
+        font-family: inherit;
+        font-size: 0.85rem;
+        letter-spacing: 0.1em;
+        color: var(--vermelho);
+        background: transparent;
+        border: 1px solid rgba(255, 110, 90, 0.5);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .longa > i {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 0;
+        background: rgba(255, 110, 90, 0.28);
+        pointer-events: none;
+      }
+      .console {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .console input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.9rem;
+        font-family: inherit;
+        font-size: 1rem;
+        color: #eafdff;
+        background: rgba(4, 20, 26, 0.9);
+        border: 1px solid var(--moldura);
+        border-radius: 4px;
+      }
+      .oculto { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <!-- ===================== TELA 1 — SELETOR ===================== -->
+    <section class="tela tela--ativa seletor" id="tela-seletor">
+      <p class="marca">submarino domi · controle</p>
+      <div class="turmas" id="turmas"></div>
+      <input
+        id="codigo"
+        type="text"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        maxlength="4"
+        placeholder="0000"
+        autocomplete="off"
+      />
+      <button class="primario" id="conectar" disabled>conectar</button>
+      <p class="recado" id="recado"></p>
+    </section>
+
+    <!-- ===================== TELA 2 — CONTROLE ==================== -->
+    <section class="tela" id="tela-controle">
+      <div class="topo">
+        <span class="badge" id="badge">conectando...</span>
+        <button class="trocar" id="trocar">trocar turma</button>
+      </div>
+      <div class="alerta" id="alerta">
+        sem resposta do submarino — use o teclado
+      </div>
+      <p class="instrucao" id="instrucao">—</p>
+      <div class="corpo">
+        <button class="avancar" data-tecla="ArrowRight">→ avançar</button>
+        <div class="linha linha--2">
+          <button class="tecla" data-tecla="ArrowLeft">← voltar</button>
+          <button class="tecla" data-tecla=" ">espaço · pular fala</button>
+        </div>
+
+        <!-- blocos por modo: o JS mostra um e esconde os outros -->
+        <div id="bloco-apresentacao" class="oculto">
+          <p class="rotulo">orbe e cronômetro</p>
+          <div class="linha linha--4">
+            <button class="tecla" data-tecla="m">M forma →</button>
+            <button class="tecla" data-tecla="n">N forma ←</button>
+            <button class="tecla" data-tecla="o">O esfera</button>
+            <button class="tecla" data-tecla="t">T tempo</button>
+          </div>
+          <div class="linha" style="margin-top: 0.7rem">
+            <button class="tecla" data-tecla="/" id="abrir-console">/ console</button>
+          </div>
+          <div class="console oculto" id="console" style="margin-top: 0.6rem">
+            <input id="texto-comando" placeholder="sonar, status, mapa..." autocomplete="off" />
+            <button class="tecla" id="enviar-comando">enviar</button>
+          </div>
+        </div>
+
+        <div id="bloco-numeros" class="oculto">
+          <p class="rotulo" id="rotulo-numeros">resposta da sala</p>
+          <div class="linha linha--4">
+            <button class="tecla" data-tecla="1">1</button>
+            <button class="tecla" data-tecla="2">2</button>
+            <button class="tecla" data-tecla="3">3</button>
+            <button class="tecla" data-tecla="4">4</button>
+          </div>
+          <div class="linha linha--2" style="margin-top: 0.6rem">
+            <button class="tecla" data-tecla="Enter">enter · acerto</button>
+            <button class="tecla" data-tecla="x">X · revelar</button>
+          </div>
+          <div class="linha linha--2 oculto" id="bloco-vf" style="margin-top: 0.6rem">
+            <button class="tecla" data-tecla="v">V · verdadeiro</button>
+            <button class="tecla" data-tecla="f">F · falso</button>
+          </div>
+        </div>
+
+        <div id="bloco-combate" class="oculto">
+          <p class="rotulo">setor do contato</p>
+          <div class="linha linha--3">
+            <button class="tecla tecla--alta" data-tecla="1" id="setor-1">1<br />proa</button>
+            <button class="tecla tecla--alta" data-tecla="2" id="setor-2">2<br />bombordo</button>
+            <button class="tecla tecla--alta" data-tecla="3" id="setor-3">3<br />estibordo</button>
+          </div>
+          <p class="rotulo" style="margin-top: 0.8rem">recarga do pulso</p>
+          <div class="barra"><i id="barra-recarga"></i></div>
+          <p class="rotulo" style="margin-top: 0.6rem">casco</p>
+          <div class="barra barra--casco"><i id="barra-casco"></i></div>
+          <p class="rotulo" style="margin-top: 0.6rem">contato</p>
+          <div class="barra barra--contato"><i id="barra-contato"></i></div>
+        </div>
+
+        <div id="bloco-emergencia" class="oculto">
+          <p class="rotulo">religar subsistema</p>
+          <div class="linha linha--2">
+            <button class="tecla tecla--alta" data-tecla="1">1 · casco</button>
+            <button class="tecla tecla--alta" data-tecla="2">2 · sonar</button>
+          </div>
+          <p class="rotulo" style="margin-top: 0.8rem">subsistemas</p>
+          <div class="luzes">
+            <span class="luz" id="luz-casco">casco</span>
+            <span class="luz" id="luz-sonar">sonar</span>
+            <span class="luz" id="luz-com">comunicação</span>
+          </div>
+        </div>
+
+        <div class="perigosas">
+          <button class="longa" data-tecla="p"><i></i>segure · P pane</button>
+          <button class="longa" data-tecla="r"><i></i>segure · R reiniciar</button>
+        </div>
+      </div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script>
+      'use strict'
+      // As mesmas credenciais do src/remoto/config.ts. A chave é publishable:
+      // pública por desenho. Quem protege a sessão é o código de 4 dígitos.
+      var SUPABASE_URL = 'https://wihrdhckrqgoofkfofug.supabase.co'
+      var SUPABASE_KEY = 'sb_publishable_OuSu06JQOJv-yuNlzJk0Ww_o_JeIGlp'
+      var TURMAS = ['2A', '2B', '3A']
+      var MS_PONG = 3000
+      var MS_MUDO = 6000
+      var MS_MORTO = 12000
+      var MS_DEBOUNCE = 300
+      var MS_LONGO = 2000
+      // Mesmo valor do MS_COOLDOWN de src/cenas/Combate.tsx. Precisa estar
+      // aqui porque o `estado` chega a cada 2 s e a recarga dura 1,2 s: sem
+      // extrapolar, a barra do celular mostraria um numero que ja morreu.
+      var MS_COOLDOWN = 1200
+
+      var $ = function (id) { return document.getElementById(id) }
+      var cliente = null
+      var canal = null
+      var turmaEscolhida = null
+      var ultimoEstado = null
+      var ultimoRecebido = 0
+      var aguardandoPong = null
+      var relogioMudo = 0
+
+      // ---------- tela 1 ----------
+      TURMAS.forEach(function (t) {
+        var b = document.createElement('button')
+        b.className = 'turma'
+        b.textContent = t
+        b.setAttribute('aria-pressed', 'false')
+        b.onclick = function () {
+          turmaEscolhida = t
+          Array.prototype.forEach.call($('turmas').children, function (o) {
+            o.setAttribute('aria-pressed', String(o === b))
+          })
+          revalidar()
+        }
+        $('turmas').appendChild(b)
+      })
+
+      function revalidar() {
+        $('conectar').disabled = !(turmaEscolhida && /^\d{4}$/.test($('codigo').value))
+      }
+      $('codigo').addEventListener('input', function () {
+        this.value = this.value.replace(/\D/g, '').slice(0, 4)
+        revalidar()
+      })
+
+      // Última escolha: no dia da feira o celular vai recarregar, e digitar o
+      // código de novo no escuro é exatamente o que não pode acontecer.
+      try {
+        var salvo = JSON.parse(localStorage.getItem('domi-remoto') || '{}')
+        if (salvo.turma && TURMAS.indexOf(salvo.turma) >= 0) {
+          turmaEscolhida = salvo.turma
+          Array.prototype.forEach.call($('turmas').children, function (o) {
+            o.setAttribute('aria-pressed', String(o.textContent === salvo.turma))
+          })
+        }
+        if (salvo.codigo) $('codigo').value = salvo.codigo
+        revalidar()
+      } catch (e) {}
+
+      $('conectar').onclick = function () { conectar(turmaEscolhida, $('codigo').value) }
+      $('trocar').onclick = function () {
+        sair()
+        mostrar('tela-seletor')
+      }
+
+      function mostrar(id) {
+        ;['tela-seletor', 'tela-controle'].forEach(function (t) {
+          $(t).classList.toggle('tela--ativa', t === id)
+        })
+      }
+
+      function sair() {
+        if (aguardandoPong) { clearTimeout(aguardandoPong); aguardandoPong = null }
+        if (relogioMudo) { clearInterval(relogioMudo); relogioMudo = 0 }
+        try { if (cliente && canal) cliente.removeChannel(canal) } catch (e) {}
+        canal = null
+        ultimoEstado = null
+      }
+
+      function conectar(turma, codigo) {
+        if (!window.supabase) {
+          $('recado').textContent =
+            'a biblioteca não carregou — confira a internet do celular e recarregue'
+          return
+        }
+        sair()
+        $('recado').textContent = 'procurando o submarino...'
+        $('conectar').disabled = true
+        try {
+          cliente = cliente || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            realtime: { params: { eventsPerSecond: 20 } },
+          })
+          canal = cliente.channel('domi:' + turma + ':' + codigo, {
+            config: { broadcast: { self: false } },
+          })
+          var meuPing = String(Date.now())
+          canal
+            .on('broadcast', { event: 'pong' }, function (m) {
+              var p = (m && m.payload) || {}
+              if (p.id !== meuPing) return
+              if (aguardandoPong) { clearTimeout(aguardandoPong); aguardandoPong = null }
+              try {
+                localStorage.setItem('domi-remoto', JSON.stringify({ turma: turma, codigo: codigo }))
+              } catch (e) {}
+              ultimoRecebido = Date.now()
+              abrirControle(turma)
+            })
+            .on('broadcast', { event: 'estado' }, function (m) {
+              ultimoRecebido = Date.now()
+              aplicarEstado((m && m.payload) || null)
+            })
+            .subscribe(function (status) {
+              if (status !== 'SUBSCRIBED') return
+              canal.send({ type: 'broadcast', event: 'ping', payload: { id: meuPing } })
+              aguardandoPong = setTimeout(function () {
+                aguardandoPong = null
+                $('conectar').disabled = false
+                revalidar()
+                $('recado').textContent =
+                  'Nenhum submarino respondeu em ' + turma + ' com o código ' + codigo +
+                  ' — confira o código na tela do Chromebook'
+                sair()
+              }, MS_PONG)
+            })
+        } catch (e) {
+          $('conectar').disabled = false
+          revalidar()
+          $('recado').textContent = 'não deu pra conectar: ' + e.message
+        }
+      }
+
+      function abrirControle(turma) {
+        $('recado').textContent = ''
+        $('conectar').disabled = false
+        $('badge').textContent = 'conectado · ' + turma
+        mostrar('tela-controle')
+        if (relogioMudo) clearInterval(relogioMudo)
+        relogioMudo = setInterval(vigiar, 1000)
+      }
+
+      // O silêncio do `estado` NÃO desliga os botões: pode ser só a publicação
+      // que atrasou, e o operador precisa poder apertar → de qualquer jeito.
+      function vigiar() {
+        var quieto = Date.now() - ultimoRecebido
+        var badge = $('badge')
+        badge.classList.toggle('badge--mudo', quieto > MS_MUDO)
+        if (quieto > MS_MUDO && ultimoEstado) {
+          badge.textContent = 'sem resposta · ' + ultimoEstado.turma
+        }
+        $('alerta').classList.toggle('alerta--visivel', quieto > MS_MORTO)
+      }
+
+      function aplicarEstado(e) {
+        if (!e) return
+        ultimoEstado = e
+        $('badge').textContent = 'conectado · ' + e.turma + ' · ' + (e.cenaTitulo || '')
+        $('badge').classList.remove('badge--mudo')
+        $('alerta').classList.remove('alerta--visivel')
+        $('instrucao').textContent = e.instrucao || ''
+
+        var modo = e.modo || 'apresentacao'
+        var numeros = modo === 'quiz' || modo === 'identificacao' || modo === 'hidrofone'
+        $('bloco-apresentacao').classList.toggle('oculto', modo !== 'apresentacao')
+        $('bloco-numeros').classList.toggle('oculto', !numeros)
+        $('bloco-combate').classList.toggle('oculto', modo !== 'combate')
+        $('bloco-emergencia').classList.toggle('oculto', modo !== 'emergencia')
+        $('bloco-vf').classList.toggle(
+          'oculto',
+          !(e.teclasDisponiveis || []).some(function (t) { return t === 'v' }),
+        )
+
+        // Botão fora da lista fica APAGADO, não some: layout que pula faz o
+        // dedo errar o alvo no escuro.
+        var disponiveis = e.teclasDisponiveis || []
+        Array.prototype.forEach.call(document.querySelectorAll('[data-tecla]'), function (b) {
+          b.disabled = disponiveis.indexOf(b.getAttribute('data-tecla')) < 0
+        })
+
+        if (e.combate) {
+          recargaBase = e.combate.recarga
+          tRecarga = Date.now()
+          if (!quadroRecarga) quadroRecarga = requestAnimationFrame(animarRecarga)
+          $('barra-casco').style.width = Math.round(e.combate.casco * 100) + '%'
+          $('barra-contato').style.width = Math.round(e.combate.contato * 100) + '%'
+          ;[1, 2, 3].forEach(function (n) {
+            $('setor-' + n).classList.toggle('tecla--ativa', e.combate.setor === n)
+          })
+        }
+        if (e.emergencia) {
+          $('luz-casco').classList.toggle('luz--online', !!e.emergencia.casco)
+          $('luz-sonar').classList.toggle('luz--online', !!e.emergencia.sonar)
+          $('luz-com').classList.toggle('luz--online', !!e.emergencia.com)
+        }
+      }
+
+      // A recarga anda sozinha entre um `estado` e outro: a barra do celular
+      // conta o tempo local a partir do ultimo valor recebido, em vez de
+      // congelar por 2 s num numero de 1,2 s atras.
+      var recargaBase = 0
+      var tRecarga = 0
+      var quadroRecarga = 0
+      function animarRecarga() {
+        var r = Math.max(0, recargaBase - (Date.now() - tRecarga) / MS_COOLDOWN)
+        $('barra-recarga').style.width = Math.round((1 - r) * 100) + '%'
+        quadroRecarga = r > 0 ? requestAnimationFrame(animarRecarga) : 0
+      }
+
+      // ---------- envio ----------
+      var ultimoEnvio = {}
+      function enviarTecla(tecla) {
+        var agora = Date.now()
+        if (agora - (ultimoEnvio[tecla] || 0) < MS_DEBOUNCE) return
+        ultimoEnvio[tecla] = agora
+        try { navigator.vibrate && navigator.vibrate(15) } catch (e) {}
+        try {
+          canal && canal.send({ type: 'broadcast', event: 'cmd', payload: { tecla: tecla } })
+        } catch (e) {}
+      }
+
+      document.addEventListener('click', function (ev) {
+        var alvo = ev.target.closest && ev.target.closest('[data-tecla]')
+        if (!alvo || alvo.disabled || alvo.classList.contains('longa')) return
+        // O "/" NAO vai como tecla: abrir o console no Chromebook desliga o
+        // useTeclado de la, e o celular perderia ate o -> enquanto estivesse
+        // aberto. Aqui ele so abre o campo, que manda `comando`.
+        if (alvo.id === 'abrir-console') {
+          var caixa = $('console')
+          caixa.classList.toggle('oculto')
+          if (!caixa.classList.contains('oculto')) $('texto-comando').focus()
+          try { navigator.vibrate && navigator.vibrate(15) } catch (e) {}
+          return
+        }
+        enviarTecla(alvo.getAttribute('data-tecla'))
+      })
+
+      // Toque longo com anel de progresso, pras duas teclas perigosas.
+      Array.prototype.forEach.call(document.querySelectorAll('.longa'), function (b) {
+        var inicio = 0
+        var quadro = 0
+        var barra = b.querySelector('i')
+        function parar() {
+          cancelAnimationFrame(quadro)
+          quadro = 0
+          barra.style.width = '0'
+        }
+        function andar() {
+          var f = Math.min(1, (Date.now() - inicio) / MS_LONGO)
+          barra.style.width = f * 100 + '%'
+          if (f >= 1) {
+            parar()
+            enviarTecla(b.getAttribute('data-tecla'))
+            try { navigator.vibrate && navigator.vibrate([30, 40, 30]) } catch (e) {}
+            return
+          }
+          quadro = requestAnimationFrame(andar)
+        }
+        b.addEventListener('pointerdown', function () {
+          if (b.disabled) return
+          inicio = Date.now()
+          quadro = requestAnimationFrame(andar)
+        })
+        ;['pointerup', 'pointerleave', 'pointercancel'].forEach(function (evento) {
+          b.addEventListener(evento, parar)
+        })
+      })
+
+      function enviarComando() {
+        var texto = $('texto-comando').value.trim()
+        if (!texto) return
+        try {
+          canal && canal.send({ type: 'broadcast', event: 'comando', payload: { texto: texto } })
+          navigator.vibrate && navigator.vibrate(15)
+        } catch (e) {}
+        $('texto-comando').value = ''
+      }
+      $('enviar-comando').onclick = enviarComando
+      $('texto-comando').addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') enviarComando()
+      })
+    </script>
+  </body>
+</html>
