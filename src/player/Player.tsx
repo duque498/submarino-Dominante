@@ -163,9 +163,9 @@ function linhasDeReferencia(cena: Cena): string[] {
     case 'vf':
       return [cena.afirmacao]
     case 'pane':
-      return cena.falaEntrada ?? cena.subsistemas
+      return (cena.falaEntrada ?? cena.subsistemas).map(textoDaLinha)
     case 'emergencia':
-      return cena.falasQueda
+      return cena.falasQueda.map(textoDaLinha)
     case 'hidrofone':
       return cena.falas.inicio[0] ?? [cena.sons[0]?.nome ?? 'hidrofone']
     case 'combate':
@@ -888,7 +888,9 @@ export function Player({
     engine.tocarSfx(cenaPane.sfx ?? 'alarme')
     setPane({ fase: 'caindo', quedas: [] })
 
-    const linhas = cenaPane.falaEntrada ?? ['ALERTA. FALHA NO SISTEMA DE BORDO.']
+    const linhas = (cenaPane.falaEntrada ?? ['ALERTA. FALHA NO SISTEMA DE BORDO.']).map(
+      textoDaLinha,
+    )
     const naTela = await falarAvulso(cenaPane.audio.entrada, linhas, true)
     refFimDaFalaPane.current = performance.now() + naTela
   }, [cenaPane, engine, falarAvulso])
@@ -900,7 +902,7 @@ export function Player({
     engine.pararVoz()
     engine.tocarSfx('ok')
     setPane({ ...pane, fase: 'voltando' })
-    const linhas = cenaPane.falaRetorno ?? ['...sistema reiniciado.']
+    const linhas = (cenaPane.falaRetorno ?? ['...sistema reiniciado.']).map(textoDaLinha)
     await falarAvulso(cenaPane.audio.retorno, linhas, true)
   }, [cenaPane, pane, engine, falarAvulso])
 
@@ -1770,7 +1772,7 @@ export function Player({
 
     const rodar = async () => {
       setEmerg({ fase: 'caindo', linhas: 0 })
-      const naTela = await falarAvulso(roteiro.audio.queda, roteiro.falasQueda, true)
+      const naTela = await falarAvulso(roteiro.audio.queda, roteiro.falasQueda.map(textoDaLinha), true)
       await daqui(naTela)
       if (cancelado) return
 
@@ -1795,7 +1797,7 @@ export function Player({
         encerrando: false,
       })
       setEmerg({ fase: 'retorno', linhas: quantas })
-      const volta = await falarAvulso(roteiro.audio.retorno, roteiro.falasRetorno, true)
+      const volta = await falarAvulso(roteiro.audio.retorno, roteiro.falasRetorno.map(textoDaLinha), true)
       await daqui(volta)
       if (cancelado) return
       setFala(null)

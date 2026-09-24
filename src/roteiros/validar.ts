@@ -389,7 +389,7 @@ function conferirEmergencia(cena: CenaEmergencia, onde: string, erros: string[])
     erros.push(`${onde}: "tela.linhas" precisa ser a tela de falha (primeira linha = titulo).`)
   }
   for (const chave of ['falasQueda', 'falasRetorno'] as const) {
-    if (!ehListaDeTextos(cena[chave])) {
+    if (!ehListaDeLinhas(cena[chave])) {
       erros.push(`${onde}: "${chave}" precisa ser uma lista de falas nao vazia.`)
     }
   }

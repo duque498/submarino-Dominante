@@ -129,11 +129,41 @@
       "falasQueda": [
         "Processando informações...",
         "Analisando dados coletados durante a expedição...",
-        "Atenção.",
-        "Pressão instável.",
-        "Sonar apresentando falhas.",
-        "Sistema de navegação comprometido.",
-        "ALERTA. FALHA NO SISTEMA DE BORDO."
+        {
+          "texto": "Atenção.",
+          "prosodia": {
+            "dinamica": "preservada"
+          },
+          "pausaDepois": 250
+        },
+        {
+          "texto": "Pressão instável.",
+          "prosodia": {
+            "dinamica": "preservada"
+          }
+        },
+        {
+          "texto": "Sonar apresentando falhas.",
+          "prosodia": {
+            "rate": "+3%",
+            "dinamica": "preservada"
+          }
+        },
+        {
+          "texto": "Sistema de navegação comprometido.",
+          "prosodia": {
+            "rate": "+5%",
+            "dinamica": "preservada"
+          }
+        },
+        {
+          "texto": "ALERTA. FALHA NO SISTEMA DE BORDO.",
+          "prosodia": {
+            "rate": "-8%",
+            "pitch": "-3Hz",
+            "dinamica": "preservada"
+          }
+        }
       ],
       "tela": {
         "linhas": [
@@ -144,9 +174,23 @@
         ]
       },
       "falasRetorno": [
-        "...operando em modo reduzido.",
-        "Casco, sonar e comunicação: offline.",
-        "Preciso dos dados desta tripulação para restaurar os sistemas.",
+        {
+          "texto": "...operando em modo reduzido.",
+          "prosodia": {
+            "dinamica": "preservada"
+          }
+        },
+        {
+          "texto": "Casco, sonar e comunicação: offline.",
+          "pausaDepois": 300
+        },
+        {
+          "texto": "Preciso dos dados desta tripulação para restaurar os sistemas.",
+          "prosodia": {
+            "rate": "-4%",
+            "dinamica": "preservada"
+          }
+        },
         "Prosseguindo com a exploração."
       ]
     },
@@ -232,7 +276,12 @@
       "tela": {
         "linhas": [
           "Tentando restabelecer comunicação com a superfície.",
-          "Sinal fora de alcance. Preciso de uma frequência que atravesse essa distância.",
+          {
+            "texto": "Sinal fora de alcance. Preciso de uma frequência que atravesse essa distância.",
+            "prosodia": {
+              "dinamica": "preservada"
+            }
+          },
           "Ativando hidrofone. Tripulação: identifiquem os sons que chegam."
         ]
       }

@@ -499,14 +499,49 @@
       "falaEntrada": [
         "Processando informações...",
         "Analisando dados coletados durante a expedição...",
-        "Atenção.",
-        "Pressão instável.",
-        "Sonar apresentando falhas.",
-        "Sistema de navegação comprometido.",
-        "ALERTA. FALHA NO SISTEMA DE BORDO."
+        {
+          "texto": "Atenção.",
+          "prosodia": {
+            "dinamica": "preservada"
+          },
+          "pausaDepois": 250
+        },
+        {
+          "texto": "Pressão instável.",
+          "prosodia": {
+            "dinamica": "preservada"
+          }
+        },
+        {
+          "texto": "Sonar apresentando falhas.",
+          "prosodia": {
+            "rate": "+3%",
+            "dinamica": "preservada"
+          }
+        },
+        {
+          "texto": "Sistema de navegação comprometido.",
+          "prosodia": {
+            "rate": "+5%",
+            "dinamica": "preservada"
+          }
+        },
+        {
+          "texto": "ALERTA. FALHA NO SISTEMA DE BORDO.",
+          "prosodia": {
+            "rate": "-8%",
+            "pitch": "-3Hz",
+            "dinamica": "preservada"
+          }
+        }
       ],
       "falaRetorno": [
-        "...sistema reiniciado.",
+        {
+          "texto": "...sistema reiniciado.",
+          "prosodia": {
+            "dinamica": "preservada"
+          }
+        },
         "Sonar restaurado.",
         "Comunicação estabelecida.",
         "Rota recalculada.",
