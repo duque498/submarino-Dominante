@@ -11,14 +11,15 @@ scripts/.cache/
 # primeira execução do gerar_audios.py; não faz sentido versionar.
 scripts/.modelos/
 
-# Os mp3 finais e o tempos.json FICAM no repositório de propósito: quem
-# apresenta usa Chromebook e não tem terminal pra rodar o gerar_audios.py.
-# public/audios.js continua fora — é a mesma coisa em base64, pesa o triplo e
-# sai do build.
-public/audios.js
-
-# gerado por scripts/embutir_audios.py (camada A) — pesa dezenas de MB
-public/audios.js
+# Os mp3 finais, o tempos.json e o public/audios.js FICAM no repositório de
+# propósito: quem apresenta usa Chromebook e não tem terminal pra rodar o
+# gerar_audios.py.
+#
+# O audios.js já esteve aqui, e foi um erro medido: sem ele, um clone limpo
+# entrega um app com `camada A em 0/8`, `tempos reais em 0/8` e `sfx
+# sintético` — ou seja, sem os tempos reais da legenda e sem as GRAVAÇÕES do
+# hidrofone, que só chegam ao app embutidas. Os 5 MB em base64 são o preço de
+# o build funcionar na mão de quem não tem terminal.
 scripts/__pycache__/
 
 # zip do build, gerado so pra entregar a pasta pronta a quem vai apresentar.

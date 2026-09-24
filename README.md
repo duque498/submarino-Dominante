@@ -1538,6 +1538,26 @@ O passo do controle é proporcional à profundidade (1 m perto da superfície, 2
 lá embaixo). Com passo fixo de 10 m o painel pularia justamente a faixa onde o
 vermelho morre, que é o assunto dele.
 
+## Por que o `audios.js` está versionado
+
+O `public/audios.js` é gerado (`scripts/embutir_audios.py`) e mesmo assim entra
+no repositório. Já esteve no `.gitignore`, e a medição mostrou o estrago: um
+clone limpo, buildado, abria com
+
+```
+[audio] camada A em 0/8 · tempos reais em 0/8 cenas · sfx sintético
+```
+
+Três perdas de uma vez, e nenhuma delas óbvia olhando a tela: sem os **tempos
+reais** a legenda volta a estimar o ritmo da fala; sem a camada A os **efeitos
+gravados** (o canto da baleia e a chuva do hidrofone) são trocados pelos
+sintetizados; e o `index.html` sozinho, longe da pasta `audio/`, fica mudo.
+
+Com o arquivo versionado, o mesmo clone abre com `camada A em 8/8 · tempos
+reais em 8/8 · sfx de arquivo`. São 5 MB de base64 no repositório — o preço de
+o build funcionar na mão de quem apresenta, que usa Chromebook e não tem
+terminal pra rodar o gerador.
+
 ## As duas camadas de áudio
 
 O orbe reage ao nível do som. Ler esse nível via `file://` é o problema:
@@ -2052,6 +2072,7 @@ manda seta pra direita e pra esquerda — o suficiente pra apresentação inteir
 
 ```
 public/audio/        mp3 fora do bundle: sfx/ e uma pasta por turma
+public/audios.js     os mesmos mp3 em base64 (camada A) — versionado de proposito
 public/controle.html  a pagina do celular: HTML+CSS+JS numa folha so
 src/
   App.tsx            seleção de turma, tela de ativação, monta o Player
