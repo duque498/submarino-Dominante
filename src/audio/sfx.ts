@@ -25,6 +25,7 @@ export type NomeSfx =
   | 'presenca'
   | 'whoosh'
   | 'agua'
+  | 'rugido'
 
 /** Solta os nós quando o som acaba, pra não acumular no grafo. */
 function limpar(fonte: AudioScheduledSourceNode, ...nos: AudioNode[]) {
@@ -515,6 +516,52 @@ function agua(ctx: AudioContext, destino: AudioNode, t: number) {
   fonte.start(t)
 }
 
+/**
+ * Reserva do rugido que se afasta.
+ *
+ * O bom mesmo é a gravação (`audio/sfx/rugido.mp3`): isto existe pra o caso de
+ * ela não estar embutida, e o que ele precisa acertar é o GESTO, não o timbre —
+ * um grave que ruge e vai ficando longe. A distância é feita com as duas coisas
+ * que a água faz de verdade: o volume cai e o agudo some antes do grave.
+ */
+function rugido(ctx: AudioContext, destino: AudioNode, t: number) {
+  const dura = 4.2
+
+  // O corpo: dois graves desafinados. O batimento entre eles é o que dá a
+  // textura de garganta, em vez de uma nota de sintetizador.
+  for (const [hz, fim, ganho] of [
+    [62, 38, 0.5],
+    [93, 57, 0.28],
+  ] as const) {
+    const osc = ctx.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(hz, t)
+    osc.frequency.exponentialRampToValueAtTime(fim, t + dura)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(ganho, t + 0.35)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dura)
+    osc.connect(g).connect(destino)
+    limpar(osc, g)
+    osc.start(t)
+    osc.stop(t + dura + 0.1)
+  }
+
+  // O ar: ruído filtrado que desce junto. É ele que faz soar animal.
+  const sopro = ctx.createBufferSource()
+  sopro.buffer = ruidoModelado(ctx, dura, (i, n) => (1 - i / n) ** 1.6)
+  const banda = ctx.createBiquadFilter()
+  banda.type = 'lowpass'
+  // O agudo sumindo primeiro é a assinatura da distância dentro d'água.
+  banda.frequency.setValueAtTime(1800, t)
+  banda.frequency.exponentialRampToValueAtTime(240, t + dura)
+  const gSopro = ctx.createGain()
+  envelope(gSopro, t, 0.3, 0.25, dura)
+  sopro.connect(banda).connect(gSopro).connect(destino)
+  limpar(sopro, banda, gSopro)
+  sopro.start(t)
+}
+
 const SINTETIZADORES: Record<
   NomeSfx,
   (ctx: AudioContext, destino: AudioNode, t: number) => void
@@ -532,6 +579,7 @@ const SINTETIZADORES: Record<
   presenca,
   whoosh,
   agua,
+  rugido,
 }
 
 /**

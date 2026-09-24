@@ -348,6 +348,15 @@ const MS_FAKEOUT_SILENCIO = 2000
 const MS_FAKEOUT_RETORNO = 1800
 /** Despedida da trilha depois do fake-out, antes de a IA voltar a falar. */
 const MS_FADE_NEUTRALIZADO = 3000
+/**
+ * O rugido de saída, tocado POR CIMA do fade da trilha.
+ *
+ * Dura mais que o fade de propósito: os últimos segundos ficam só com ele, já
+ * fraco e escuro, e é aí que a plateia entende que o bicho foi embora em vez de
+ * ter sumido num corte. A cena só vira quando ele acaba — a IA dizer "ameaça
+ * neutralizada" por cima do rugido diria o contrário do que se ouve.
+ */
+const MS_RUGIDO_SAIDA = 4600
 /** O HUD se firmando depois que a energia volta. */
 const MS_GLITCH_VOLTA = 520
 
@@ -1408,7 +1417,16 @@ export function Player({
       // A cena só vira DEPOIS que o fade termina, pra a fala do `neutralizado`
       // não começar por cima da música morrendo.
       engine.pararTrilha(false, MS_FADE_NEUTRALIZADO)
-      await esperarSeguro(MS_FADE_NEUTRALIZADO)
+      // Junto com o fade, não depois: o rugido tem que sair de dentro da
+      // música, como quem vira e vai embora enquanto ela morre.
+      //
+      // Sem panorâmico, e isso não é descuido: `tocarSfx` manda pro caminho
+      // SINTÉTICO todo efeito com pan, porque um `<audio>` não tem pra onde
+      // apontar. Com pan, a gravação não tocaria — tocaria a imitação dela. E
+      // centralizado é o que um som que se afasta faz mesmo: ele não passa por
+      // um lado, ele fica longe.
+      engine.tocarSfx('rugido')
+      await esperarSeguro(MS_RUGIDO_SAIDA)
       if (cancelado) return
       setCombate((e) => (e ? { ...e, fase: 'fim' } : e))
       avancar()

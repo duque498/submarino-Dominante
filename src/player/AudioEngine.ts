@@ -71,6 +71,7 @@ const CAMINHOS_SFX: Record<Sfx, string> = {
   presenca: './audio/sfx/presenca.mp3',
   whoosh: './audio/sfx/whoosh.mp3',
   agua: './audio/sfx/agua.mp3',
+  rugido: './audio/sfx/rugido.mp3',
 }
 
 /**

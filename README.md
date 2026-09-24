@@ -506,8 +506,13 @@ Quatro coisas acontecem em volta das três perguntas:
    2 a 3 s. É a única vez na cena em que não há o que fazer, e é ela que faz a
    próxima aparição valer.
 4. **Fake-out.** Depois do terceiro acerto a trilha corta, dois segundos de
-   silêncio, um retorno solto aparece na borda oposta e some. Só então vem o
-   `neutralizado`.
+   silêncio, um retorno solto aparece na borda oposta e some.
+5. **A despedida.** A trilha faz um fade de 3 s até zero — não um corte — e
+   **por cima dele** entra o `rugido`, uma gravação tratada pra soar longe: o
+   volume cai 22 dB ao longo dos 5 s e o agudo some antes do grave, que é o
+   que a água faz mesmo com a distância. Os últimos 1,6 s ficam só com ele,
+   já fraco. A cena só vira `neutralizado` quando o rugido acaba: a IA dizer
+   "ameaça neutralizada" por cima dele diria o contrário do que se ouve.
 
 Os sons do combate têm **lado**: o whoosh grave de cada aparição é
 panoramizado pelo setor do contato (proa no centro, os outros abrindo pros
@@ -619,6 +624,18 @@ declara `"ameacas": false` pra voltar à superfície limpa.
 saturada — a arma), `impacto` (transiente + o casco respondendo grave),
 `whoosh` (a massa de água que ele empurra, com Doppler barato) e `agua` (a
 esteira que fica depois).
+
+`rugido` é gravação, não síntese: o mp3 original foi cortado no ataque (o
+primeiro segundo era só respiração subindo), passado por um passa-baixa, um
+eco de abismo e um decaimento exponencial, e normalizado pro mesmo pico dos
+outros efeitos gravados (−2,2 dBFS, ao lado dos −2,9 do canto da baleia).
+Existe um sintetizado de reserva, mas ele só entra se a gravação não estiver
+embutida.
+
+> Ele toca **sem panorâmico**, e isso não é descuido: `tocarSfx` manda pro
+> caminho sintético todo efeito com `pan`, porque um `<audio>` não tem pra onde
+> apontar. Com lado, tocaria a imitação em vez da gravação — e centralizado é o
+> que um som que se afasta faz mesmo: ele não passa por um lado, fica longe.
 
 E `presenca`, o do olho: **infrassom de verdade**, 28 Hz de fundamental, abaixo
 do que a maioria das caixas reproduz como nota. O que chega à plateia não é um
