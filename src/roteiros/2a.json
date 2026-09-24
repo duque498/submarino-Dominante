@@ -2,6 +2,17 @@
   "turma": "2A",
   "cenas": [
     {
+      "id": "espera",
+      "tipo": "espera",
+      "avanco": "manual",
+      "log": [
+        "nucleo em repouso",
+        "aguardando ordem de partida",
+        "canal de controle aberto"
+      ],
+      "colinha": "Quando a turma estiver pronta, aperte → pra iniciar a IA"
+    },
+    {
       "id": "entrada",
       "tipo": "fala",
       "avanco": "auto",

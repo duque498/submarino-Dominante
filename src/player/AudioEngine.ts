@@ -234,8 +234,15 @@ export class AudioEngine {
   // --- ciclo de vida --------------------------------------------------------
 
   /**
-   * Chrome não toca áudio sem gesto do usuário. Chamado dentro do handler da
-   * primeira tecla: libera o autoplay e acorda o AudioContext.
+   * Chrome não toca áudio sem gesto do usuário. Chamado no primeiro gesto
+   * FÍSICO da página, qualquer um — tecla, clique, toque.
+   *
+   * As duas camadas são destravadas separadamente porque são dois mecanismos
+   * diferentes do navegador, com duas permissões diferentes: a B é um
+   * `<audio>` sujeito à política de autoplay, e a A é o grafo do Web Audio,
+   * que depende do `AudioContext` sair de `suspended`. Destravar só uma
+   * deixaria metade do som fora — e o jeito de descobrir isso seria no meio da
+   * apresentação.
    */
   async desbloquear(): Promise<void> {
     if (this.desbloqueado) return
@@ -243,6 +250,8 @@ export class AudioEngine {
     // cena decidiria a camada antes de saber que a A existe.
     await window.__AUDIOS_PRONTO?.catch(() => undefined)
     try {
+      // Camada B: um <audio> mudo que toca e para. É o que convence a política
+      // de autoplay de que esta página pode reproduzir mídia.
       const silencio = new Audio(SILENCIO_WAV)
       silencio.volume = 0
       await silencio.play()
@@ -253,6 +262,16 @@ export class AudioEngine {
     try {
       const contexto = this.obterContexto()
       if (contexto && contexto.state === 'suspended') await contexto.resume()
+      // Camada A: 50 ms de silêncio passando pelo grafo de verdade. O `resume()`
+      // sozinho promete que o contexto está rodando; isto PROVA que uma fonte
+      // conectada ao destino soa, que é o que a voz da IA vai fazer depois.
+      if (contexto) {
+        const zero = contexto.createBuffer(1, Math.ceil(contexto.sampleRate * 0.05), contexto.sampleRate)
+        const fonte = contexto.createBufferSource()
+        fonte.buffer = zero
+        fonte.connect(contexto.destination)
+        fonte.start()
+      }
     } catch (erro) {
       console.warn('[audio] AudioContext indisponível:', erro)
     }
@@ -353,10 +372,14 @@ export class AudioEngine {
   }
 
   /**
-   * Prepara os áudios da turma logo depois do gesto inicial.
+   * Prepara os áudios da turma no carregamento da página.
    * Nunca rejeita: arquivo faltando vira aviso no console, não erro de tela.
    */
   async preload(urls: string[]): Promise<void> {
+    // O preload agora roda no carregamento da página, antes de qualquer gesto,
+    // e `embutido()` lê o window.__AUDIOS — que chega por um <script> assíncrono.
+    // Sem esta espera, a turma inteira seria classificada como camada B.
+    await window.__AUDIOS_PRONTO?.catch(() => undefined)
     const unicos = [...new Set(urls.filter(Boolean))]
     // Camada A: o data URL já está em memória, só a primeira cena é decodificada
     // aqui; as demais entram sob demanda via preparar().
@@ -396,7 +419,7 @@ export class AudioEngine {
               console.warn(`[audio] arquivo não encontrado: ${url}`)
               encerrar()
             }
-            // Não deixa um arquivo lento travar a tela de ativação.
+            // Não deixa um arquivo lento travar a cena de espera.
             const limite = setTimeout(encerrar, 8000)
 
             elemento.addEventListener('canplaythrough', aoCarregar)
@@ -695,7 +718,7 @@ export class AudioEngine {
       elemento.addEventListener('loadeddata', () => responder(true), { once: true })
       elemento.addEventListener('error', () => responder(false), { once: true })
       // Rede de segurança: por file:// o Chrome às vezes não dispara nenhum dos
-      // dois. Sem o teto, a tela de ativação ficaria esperando pra sempre.
+      // dois. Sem o teto, a cena de espera ficaria esperando pra sempre.
       window.setTimeout(() => responder(elemento.readyState > 0), 4000)
       elemento.load()
     })

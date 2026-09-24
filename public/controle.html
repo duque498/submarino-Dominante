@@ -254,6 +254,22 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0.35; }
       }
+      /* A nota da espera fica âmbar quando o áudio do Chromebook está travado:
+         é o único passo da apresentação que NÃO dá pra fazer pelo celular. */
+      .espera-nota {
+        margin: 0;
+        padding: 0.8rem 0.7rem;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        color: rgba(120, 190, 205, 0.7);
+        border: 1px solid transparent;
+        border-radius: 4px;
+      }
+      .espera-nota--aviso {
+        color: var(--ambar);
+        border-color: rgba(255, 194, 77, 0.5);
+        background: rgba(255, 194, 77, 0.08);
+      }
       .modo__vazio {
         display: flex;
         height: 100%;
@@ -264,6 +280,7 @@
         letter-spacing: 0.06em;
         color: rgba(120, 190, 205, 0.5);
       }
+      [data-modo='espera'] { --acento: var(--verde); }
       [data-modo='quiz'],
       [data-modo='identificacao'],
       [data-modo='hidrofone'] { --acento: var(--ambar); }
@@ -567,6 +584,12 @@
 
         <div class="modo__vazio oculto" id="bloco-vazio">nada a fazer — aguarde</div>
 
+        <div id="bloco-espera" class="oculto">
+          <p class="espera-nota" id="espera-nota">
+            o → grande aí embaixo é o que inicia a IA
+          </p>
+        </div>
+
         <div id="bloco-apresentacao" class="oculto">
           <div class="linha linha--4">
             <button class="tecla" data-tecla="m"><b>M</b><i>forma →</i></button>
@@ -674,7 +697,7 @@
       var MS_COOLDOWN = 1200
 
       var NOME_DO_MODO = {
-        ativacao: 'ativação',
+        espera: 'em espera',
         apresentacao: 'apresentação',
         quiz: 'quiz',
         identificacao: 'identificação',
@@ -849,11 +872,20 @@
         // Sem nenhuma tecla de modo, a área fica com uma frase e nada mais:
         // uma grade de botões apagados só faria o operador procurar o que
         // apertar numa cena em que não há nada pra apertar.
-        var semTeclas = modo === 'ativacao' || modo === 'mergulho'
+        var semTeclas = modo === 'mergulho'
         $('modo-cabecalho').textContent =
           numeros && temVF ? 'verdadeiro ou falso' : NOME_DO_MODO[modo] || modo
         $('bloco-vazio').classList.toggle('oculto', !semTeclas)
         $('modo-cabecalho').classList.toggle('oculto', semTeclas)
+        $('bloco-espera').classList.toggle('oculto', modo !== 'espera')
+        // O aviso é do Chromebook, não do celular: o navegador de lá ainda não
+        // viu nenhum gesto humano, e uma tecla mandada daqui não serve como
+        // gesto. Quem tem que encostar na máquina é quem está perto dela.
+        var travado = e.aviso === 'audio-bloqueado' || e.audioDestravado === false
+        $('espera-nota').classList.toggle('espera-nota--aviso', travado)
+        $('espera-nota').textContent = travado
+          ? 'o áudio do Chromebook ainda está travado — toque uma vez na tela dele e volte aqui'
+          : 'o → grande aí embaixo é o que inicia a IA'
         $('bloco-apresentacao').classList.toggle('oculto', modo !== 'apresentacao')
         $('bloco-numeros').classList.toggle('oculto', !numeros)
         $('bloco-combate').classList.toggle('oculto', modo !== 'combate')

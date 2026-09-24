@@ -2,7 +2,13 @@ import { useEffect, useRef } from 'react'
 
 /** Ações do operador, já normalizadas a partir das teclas físicas. */
 export type Acao =
-  | { tipo: 'avancar' }
+  /**
+   * `tecla` existe por causa da cena de espera, a unica em que ArrowRight e
+   * Enter precisam significar coisas diferentes: la so a seta inicia a
+   * apresentacao. Em todo o resto do app os dois continuam identicos, e quem
+   * nao se importa simplesmente ignora o campo.
+   */
+  | { tipo: 'avancar'; tecla: 'ArrowRight' | 'Enter' }
   | { tipo: 'voltar' }
   | { tipo: 'pular' }
   | { tipo: 'alternativa'; indice: number }
@@ -23,7 +29,7 @@ function traduzir(evento: KeyboardEvent): Acao | null {
   switch (evento.key) {
     case 'ArrowRight':
     case 'Enter':
-      return { tipo: 'avancar' }
+      return { tipo: 'avancar', tecla: evento.key }
     case 'ArrowLeft':
       return { tipo: 'voltar' }
     case ' ':

@@ -16,6 +16,9 @@ import type { EstadoRemoto, ModoRemoto } from './protocolo'
 const SEMPRE = ['ArrowRight', 'ArrowLeft', ' ']
 
 function modoDaCena(cena: Cena, mergulhando: boolean): ModoRemoto {
+  // A espera vem antes do mergulho de propósito: ela é a cena parada, e nada
+  // pode estar mergulhando antes de a apresentação começar.
+  if (cena.tipo === 'espera') return 'espera'
   if (mergulhando) return 'mergulho'
   switch (cena.tipo) {
     case 'quiz':
@@ -43,6 +46,9 @@ export function tituloDaCena(cena: Cena | undefined): string {
 }
 
 function colinhaPadrao(cena: Cena, mergulhando: boolean): string {
+  if (cena.tipo === 'espera') {
+    return 'Quando a turma estiver pronta, aperte → pra iniciar a IA'
+  }
   if (mergulhando) return 'Mergulhando — espere a profundidade chegar'
   switch (cena.tipo) {
     case 'apresentacao':
@@ -71,6 +77,10 @@ function colinhaPadrao(cena: Cena, mergulhando: boolean): string {
 }
 
 function teclasDaCena(cena: Cena, modo: ModoRemoto): string[] {
+  // Na espera a lista NÃO parte do SEMPRE: só a seta direita existe. Voltar
+  // não tem pra onde ir, e espaço "corta o áudio e avança" — avançaria a cena
+  // que é justamente a que não pode avançar por acidente.
+  if (modo === 'espera') return ['ArrowRight']
   const teclas = [...SEMPRE]
   switch (modo) {
     case 'apresentacao':
@@ -114,23 +124,22 @@ function teclasDaCena(cena: Cena, modo: ModoRemoto): string[] {
 }
 
 /**
- * O estado publicado ENQUANTO a tela de ativação está no ar.
+ * O estado publicado nos primeiros instantes, antes de o Player montar.
  *
- * Existe pra o celular poder conectar antes de a apresentação começar: o PIN
- * aparece nessa tela, e seria esquisito o operador digitar o código e o
- * celular dizer que não achou ninguém. Sem teclas de propósito — o gesto que
- * libera o áudio tem que ser físico, no Chromebook (ver `aceitaTeclas` no
- * useRemoto).
+ * Existe pra o celular poder conectar imediatamente: o canal abre no
+ * carregamento da página, e seria esquisito o operador digitar o código e o
+ * celular dizer que não achou ninguém por causa de dois frames de React.
  */
-export function estadoDeAtivacao(turma: string): EstadoRemoto {
+export function estadoDeCarregamento(turma: string): EstadoRemoto {
   return {
     turma,
-    cenaId: 'ativacao',
-    cenaTitulo: 'ATIVAÇÃO',
-    proximaTitulo: 'início da expedição',
-    instrucao: 'Aperte qualquer tecla NO TECLADO do Chromebook pra liberar o áudio',
+    cenaId: 'carregando',
+    cenaTitulo: 'CARREGANDO',
+    proximaTitulo: 'espera',
+    instrucao: 'Carregando os sistemas de bordo...',
     teclasDisponiveis: [],
-    modo: 'ativacao',
+    modo: 'espera',
+    audioDestravado: false,
   }
 }
 
@@ -139,8 +148,21 @@ export type DadosDoEstado = {
   cena: Cena
   proxima: Cena | undefined
   mergulhando: boolean
+  audioDestravado: boolean
+  /** Os mp3 já estão prontos? Na espera, isso é o que libera o →. */
+  carregado: boolean
+  aviso?: 'audio-bloqueado'
   emergencia?: { casco: boolean; sonar: boolean; com: boolean }
   combate?: { casco: number; contato: number; setor: 1 | 2 | 3; recarga: number }
+}
+
+/** Na espera, a colinha muda conforme o que está faltando pra poder começar. */
+function colinhaDaEspera(dados: DadosDoEstado, cena: Cena): string {
+  if (!dados.carregado) return 'Carregando os áudios da turma — espere'
+  if (!dados.audioDestravado) {
+    return 'Toque na tela do Chromebook uma vez, depois aperte →'
+  }
+  return cena.colinha ?? colinhaPadrao(cena, false)
 }
 
 export function montarEstado(dados: DadosDoEstado): EstadoRemoto {
@@ -151,9 +173,17 @@ export function montarEstado(dados: DadosDoEstado): EstadoRemoto {
     cenaId: cena.id,
     cenaTitulo: tituloDaCena(cena),
     proximaTitulo: tituloDaCena(dados.proxima),
-    instrucao: cena.colinha ?? colinhaPadrao(cena, mergulhando),
-    teclasDisponiveis: teclasDaCena(cena, modo),
+    instrucao:
+      modo === 'espera'
+        ? colinhaDaEspera(dados, cena)
+        : (cena.colinha ?? colinhaPadrao(cena, mergulhando)),
+    // Na espera o → só vale quando os áudios estão prontos: apertar antes
+    // disso começaria a apresentação com a primeira fala muda.
+    teclasDisponiveis:
+      modo === 'espera' && !dados.carregado ? [] : teclasDaCena(cena, modo),
     modo,
+    audioDestravado: dados.audioDestravado,
+    ...(dados.aviso ? { aviso: dados.aviso } : {}),
     ...(dados.emergencia ? { emergencia: dados.emergencia } : {}),
     ...(dados.combate ? { combate: dados.combate } : {}),
   }

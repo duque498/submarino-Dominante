@@ -45,6 +45,7 @@ import {
   type FaseCombate,
   type SimulacaoCombate,
 } from '../cenas/Combate'
+import { Espera } from '../cenas/Espera'
 import { Fala } from '../cenas/Fala'
 import {
   Identificacao,
@@ -101,6 +102,9 @@ const TITULOS_LOG: Record<string, string> = {
   ficha: 'FICHA DE CATÁLOGO',
 }
 
+/** Quanto tempo o recado de áudio travado fica na tela de espera. */
+const MS_AVISO_AUDIO = 3000
+
 const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const sorteio = (min: number, max: number) => min + Math.random() * (max - min)
 
@@ -133,6 +137,8 @@ export function audioDaCena(cena: Cena): string | null {
     // A cena do olho é muda de propósito: a IA só volta a falar depois que o
     // visor já quebrou.
     case 'olho':
+    // A espera é o app parado. Som nenhum antes do → é o ponto dela.
+    case 'espera':
       return null
   }
 }
@@ -170,11 +176,16 @@ function linhasDeReferencia(cena: Cena): string[] {
       return [cena.tela.titulo]
     case 'olho':
       return [cena.criatura]
+    // A espera não fala, então não há duração nenhuma a estimar.
+    case 'espera':
+      return []
   }
 }
 
 function rotaDaCena(cena: Cena): string {
   switch (cena.tipo) {
+    case 'espera':
+      return 'EM ESPERA'
     case 'transicao':
       return cena.destino.toUpperCase()
     case 'combate':
@@ -354,9 +365,23 @@ type Props = {
   codigo: string
   /** O receptor já ligado pelo App: o Player só empresta a ele o que sabe. */
   remoto: ConexaoRemota
+  /** Os mp3 da turma já estão decodificados. Libera o → da cena de espera. */
+  carregado: boolean
+  /** O navegador liberou o áudio (publicado pro celular e mostrado no H). */
+  audioDestravado: boolean
+  /** Houve algum gesto FÍSICO na página? Ver a cena de espera. */
+  houveGestoFisico: () => boolean
 }
 
-export function Player({ roteiro, engine, codigo, remoto }: Props) {
+export function Player({
+  roteiro,
+  engine,
+  codigo,
+  remoto,
+  carregado,
+  audioDestravado,
+  houveGestoFisico,
+}: Props) {
   // A pane fica no mesmo JSON, mas fora da ordem: é disparada pela tecla P a
   // qualquer momento, então some da sequência linear que as setas percorrem.
   const sequencia = useMemo(
@@ -559,6 +584,14 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
   const [fala, setFala] = useState<Fala | null>(null)
   const [rajadaLog, setRajadaBruta] = useState<RajadaLog | null>(null)
   /**
+   * Aviso de áudio travado na cena de espera.
+   *
+   * Acende por 3 s quando o → chega pelo celular e ninguém encostou no
+   * Chromebook ainda. Vai pro rodapé da tela E pro celular, porque quem tem
+   * que agir (encostar na máquina) é justamente quem está longe dela.
+   */
+  const [avisoAudio, setAvisoAudio] = useState(false)
+  /**
    * Mantém a assinatura antiga (`setRajadaLog([...])`) porque ela é chamada de
    * duas dúzias de lugares; o nível é opcional e só o roteiro usa.
    */
@@ -620,10 +653,18 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
   const refDiscreto = useRef(false)
   /** Lido dentro do efeito da cena, que não pode avançar por baixo da pane. */
   const refPaneAtiva = useRef(false)
+  /**
+   * A cena atual é a de espera?
+   *
+   * Em ref pelo mesmo motivo das outras refs de cena ativa aqui: o handler do
+   * teclado é memoizado e não pode ser recriado a cada troca de cena.
+   */
+  const refCenaEspera = useRef(false)
   const refFimDaFalaPane = useRef(0)
   const proximaChave = useRef(0)
 
   const cena = sequencia[indice]
+  refCenaEspera.current = cena?.tipo === 'espera'
   // O que M e N percorrem: as formas do roteiro mais os traços desenhados
   // agora. Os traços NÃO existem pro JSON nem pro autocomplete — só aqui.
   const formasDaCena = useMemo(
@@ -648,6 +689,27 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
     if (refPaneAtiva.current) return
     setIndice((atual) => Math.max(atual - 1, 0))
   }, [])
+
+  /**
+   * A partida: a única saída da cena de espera.
+   *
+   * Devolve `false` quando não pôde começar, e o único motivo possível é o que
+   * ninguém consegue resolver pelo celular — o navegador ainda não viu nenhum
+   * gesto de verdade, então o áudio está travado. Começar assim rodaria a
+   * apresentação inteira muda, sem nenhum aviso, e só dava pra consertar
+   * recarregando: por isso o → do celular NÃO passa, e o recado pede o que
+   * resolve, um toque na tela do Chromebook.
+   */
+  const iniciar = useCallback((): boolean => {
+    if (!carregado) return true
+    if (!houveGestoFisico()) return false
+    // Bipe de confirmação: a primeira tecla que faz alguma coisa já produz som.
+    // Serve de UX e de diagnóstico — se isso não sai, o problema é o áudio da
+    // máquina, não o app.
+    engine.tocarSfx('ok')
+    avancar()
+    return true
+  }, [carregado, houveGestoFisico, engine, avancar])
 
   /**
    * Vai direto pra uma cena pelo id. Usado pelo desfecho do combate.
@@ -2291,6 +2353,22 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
   useTeclado(
     useCallback(
       (acao) => {
+        // A cena de espera é surda pra quase tudo: nem Enter, nem espaço, nem
+        // clique. Só a seta direita inicia a apresentação — é o que deixa o
+        // operador mexer no Chromebook (tela cheia, projetor) com a plateia
+        // entrando, sem risco de acordar a IA por acidente.
+        if (refCenaEspera.current) {
+          if (acao.tipo !== 'avancar' || acao.tecla !== 'ArrowRight') {
+            // Ajuda e console continuam valendo: eles não iniciam nada.
+            if (acao.tipo !== 'ajuda' && acao.tipo !== 'console') return
+          } else {
+            if (!iniciar()) {
+              setAvisoAudio(true)
+              window.setTimeout(() => setAvisoAudio(false), MS_AVISO_AUDIO)
+            }
+            return
+          }
+        }
         switch (acao.tipo) {
           case 'avancar':
             // Durante o combate a seta direita não pula a cena: força a rodada
@@ -2422,6 +2500,7 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
         dispararPane,
         reiniciarDaPane,
         operadorAssumiu,
+        iniciar,
       ],
     ),
     // Com o console aberto o input captura tudo. Os painéis de traço e de
@@ -2476,6 +2555,9 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
       cena: atual,
       proxima: sequencia[indice + 1],
       mergulhando: mergulho !== null,
+      carregado,
+      audioDestravado,
+      ...(avisoAudio ? { aviso: 'audio-bloqueado' as const } : {}),
       emergencia: luzes,
       combate: dadosCombate,
     })
@@ -2488,7 +2570,7 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
   // segundos atrasada é chegar depois de ele já ter apertado.
   useEffect(() => {
     publicarRemoto()
-  }, [publicarRemoto, cena?.id])
+  }, [publicarRemoto, cena?.id, avisoAudio, carregado, audioDestravado])
 
   // --- ciclo da cena -------------------------------------------------------
 
@@ -2883,7 +2965,9 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
       sonar={
         pane
           ? 'OFFLINE'
-          : cena.tipo === 'combate'
+          : cena.tipo === 'espera'
+            ? 'STANDBY'
+            : cena.tipo === 'combate'
             ? 'AUXILIAR'
             : visor === 'rachado'
               ? 'ÚNICO SENSOR'
@@ -2954,6 +3038,16 @@ export function Player({ roteiro, engine, codigo, remoto }: Props) {
             responderVF,
             aoZerarTimer,
             aoPing,
+          )}
+          {cena.tipo === 'espera' && (
+            <Espera
+              cena={cena}
+              turma={roteiro.turma}
+              codigo={codigo}
+              remoto={statusRemoto}
+              carregado={carregado}
+              avisoAudio={avisoAudio}
+            />
           )}
           {cena.tipo === 'combate' && combate && (
             <Combate

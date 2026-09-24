@@ -33,12 +33,11 @@ export type OpcoesUseRemoto = {
   /**
    * O `cmd` do celular vira tecla de verdade?
    *
-   * Falso na tela de ativação, e por um motivo de navegador, não de gosto: um
-   * KeyboardEvent construído por script tem `isTrusted: false` e NÃO conta
-   * como user activation no Chrome. Se ele disparasse o gesto inicial, o
-   * `AudioContext` ficaria suspenso e a voz da IA não sairia a apresentação
-   * inteira — uma falha silenciosa e irrecuperável sem recarregar. Enquanto
-   * isso o canal segue no ar, publicando o estado de ativação.
+   * Hoje é sempre `true`: quem filtra o que o celular pode fazer é a lista de
+   * teclas de cada cena, e a única regra que o remoto não pode furar (iniciar
+   * a apresentação com o áudio travado) mora na própria cena de espera. Fica
+   * como interruptor porque a alternativa era o Player e o App checarem a
+   * mesma condição cada um do seu lado.
    */
   aceitaTeclas: boolean
 }

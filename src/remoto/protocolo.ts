@@ -23,9 +23,8 @@ export type Pong = { id: string; turma: string; cenaId: string }
 
 /** Em que "tela" o celular deve se desenhar. Sai do tipo da cena. */
 export type ModoRemoto =
-  /** Antes do gesto inicial: o canal já está aberto, mas quem age é o teclado
-   *  do Chromebook — o celular não tem nada pra fazer ainda. */
-  | 'ativacao'
+  /** A primeira cena: tudo ligado e parado, esperando o → que inicia a IA. */
+  | 'espera'
   | 'apresentacao'
   | 'quiz'
   | 'identificacao'
@@ -51,6 +50,17 @@ export type EstadoRemoto = {
   /** Só estas teclas ficam acesas no celular. */
   teclasDisponiveis: string[]
   modo: ModoRemoto
+  /**
+   * O navegador do Chromebook já liberou o áudio?
+   *
+   * Vai no estado porque é a única coisa que o celular NÃO consegue resolver
+   * sozinho: uma tecla mandada daqui não conta como gesto do usuário pro
+   * Chrome, então há um passo da apresentação que é obrigatoriamente físico, e
+   * o operador precisa ver isso no celular antes de tentar.
+   */
+  audioDestravado: boolean
+  /** Recado momentâneo pro celular. Só existe quando há algo a dizer. */
+  aviso?: 'audio-bloqueado'
   emergencia?: { casco: boolean; sonar: boolean; com: boolean }
   combate?: { casco: number; contato: number; setor: 1 | 2 | 3; recarga: number }
 }

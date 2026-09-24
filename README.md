@@ -383,7 +383,7 @@ lá é `fetch`, e a trilha não precisa de análise de nível.
 
 > **Não há trilha sintética de reserva.** Um sintetizador imitando música de
 > suspense soaria pior que silêncio. O que não pode é ninguém descobrir a falta
-> no dia: o log de ativação diz `Trilha de combate: carregada` ou
+> no dia: o log de carregamento diz `Trilha de combate: carregada` ou
 > `WARN: trilha de combate ausente — o combate roda sem música`.
 
 ### O mostrador de sonar
@@ -537,7 +537,7 @@ A voz saía no nível cheio do mp3, direto no destino, sem nó de ganho — à f
 de tudo, inclusive da trilha, que é um `<audio>` com `volume` absoluto e não
 tinha como competir. O `GainNode` entra **depois do analisador**, de propósito:
 quem move o orbe é o nível da voz, e baixar o volume da sala não pode encolher o
-orbe. A linha de ativação passa a dizer o ganho em uso (`voz 0.63 (-4.0 dB)`) —
+orbe. A linha de diagnóstico passa a dizer o ganho em uso (`voz 0.63 (-4.0 dB)`) —
 se alguém abrir com `?voz=0.3` e esquecer, o log denuncia.
 
 ### O dossiê
@@ -1640,7 +1640,7 @@ Duas fontes, nesta ordem:
 > voz que foi ouvida e aprovada antes, não uma que varia de máquina pra
 > máquina. Ela fica como saída de emergência, que é o papel certo dela.
 
-**Teste no dia:** o log da tela mostra, na ativação, qual fonte está ativa —
+**Teste no dia:** o log da tela mostra, no carregamento, qual fonte está ativa —
 `Narração: voz do sistema — <nome da voz>` ou `Narração: gravação de bordo
 (mp3)`.
 
@@ -1838,7 +1838,7 @@ somar acima de 1 e distorcer.
 
 ### Conferir o som antes da apresentação
 
-A primeira tecla (a da ativação) já dá um **bipe duplo** de confirmação. Se
+O **→** que inicia a apresentação já dá um **bipe duplo** de confirmação. Se
 esse bipe não sai, o problema é o áudio da máquina, não o app.
 
 Pra um teste completo, `/` e depois `som`: toca os efeitos em sequência e
@@ -1887,27 +1887,63 @@ por desenho** e não é segredo — ela está no HTML que qualquer um baixa. Que
 protege a sessão é o código de 4 dígitos, que muda a cada carregamento e só
 aparece na tela do Chromebook.
 
-### O canal abre antes de a apresentação começar
+### A cena de espera, e por que o áudio é separado de começar
 
-O receptor entra no canal assim que a página carrega — **antes** da tela
-PRESSIONE QUALQUER TECLA, junto com o PIN que ela mostra. Enquanto ela está no
-ar, o Chromebook publica um estado de ativação e o celular já diz
-`CONECTADO · 2A · ATIVAÇÃO`, com todos os botões apagados e uma única frase na
-tela: *"Aperte qualquer tecla NO TECLADO do Chromebook pra liberar o áudio"*.
+A primeira cena de toda turma é `espera`: o submarino ligado e parado, com o
+nome da turma, o PIN grande e o estado do canal. Nada acontece até o operador
+apertar **→**.
 
-Esse passo é no Chromebook e não dá pra terceirizar pro celular: o Chrome só
-libera o áudio depois de um gesto de verdade, e uma tecla criada por script
-(`isTrusted: false`) **não conta**. Se ela disparasse a ativação, o
-`AudioContext` ficaria suspenso e a voz da IA não sairia a apresentação
-inteira, sem nenhum aviso. Então o `cmd` que chegar durante a ativação é
-ignorado de propósito — em dois lugares, no receptor e no próprio listener da
-tela.
+Ela existe porque antes disso uma tecla só fazia duas coisas ao mesmo tempo —
+liberar o áudio do navegador e **começar** a apresentação. Na prática isso
+significava que o operador não podia encostar na máquina: um clique pra pôr em
+tela cheia, com a plateia entrando, acordava a IA no meio da arrumação.
 
-### O código de 4 dígitos
+Agora são duas coisas separadas:
+
+- **Liberar o áudio é invisível.** Qualquer gesto de verdade na página —
+  tecla, clique, toque — destrava as duas camadas de som e some. Não há tela
+  pedindo isso, e o operador nem percebe que aconteceu.
+- **Começar é só o →.** Na cena de espera, clique, toque, Enter e espaço não
+  fazem nada. Só a seta direita, do teclado ou do celular.
+
+O canal do celular abre junto com a página, antes de tudo isso, então o PIN já
+está valendo na primeira tela.
+
+### O passo que não dá pra fazer pelo celular
+
+Um detalhe do Chrome que decide o desenho inteiro: uma tecla **criada por
+script** — que é o que o celular manda — não conta como gesto do usuário. Se
+ela liberasse o áudio, o `AudioContext` ficaria suspenso e a apresentação
+rodaria **muda do começo ao fim, sem nenhum aviso**, e só dava pra consertar
+recarregando.
+
+Por isso, se o → chegar do celular e ninguém tiver encostado no Chromebook
+ainda, a apresentação **não começa**. Aparece um recado discreto no rodapé da
+tela de espera, por 3 segundos, e o celular mostra o mesmo em âmbar: *toque na
+tela do Chromebook uma vez, depois aperte →*. Um toque resolve, e nunca mais
+aparece na sessão.
+
+Se o → vier do teclado físico, o próprio keydown já destrava e inicia no mesmo
+gesto — esse aviso nunca aparece.
+
+> Uma nota pra quem for mexer nisso: o app **não** usa
+> `navigator.userActivation.hasBeenActive`, que seria a resposta oficial do
+> navegador. Medido aqui, ele já nasce `true` numa página que ninguém tocou. Um
+> falso positivo custa a apresentação inteira muda; um falso negativo custa um
+> toque a mais. O app conta só os gestos que ele mesmo viu chegar.
+
+### O que o F11 faz (e não faz)
+
+Se o operador puser em tela cheia pelo **F11 do navegador**, esse atalho é do
+Chrome e pode não chegar na página — então pode não contar como gesto. Não é
+problema: qualquer clique na tela conta, e a cena de espera não avança com
+clique. **A receita do dia é simples: abriu, clicou uma vez na tela, pronto.**
+
+### O código de 4 dígitos### O código de 4 dígitos
 
 Aparece em dois lugares:
 
-- na tela **PRESSIONE QUALQUER TECLA**, antes de começar;
+- na cena de **espera**, em número grande, antes de começar;
 - no overlay de ajuda, tecla **H**, junto com o estado da conexão.
 
 Recarregar a página do Chromebook sorteia um código novo e derruba o celular
@@ -1952,9 +1988,11 @@ deixar o 4G ligado.
 
 No Chromebook:
 
-1. Abra o `dist/index.html`, escolha a turma.
-2. Na tela de ativação, anote o **código de 4 dígitos**.
-3. Aperte qualquer tecla e comece.
+1. Abra o `dist/index.html?turma=...`. Ele para na cena de **espera**.
+2. **Clique uma vez na tela** (e ponha em tela cheia, se quiser). Isso libera o
+   áudio e não começa nada.
+3. Anote o **código de 4 dígitos** que está na tela.
+4. Quando a turma estiver pronta, **→** inicia a IA.
 
 No celular:
 
@@ -1962,6 +2000,8 @@ No celular:
 5. Toque na turma, digite o código, **CONECTAR**.
 6. Se aparecer *"Nenhum submarino respondeu"*: o código está errado, a turma
    está errada, ou o Chromebook está sem internet. Confira com **H**.
+7. Se o celular disser que *o áudio do Chromebook ainda está travado*, alguém
+   precisa encostar uma vez na tela da máquina. É o passo do item 2.
 
 Durante:
 
@@ -1981,7 +2021,7 @@ polegar acha o → AVANÇAR no mesmo ponto.
 - Cada tecla tem o mesmo desenho: a tecla grande em cima, a função embaixo.
 - A cor do cabeçalho do modo diz o tom da cena: neutra na apresentação, âmbar
   nas dinâmicas, vermelha no combate, vermelha piscando devagar na pane.
-- Nas cenas em que não há o que fazer (ativação, mergulho) a área do meio
+- Nas cenas em que não há o que fazer (mergulho) a área do meio
   mostra só *"nada a fazer — aguarde"*, em vez de uma grade de botões apagados.
 - **P PANE** e **R REINICIAR** não ficam à vista: estão no **···** do canto
   superior direito, numa gaveta, e ainda exigem o dedo parado **2 segundos**
@@ -2016,10 +2056,10 @@ manda seta pra direita e pra esquerda — o suficiente pra apresentação inteir
 public/audio/        mp3 fora do bundle: sfx/ e uma pasta por turma
 public/controle.html  a pagina do celular: HTML+CSS+JS numa folha so
 src/
-  App.tsx            seleção de turma, tela de ativação, monta o Player
+  App.tsx            seleção de turma, destrave do áudio, monta o Player
   player/            Player.tsx, useTeclado.ts, AudioEngine.ts
-  cenas/             um componente por tipo de cena (Quiz, VF, Combate, Olho,
-                     Identificacao, Emergencia, Hidrofone, Fim)
+  cenas/             um componente por tipo de cena (Espera, Quiz, VF, Combate,
+                     Olho, Identificacao, Emergencia, Hidrofone, Fim)
   ui/                Hud, Orbe, Legenda, ritmoLegenda, LogSistemas, Timer, Ajuda
   audio/             efeitos, ambiente do oceano, os sons do hidrofone e a
                      voz do navegador
