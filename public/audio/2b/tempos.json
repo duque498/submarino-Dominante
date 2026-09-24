@@ -194,7 +194,7 @@
     ]
   },
   "pane-2b-queda": {
-    "duracaoMs": 17784,
+    "duracaoMs": 17976,
     "linhas": [
       {
         "inicio": 0,
@@ -209,25 +209,25 @@
         "fim": 7104
       },
       {
-        "inicio": 7704,
-        "fim": 9048
+        "inicio": 7954,
+        "fim": 9298
       },
       {
-        "inicio": 9648,
-        "fim": 11568
+        "inicio": 9898,
+        "fim": 11746
       },
       {
-        "inicio": 12168,
-        "fim": 14664
+        "inicio": 12346,
+        "fim": 14770
       },
       {
-        "inicio": 15264,
-        "fim": 17496
+        "inicio": 15370,
+        "fim": 17674
       }
     ]
   },
   "pane-2b-retorno": {
-    "duracaoMs": 12240,
+    "duracaoMs": 12648,
     "linhas": [
       {
         "inicio": 0,
@@ -238,12 +238,12 @@
         "fim": 4968
       },
       {
-        "inicio": 5568,
-        "fim": 9624
+        "inicio": 5868,
+        "fim": 10020
       },
       {
-        "inicio": 10224,
-        "fim": 12096
+        "inicio": 10620,
+        "fim": 12492
       }
     ]
   },

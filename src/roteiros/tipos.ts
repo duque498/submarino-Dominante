@@ -375,9 +375,9 @@ export type CenaPane = CenaBase & {
   /** EXTENSAO: status exibido ao lado de cada subsistema, na mesma ordem */
   estados?: string[]
   /** EXTENSAO: linhas ditas/exibidas na entrada da pane */
-  falaEntrada?: string[]
+  falaEntrada?: Linha[]
   /** EXTENSAO: linhas ditas/exibidas no retorno (tecla R) */
-  falaRetorno?: string[]
+  falaRetorno?: Linha[]
   audio: { entrada: string; retorno: string }
 }
 
@@ -533,9 +533,9 @@ export type CenaEmergencia = CenaBase & {
   /** Tela de falha, travada alguns segundos. */
   tela: { linhas: string[] }
   /** As falas da queda, ditas antes de a tela travar. */
-  falasQueda: string[]
+  falasQueda: Linha[]
   /** As falas do modo reduzido, ditas quando a tela destrava. */
-  falasRetorno: string[]
+  falasRetorno: Linha[]
   audio: { queda: string; retorno: string }
 }
 

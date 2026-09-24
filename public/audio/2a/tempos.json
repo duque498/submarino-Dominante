@@ -365,7 +365,7 @@
     ]
   },
   "pane-entrada": {
-    "duracaoMs": 17784,
+    "duracaoMs": 17976,
     "linhas": [
       {
         "inicio": 0,
@@ -380,20 +380,20 @@
         "fim": 7104
       },
       {
-        "inicio": 7704,
-        "fim": 9048
+        "inicio": 7954,
+        "fim": 9298
       },
       {
-        "inicio": 9648,
-        "fim": 11568
+        "inicio": 9898,
+        "fim": 11746
       },
       {
-        "inicio": 12168,
-        "fim": 14664
+        "inicio": 12346,
+        "fim": 14770
       },
       {
-        "inicio": 15264,
-        "fim": 17496
+        "inicio": 15370,
+        "fim": 17674
       }
     ]
   },
