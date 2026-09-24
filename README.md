@@ -1938,11 +1938,11 @@ qualquer jeito), então vai direto pro Pages:
 2. Em *Source*, escolha **Deploy from a branch**.
 3. Branch: `main`, pasta: **`/ (root)`**. Salvar.
 4. Espere um ou dois minutos e abra:
-   `https://duque498.github.io/radar-alpha-bybit/public/controle.html`
+   `https://duque498.github.io/submarino-Dominante/public/controle.html`
 
 Se preferir a URL curta, copie o arquivo pra raiz do repositório
 (`cp public/controle.html controle.html`) e o endereço vira
-`https://duque498.github.io/radar-alpha-bybit/controle.html`.
+`https://duque498.github.io/submarino-Dominante/controle.html`.
 
 Abra esse endereço no celular **uma vez em casa**, confirme que carrega, e
 salve na tela de início. No dia, o wi-fi da escola costuma ser o gargalo — vale
