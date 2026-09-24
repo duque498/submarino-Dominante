@@ -69,7 +69,7 @@ import { duracaoDaLegenda, type TemposReais } from '../ui/ritmoLegenda'
 import { Orbe, QTD_PONTOS, type EstadoOrbe } from '../ui/Orbe'
 import type { AudioEngine } from './AudioEngine'
 import { montarEstado } from '../remoto/estado'
-import { useRemoto } from '../remoto/useRemoto'
+import type { ConexaoRemota } from '../remoto/useRemoto'
 import { useTeclado } from './useTeclado'
 
 /** Limites do ajuste de tamanho do orbe pelo operador ([ e ]). */
@@ -352,9 +352,11 @@ type Props = {
   engine: AudioEngine
   /** Código de 4 dígitos da sessão, pro canal do controle remoto. */
   codigo: string
+  /** O receptor já ligado pelo App: o Player só empresta a ele o que sabe. */
+  remoto: ConexaoRemota
 }
 
-export function Player({ roteiro, engine, codigo }: Props) {
+export function Player({ roteiro, engine, codigo, remoto }: Props) {
   // A pane fica no mesmo JSON, mas fora da ordem: é disparada pela tecla P a
   // qualquer momento, então some da sequência linear que as setas percorrem.
   const sequencia = useMemo(
@@ -538,7 +540,7 @@ export function Player({ roteiro, engine, codigo }: Props) {
   /**
    * Publicar o estado pro celular de dentro do combate.
    *
-   * Em ref porque o `useRemoto` é montado bem mais abaixo, e a simulação do
+   * Em ref porque o remoto é amarrado bem mais abaixo, e a simulação do
    * combate roda num efeito que vem antes. Existe por um motivo só: a recarga
    * do pulso dura 1,2 s e a publicação periódica é de 2 s — sem um empurrão no
    * disparo, a barra do celular diria "pronto" enquanto a tela diz
@@ -2433,51 +2435,50 @@ export function Player({ roteiro, engine, codigo }: Props) {
   // injeta teclas no mesmo listener. Se esta seção inteira for arrancada, o
   // app volta a ser o de antes sem nenhuma outra mudança.
 
-  const { status: statusRemoto, publicar: publicarRemoto } = useRemoto({
-    turma: roteiro.turma,
-    codigo,
-    ativo: true,
-    // `false` = não mantém o console aberto: o operador está com o celular na
-    // mão, e um console aberto no Chromebook engoliria as teclas seguintes do
-    // remoto (o listener do teclado sai do ar enquanto ele está aberto).
-    aoComando: (texto) => void executarComando(texto, false),
-    lerEstado: () => {
-      const atual = sequencia[indice]
-      if (!atual) return null
-      const luzes = emergencia
+  const statusRemoto = remoto.status
+  const publicarRemoto = remoto.publicar
+
+  // `false` = não mantém o console aberto: o operador está com o celular na
+  // mão, e um console aberto no Chromebook engoliria as teclas seguintes do
+  // remoto (o listener do teclado sai do ar enquanto ele está aberto).
+  remoto.registrarComando((texto) => void executarComando(texto, false))
+
+  remoto.registrarLeitor(() => {
+    const atual = sequencia[indice]
+    if (!atual) return null
+    const luzes = emergencia
+      ? {
+          // As luzes são por subsistema, na ordem que a cena declarou; o
+          // celular espelha as três do HUD.
+          casco: emergencia.estados[0] === 'online',
+          sonar: emergencia.estados[1] === 'online',
+          com: emergencia.estados[2] === 'online',
+        }
+      : undefined
+    const sim = refSimCombate.current
+    const dadosCombate =
+      combate && atual.tipo === 'combate'
         ? {
-            // As luzes são por subsistema, na ordem que a cena declarou; o
-            // celular espelha as três do HUD.
-            casco: emergencia.estados[0] === 'online',
-            sonar: emergencia.estados[1] === 'online',
-            com: emergencia.estados[2] === 'online',
+            casco: combate.casco,
+            contato: combate.contato,
+            setor: (Math.min(3, Math.max(1, combate.setor + 1)) as 1 | 2 | 3),
+            // 1 = acabou de disparar, 0 = pronto pra disparar. É o mesmo
+            // relógio do cooldown da tecla, então a barra do celular não
+            // pode discordar da tela.
+            recarga: Math.max(
+              0,
+              Math.min(1, (sim.prontoEm - performance.now()) / MS_COOLDOWN),
+            ),
           }
         : undefined
-      const sim = refSimCombate.current
-      const dadosCombate =
-        combate && atual.tipo === 'combate'
-          ? {
-              casco: combate.casco,
-              contato: combate.contato,
-              setor: (Math.min(3, Math.max(1, combate.setor + 1)) as 1 | 2 | 3),
-              // 1 = acabou de disparar, 0 = pronto pra disparar. É o mesmo
-              // relógio do cooldown da tecla, então a barra do celular não
-              // pode discordar da tela.
-              recarga: Math.max(
-                0,
-                Math.min(1, (sim.prontoEm - performance.now()) / MS_COOLDOWN),
-              ),
-            }
-          : undefined
-      return montarEstado({
-        turma: roteiro.turma,
-        cena: atual,
-        proxima: sequencia[indice + 1],
-        mergulhando: mergulho !== null,
-        emergencia: luzes,
-        combate: dadosCombate,
-      })
-    },
+    return montarEstado({
+      turma: roteiro.turma,
+      cena: atual,
+      proxima: sequencia[indice + 1],
+      mergulhando: mergulho !== null,
+      emergencia: luzes,
+      combate: dadosCombate,
+    })
   })
 
   refPublicarRemoto.current = publicarRemoto

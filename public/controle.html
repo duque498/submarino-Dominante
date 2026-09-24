@@ -20,7 +20,11 @@
         --verde: #4dffa6;
         --ambar: #ffc24d;
         --vermelho: #ff6e5a;
-        --apagado: rgba(120, 150, 160, 0.35);
+        --texto: #bdfff0;
+        --fraco: rgba(120, 190, 205, 0.7);
+        /* A cor de acento muda por modo (ver [data-modo] mais abaixo): é o que
+           diz de relance se a tela pede calma, atenção ou pressa. */
+        --acento: var(--ciano);
       }
       * {
         box-sizing: border-box;
@@ -29,16 +33,20 @@
       html,
       body {
         margin: 0;
-        height: 100%;
         background: var(--fundo);
-        color: #bdfff0;
+        color: var(--texto);
         font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
         touch-action: manipulation;
         overscroll-behavior: none;
       }
       body {
+        /* dvh e não vh: a barra do navegador do celular come 60–90 px de vh, e
+           o botão avançar é justamente o que ficaria embaixo dela. */
+        height: 100vh;
+        height: 100dvh;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
         padding: env(safe-area-inset-top) env(safe-area-inset-right)
           env(safe-area-inset-bottom) env(safe-area-inset-left);
       }
@@ -51,8 +59,11 @@
       .tela--ativa {
         display: flex;
       }
+      .oculto {
+        display: none !important;
+      }
 
-      /* --- tela 1: seletor --- */
+      /* ============ tela 1: seletor ============ */
       .seletor {
         justify-content: center;
         gap: 1.5rem;
@@ -61,7 +72,7 @@
       .marca {
         text-align: center;
         letter-spacing: 0.3em;
-        color: rgba(120, 190, 205, 0.7);
+        color: var(--fraco);
         font-size: 0.85rem;
         text-transform: uppercase;
       }
@@ -72,9 +83,8 @@
       }
       .turma {
         padding: 1.4rem 0;
-        font-size: 1.6rem;
+        font: 700 1.6rem/1 inherit;
         font-family: inherit;
-        font-weight: 700;
         letter-spacing: 0.1em;
         color: var(--ciano);
         background: rgba(56, 232, 255, 0.07);
@@ -122,20 +132,20 @@
         color: var(--ambar);
       }
 
-      /* --- tela 2: controle --- */
+      /* ============ tela 2, zona 1: topo ============
+         Uma linha, sem borda, sem caixa. Ele informa; não disputa. */
       .topo {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.6rem 0.8rem;
-        border-bottom: 1px solid var(--moldura);
-        background: rgba(4, 20, 26, 0.95);
+        gap: 0.6rem;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
       .badge {
         flex: 1;
-        font-size: 0.78rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        min-width: 0;
         color: var(--verde);
         overflow: hidden;
         text-overflow: ellipsis;
@@ -144,89 +154,200 @@
       .badge--mudo {
         color: var(--ambar);
       }
-      .trocar {
-        padding: 0.5rem 0.7rem;
+      .topo button {
+        padding: 0.35rem 0.5rem;
         font-family: inherit;
-        font-size: 0.7rem;
-        letter-spacing: 0.1em;
-        color: var(--ciano);
-        background: transparent;
-        border: 1px solid var(--moldura);
-        border-radius: 3px;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        color: var(--fraco);
+        background: none;
+        border: 0;
       }
-      .alerta {
+      #mais {
+        font-size: 1rem;
+        letter-spacing: 0.15em;
+        line-height: 0.6;
+      }
+
+      /* ============ tela 2: tarja de sem-resposta ============
+         Fina, entre o topo e a cena. Nunca empurra o rodapé. */
+      .tarja {
         display: none;
-        padding: 0.7rem 0.8rem;
-        font-size: 0.85rem;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
         text-align: center;
-        color: #2a0b06;
-        background: var(--vermelho);
         font-weight: 700;
+        color: #2a1a04;
+        background: var(--ambar);
       }
-      .alerta--visivel {
+      .tarja--visivel {
         display: block;
       }
-      .instrucao {
-        padding: 1rem 0.9rem;
-        font-size: 1.25rem;
-        line-height: 1.35;
-        color: #eafdff;
+      .tarja--morta {
+        color: #2a0b06;
+        background: var(--vermelho);
       }
-      .corpo {
+
+      /* ============ tela 2, zona 2: cena e instrução ============ */
+      .cena {
+        padding: 0.7rem 0.85rem 0.9rem;
+      }
+      .cena__titulo {
+        margin: 0;
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--fraco);
+        /* Uma linha só: um título comprido que quebrasse em duas empurraria a
+           área do modo pra baixo e os botões mudariam de lugar entre cenas. */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .cena__instrucao {
+        margin: 0.35rem 0 0;
+        font-size: 1.7rem;
+        line-height: 1.2;
+        color: #eafdff;
+        /* No máximo duas linhas: a terceira empurraria a área do modo e o
+           operador perderia o contexto de onde os botões ficam. */
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        overflow-wrap: break-word;
+      }
+      .cena__proxima {
+        margin: 0.45rem 0 0;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        color: rgba(120, 190, 205, 0.45);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* ============ tela 2, zona 3: área do modo ============
+         Come o espaço que sobrar e rola POR DENTRO. O rodapé nunca se mexe. */
+      .modo {
         flex: 1;
         min-height: 0;
         overflow-y: auto;
-        padding: 0 0.7rem 1rem;
+        -webkit-overflow-scrolling: touch;
+        padding: 0 0.7rem 0.6rem;
+      }
+      .modo__cabecalho {
+        margin: 0 0 0.55rem;
+        padding-top: 0.2rem;
+        font-size: 0.7rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--acento);
+      }
+      /* Emergência pisca devagar: é a única cena em que a demora do operador
+         tem custo na tela do projetor. Devagar pra avisar, não pra apavorar. */
+      [data-modo='emergencia'] .modo__cabecalho {
+        animation: pulsa-acento 1.8s ease-in-out infinite;
+      }
+      @keyframes pulsa-acento {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+      }
+      .modo__vazio {
         display: flex;
-        flex-direction: column;
-        gap: 0.7rem;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 0.95rem;
+        letter-spacing: 0.06em;
+        color: rgba(120, 190, 205, 0.5);
       }
-      .avancar {
-        width: 100%;
-        padding: 1.5rem 0;
-        font-family: inherit;
-        font-size: 1.5rem;
-        font-weight: 700;
-        letter-spacing: 0.15em;
-        color: #04141a;
-        background: var(--verde);
-        border: 0;
-        border-radius: 5px;
-      }
+      [data-modo='quiz'],
+      [data-modo='identificacao'],
+      [data-modo='hidrofone'] { --acento: var(--ambar); }
+      [data-modo='combate'],
+      [data-modo='emergencia'] { --acento: var(--vermelho); }
+
+      /* ============ teclas ============
+         Um padrão só: a tecla grande em cima, a função pequena embaixo. */
       .linha {
         display: grid;
-        gap: 0.6rem;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
       }
       .linha--2 { grid-template-columns: repeat(2, 1fr); }
       .linha--3 { grid-template-columns: repeat(3, 1fr); }
       .linha--4 { grid-template-columns: repeat(4, 1fr); }
       .tecla {
-        padding: 1rem 0.3rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.15rem;
+        min-height: 62px;
+        padding: 0.5rem 0.2rem;
         font-family: inherit;
-        font-size: 1rem;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        color: var(--ciano);
-        background: rgba(56, 232, 255, 0.08);
+        color: var(--acento);
+        background: rgba(56, 232, 255, 0.06);
         border: 1px solid var(--moldura);
         border-radius: 4px;
+        transition: border-color 0.12s linear;
       }
-      .tecla--alta {
-        padding: 1.6rem 0.3rem;
-        font-size: 1.15rem;
+      .tecla b {
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1;
       }
+      .tecla i {
+        font-style: normal;
+        font-size: 0.66rem;
+        letter-spacing: 0.06em;
+        text-transform: lowercase;
+        color: var(--fraco);
+        text-align: center;
+      }
+      /* Desabilitada some de cor, não de lugar: layout que pula faz o dedo
+         errar o alvo no escuro. */
       .tecla:disabled {
-        color: var(--apagado);
-        border-color: rgba(27, 106, 120, 0.3);
-        background: transparent;
+        opacity: 0.35;
+        border-color: transparent;
+        background: rgba(56, 232, 255, 0.03);
       }
-      .tecla--ativa {
-        background: rgba(255, 194, 77, 0.25);
-        border-color: var(--ambar);
-        color: #fff0d0;
+      .tecla--flash {
+        border-color: var(--acento);
+        box-shadow: inset 0 0 0 1px var(--acento);
+      }
+
+      /* ============ combate ============ */
+      .setores { grid-template-columns: repeat(3, 1fr); }
+      .setores .tecla {
+        min-height: 84px;
+      }
+      .tecla--contato {
+        animation: pulsa-borda 1.1s ease-in-out infinite;
+      }
+      @keyframes pulsa-borda {
+        0%, 100% { border-color: var(--vermelho); }
+        50% { border-color: rgba(255, 110, 90, 0.25); }
+      }
+      /* Faixa compacta: rótulo à esquerda, barra à direita, uma linha cada. */
+      .faixa {
+        display: grid;
+        grid-template-columns: 5.2rem 1fr;
+        align-items: center;
+        gap: 0.4rem 0.6rem;
+        margin-top: 0.2rem;
+      }
+      .faixa span {
+        font-size: 0.66rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--fraco);
       }
       .barra {
-        height: 10px;
+        height: 8px;
         border: 1px solid var(--moldura);
         border-radius: 2px;
         overflow: hidden;
@@ -238,73 +359,40 @@
         background: var(--verde);
         transition: width 0.15s linear;
       }
-      /* A recarga e recalculada a cada quadro; uma transicao por cima disso
-         so atrasaria o que ja esta correto. */
-      #barra-recarga {
-        transition: none;
-      }
+      /* A recarga é recalculada a cada quadro; uma transição por cima disso só
+         atrasaria o que já está correto. */
+      #barra-recarga { transition: none; }
       .barra--casco > i { background: var(--ambar); }
       .barra--contato > i { background: var(--vermelho); }
-      .rotulo {
-        font-size: 0.7rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(120, 190, 205, 0.75);
-      }
+
+      /* ============ emergência ============ */
       .luzes {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 0.5rem;
+        margin-top: 0.6rem;
         text-align: center;
       }
       .luz {
-        padding: 0.6rem 0.2rem;
+        padding: 0.55rem 0.2rem;
         border: 1px solid var(--moldura);
         border-radius: 4px;
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         letter-spacing: 0.08em;
-        color: var(--apagado);
+        color: rgba(120, 150, 160, 0.45);
       }
       .luz--online {
         color: var(--verde);
         border-color: rgba(77, 255, 166, 0.6);
         background: rgba(77, 255, 166, 0.08);
       }
-      /* Perigosas: só disparam com o dedo parado 2 s, e o anel mostra quanto
-         falta. Um toque acidental no P no meio da apresentação derrubaria a IA
-         na frente da plateia. */
-      .perigosas {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.6rem;
-        margin-top: 0.3rem;
-      }
-      .longa {
-        position: relative;
-        padding: 0.9rem 0.3rem;
-        font-family: inherit;
-        font-size: 0.85rem;
-        letter-spacing: 0.1em;
-        color: var(--vermelho);
-        background: transparent;
-        border: 1px solid rgba(255, 110, 90, 0.5);
-        border-radius: 4px;
-        overflow: hidden;
-      }
-      .longa > i {
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 0;
-        background: rgba(255, 110, 90, 0.28);
-        pointer-events: none;
-      }
-      .console {
+
+      /* ============ console ============ */
+      #console {
         display: flex;
-        gap: 0.5rem;
+        margin-top: 0.2rem;
       }
-      .console input {
+      #texto-comando {
         flex: 1;
         min-width: 0;
         padding: 0.9rem;
@@ -315,7 +403,126 @@
         border: 1px solid var(--moldura);
         border-radius: 4px;
       }
-      .oculto { display: none !important; }
+
+      /* ============ tela 2, zona 4: rodapé ============
+         Posição fixa em todos os modos. O avançar é o maior elemento da
+         página, e a zona do polegar é dele. */
+      .rodape {
+        flex: 0 0 auto;
+        padding: 0.5rem 0.7rem 0.7rem;
+        border-top: 1px solid rgba(27, 106, 120, 0.4);
+        background: var(--fundo);
+      }
+      .secundarias {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .secundarias .tecla {
+        min-height: 48px;
+        flex-direction: row;
+        gap: 0.4rem;
+        background: none;
+        border-color: rgba(27, 106, 120, 0.45);
+        color: var(--fraco);
+      }
+      .secundarias .tecla b { font-size: 0.95rem; }
+      .avancar {
+        display: block;
+        width: 100%;
+        min-height: 96px;
+        font-family: inherit;
+        font-size: 1.6rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #04141a;
+        background: var(--verde);
+        border: 0;
+        border-radius: 5px;
+      }
+      .avancar:disabled {
+        opacity: 0.35;
+      }
+      .avancar.tecla--flash {
+        box-shadow: inset 0 0 0 3px #04141a;
+      }
+
+      /* ============ gaveta das perigosas ============
+         Fora da tela principal: enquanto estão à vista, competem com o
+         avançar — e são as duas que estragariam a apresentação. */
+      .gaveta {
+        position: fixed;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        justify-content: flex-end;
+        background: rgba(2, 10, 14, 0.75);
+      }
+      .gaveta--aberta { display: flex; }
+      .gaveta__caixa {
+        padding: 1rem 0.8rem calc(1rem + env(safe-area-inset-bottom));
+        background: #061c24;
+        border-top: 1px solid var(--moldura);
+      }
+      .gaveta__titulo {
+        margin: 0 0 0.7rem;
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--fraco);
+      }
+      .perigosas {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+      }
+      .longa {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        min-height: 84px;
+        padding: 0.6rem 0.3rem;
+        font-family: inherit;
+        color: var(--vermelho);
+        background: transparent;
+        border: 1px solid rgba(255, 110, 90, 0.5);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .longa b { font-size: 1.25rem; font-weight: 700; }
+      .longa i {
+        font-style: normal;
+        font-size: 0.66rem;
+        letter-spacing: 0.06em;
+        color: rgba(255, 110, 90, 0.7);
+      }
+      .longa > u {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 0;
+        background: rgba(255, 110, 90, 0.28);
+        pointer-events: none;
+      }
+      .longa:disabled { opacity: 0.35; border-color: transparent; }
+      .gaveta__fechar {
+        width: 100%;
+        margin-top: 0.7rem;
+        padding: 0.7rem;
+        font-family: inherit;
+        font-size: 0.75rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--fraco);
+        background: none;
+        border: 1px solid rgba(27, 106, 120, 0.45);
+        border-radius: 4px;
+      }
     </style>
   </head>
   <body>
@@ -337,93 +544,116 @@
     </section>
 
     <!-- ===================== TELA 2 — CONTROLE ==================== -->
-    <section class="tela" id="tela-controle">
+    <section class="tela" id="tela-controle" data-modo="apresentacao">
+      <!-- zona 1 -->
       <div class="topo">
         <span class="badge" id="badge">conectando...</span>
-        <button class="trocar" id="trocar">trocar turma</button>
+        <button id="mais" aria-label="mais opções">···</button>
+        <button id="trocar">trocar turma</button>
       </div>
-      <div class="alerta" id="alerta">
-        sem resposta do submarino — use o teclado
-      </div>
-      <p class="instrucao" id="instrucao">—</p>
-      <div class="corpo">
-        <button class="avancar" data-tecla="ArrowRight">→ avançar</button>
-        <div class="linha linha--2">
-          <button class="tecla" data-tecla="ArrowLeft">← voltar</button>
-          <button class="tecla" data-tecla=" ">espaço · pular fala</button>
-        </div>
 
-        <!-- blocos por modo: o JS mostra um e esconde os outros -->
+      <p class="tarja" id="tarja"></p>
+
+      <!-- zona 2 -->
+      <div class="cena">
+        <p class="cena__titulo" id="cena-titulo">—</p>
+        <p class="cena__instrucao" id="instrucao">aguardando o submarino...</p>
+        <p class="cena__proxima" id="cena-proxima"></p>
+      </div>
+
+      <!-- zona 3 -->
+      <div class="modo" id="modo">
+        <p class="modo__cabecalho" id="modo-cabecalho">apresentação</p>
+
+        <div class="modo__vazio oculto" id="bloco-vazio">nada a fazer — aguarde</div>
+
         <div id="bloco-apresentacao" class="oculto">
-          <p class="rotulo">orbe e cronômetro</p>
           <div class="linha linha--4">
-            <button class="tecla" data-tecla="m">M forma →</button>
-            <button class="tecla" data-tecla="n">N forma ←</button>
-            <button class="tecla" data-tecla="o">O esfera</button>
-            <button class="tecla" data-tecla="t">T tempo</button>
+            <button class="tecla" data-tecla="m"><b>M</b><i>forma →</i></button>
+            <button class="tecla" data-tecla="n"><b>N</b><i>forma ←</i></button>
+            <button class="tecla" data-tecla="o"><b>O</b><i>esfera</i></button>
+            <button class="tecla" data-tecla="t"><b>T</b><i>cronômetro</i></button>
           </div>
-          <div class="linha" style="margin-top: 0.7rem">
-            <button class="tecla" data-tecla="/" id="abrir-console">/ console</button>
+          <div class="linha">
+            <button class="tecla" data-tecla="/" id="abrir-console">
+              <b>/</b><i>console</i>
+            </button>
           </div>
-          <div class="console oculto" id="console" style="margin-top: 0.6rem">
-            <input id="texto-comando" placeholder="sonar, status, mapa..." autocomplete="off" />
-            <button class="tecla" id="enviar-comando">enviar</button>
-          </div>
+          <!-- form e não botão: o "enviar" vira o Enter do teclado do celular,
+               que é onde o polegar já está depois de digitar. -->
+          <form id="console" class="oculto" autocomplete="off">
+            <input
+              id="texto-comando"
+              placeholder="sonar, status, mapa..."
+              enterkeyhint="send"
+            />
+          </form>
         </div>
 
         <div id="bloco-numeros" class="oculto">
-          <p class="rotulo" id="rotulo-numeros">resposta da sala</p>
           <div class="linha linha--4">
-            <button class="tecla" data-tecla="1">1</button>
-            <button class="tecla" data-tecla="2">2</button>
-            <button class="tecla" data-tecla="3">3</button>
-            <button class="tecla" data-tecla="4">4</button>
+            <button class="tecla" data-tecla="1"><b>1</b><i>opção 1</i></button>
+            <button class="tecla" data-tecla="2"><b>2</b><i>opção 2</i></button>
+            <button class="tecla" data-tecla="3"><b>3</b><i>opção 3</i></button>
+            <button class="tecla" data-tecla="4"><b>4</b><i>opção 4</i></button>
           </div>
-          <div class="linha linha--2" style="margin-top: 0.6rem">
-            <button class="tecla" data-tecla="Enter">enter · acerto</button>
-            <button class="tecla" data-tecla="x">X · revelar</button>
+          <div class="linha linha--2">
+            <button class="tecla" data-tecla="Enter"><b>ENTER</b><i>acerto</i></button>
+            <button class="tecla" data-tecla="x"><b>X</b><i>revelar</i></button>
           </div>
-          <div class="linha linha--2 oculto" id="bloco-vf" style="margin-top: 0.6rem">
-            <button class="tecla" data-tecla="v">V · verdadeiro</button>
-            <button class="tecla" data-tecla="f">F · falso</button>
+          <div class="linha linha--2 oculto" id="bloco-vf">
+            <button class="tecla" data-tecla="v"><b>V</b><i>verdadeiro</i></button>
+            <button class="tecla" data-tecla="f"><b>F</b><i>falso</i></button>
           </div>
         </div>
 
         <div id="bloco-combate" class="oculto">
-          <p class="rotulo">setor do contato</p>
-          <div class="linha linha--3">
-            <button class="tecla tecla--alta" data-tecla="1" id="setor-1">1<br />proa</button>
-            <button class="tecla tecla--alta" data-tecla="2" id="setor-2">2<br />bombordo</button>
-            <button class="tecla tecla--alta" data-tecla="3" id="setor-3">3<br />estibordo</button>
+          <div class="linha setores">
+            <button class="tecla" data-tecla="1" id="setor-1"><b>1</b><i>proa</i></button>
+            <button class="tecla" data-tecla="2" id="setor-2"><b>2</b><i>bombordo</i></button>
+            <button class="tecla" data-tecla="3" id="setor-3"><b>3</b><i>estibordo</i></button>
           </div>
-          <p class="rotulo" style="margin-top: 0.8rem">recarga do pulso</p>
-          <div class="barra"><i id="barra-recarga"></i></div>
-          <p class="rotulo" style="margin-top: 0.6rem">casco</p>
-          <div class="barra barra--casco"><i id="barra-casco"></i></div>
-          <p class="rotulo" style="margin-top: 0.6rem">contato</p>
-          <div class="barra barra--contato"><i id="barra-contato"></i></div>
+          <div class="faixa">
+            <span>recarga</span><div class="barra"><i id="barra-recarga"></i></div>
+            <span>casco</span><div class="barra barra--casco"><i id="barra-casco"></i></div>
+            <span>contato</span><div class="barra barra--contato"><i id="barra-contato"></i></div>
+          </div>
         </div>
 
         <div id="bloco-emergencia" class="oculto">
-          <p class="rotulo">religar subsistema</p>
           <div class="linha linha--2">
-            <button class="tecla tecla--alta" data-tecla="1">1 · casco</button>
-            <button class="tecla tecla--alta" data-tecla="2">2 · sonar</button>
+            <button class="tecla" data-tecla="1"><b>1</b><i>casco</i></button>
+            <button class="tecla" data-tecla="2"><b>2</b><i>sonar</i></button>
           </div>
-          <p class="rotulo" style="margin-top: 0.8rem">subsistemas</p>
           <div class="luzes">
             <span class="luz" id="luz-casco">casco</span>
             <span class="luz" id="luz-sonar">sonar</span>
             <span class="luz" id="luz-com">comunicação</span>
           </div>
         </div>
+      </div>
 
-        <div class="perigosas">
-          <button class="longa" data-tecla="p"><i></i>segure · P pane</button>
-          <button class="longa" data-tecla="r"><i></i>segure · R reiniciar</button>
+      <!-- zona 4 -->
+      <div class="rodape">
+        <div class="secundarias">
+          <button class="tecla" data-tecla="ArrowLeft"><b>←</b><i>voltar</i></button>
+          <button class="tecla" data-tecla=" "><b>espaço</b><i>pular fala</i></button>
         </div>
+        <button class="avancar" data-tecla="ArrowRight">→ avançar</button>
       </div>
     </section>
+
+    <!-- gaveta das perigosas -->
+    <div class="gaveta" id="gaveta">
+      <div class="gaveta__caixa">
+        <p class="gaveta__titulo">segure 2 segundos</p>
+        <div class="perigosas">
+          <button class="longa" data-tecla="p"><u></u><b>P</b><i>pane</i></button>
+          <button class="longa" data-tecla="r"><u></u><b>R</b><i>reiniciar</i></button>
+        </div>
+        <button class="gaveta__fechar" id="fechar-gaveta">fechar</button>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
     <script>
@@ -438,10 +668,21 @@
       var MS_MORTO = 12000
       var MS_DEBOUNCE = 300
       var MS_LONGO = 2000
+      var MS_FLASH = 120
       // Mesmo valor do MS_COOLDOWN de src/cenas/Combate.tsx. Precisa estar
-      // aqui porque o `estado` chega a cada 2 s e a recarga dura 1,2 s: sem
-      // extrapolar, a barra do celular mostraria um numero que ja morreu.
+      // aqui porque o `estado` chega a cada 2 s e a recarga dura 1,2 s.
       var MS_COOLDOWN = 1200
+
+      var NOME_DO_MODO = {
+        ativacao: 'ativação',
+        apresentacao: 'apresentação',
+        quiz: 'quiz',
+        identificacao: 'identificação',
+        hidrofone: 'hidrofone',
+        combate: 'combate',
+        emergencia: 'reparo',
+        mergulho: 'mergulho',
+      }
 
       var $ = function (id) { return document.getElementById(id) }
       var cliente = null
@@ -495,11 +736,15 @@
         sair()
         mostrar('tela-seletor')
       }
+      $('mais').onclick = function () { $('gaveta').classList.add('gaveta--aberta') }
+      $('fechar-gaveta').onclick = fecharGaveta
+      function fecharGaveta() { $('gaveta').classList.remove('gaveta--aberta') }
 
       function mostrar(id) {
         ;['tela-seletor', 'tela-controle'].forEach(function (t) {
           $(t).classList.toggle('tela--ativa', t === id)
         })
+        if (id === 'tela-seletor') fecharGaveta()
       }
 
       function sair() {
@@ -575,38 +820,48 @@
       // que atrasou, e o operador precisa poder apertar → de qualquer jeito.
       function vigiar() {
         var quieto = Date.now() - ultimoRecebido
-        var badge = $('badge')
-        badge.classList.toggle('badge--mudo', quieto > MS_MUDO)
-        if (quieto > MS_MUDO && ultimoEstado) {
-          badge.textContent = 'sem resposta · ' + ultimoEstado.turma
+        var tarja = $('tarja')
+        $('badge').classList.toggle('badge--mudo', quieto > MS_MUDO)
+        tarja.classList.toggle('tarja--visivel', quieto > MS_MUDO)
+        tarja.classList.toggle('tarja--morta', quieto > MS_MORTO)
+        if (quieto > MS_MORTO) {
+          tarja.textContent = 'sem resposta do submarino — use o teclado'
+        } else if (quieto > MS_MUDO) {
+          tarja.textContent = 'sem estado há ' + Math.floor(quieto / 1000) + 's'
         }
-        $('alerta').classList.toggle('alerta--visivel', quieto > MS_MORTO)
       }
 
       function aplicarEstado(e) {
         if (!e) return
         ultimoEstado = e
-        $('badge').textContent = 'conectado · ' + e.turma + ' · ' + (e.cenaTitulo || '')
-        $('badge').classList.remove('badge--mudo')
-        $('alerta').classList.remove('alerta--visivel')
-        $('instrucao').textContent = e.instrucao || ''
-
         var modo = e.modo || 'apresentacao'
+        $('tela-controle').setAttribute('data-modo', modo)
+        $('badge').textContent = 'conectado · ' + e.turma
+        $('badge').classList.remove('badge--mudo')
+        $('tarja').classList.remove('tarja--visivel', 'tarja--morta')
+        $('cena-titulo').textContent = e.cenaTitulo || ''
+        $('instrucao').textContent = e.instrucao || ''
+        $('cena-proxima').textContent = e.proximaTitulo ? 'próxima: ' + e.proximaTitulo : ''
+
+        var teclas = e.teclasDisponiveis || []
+        var temVF = teclas.indexOf('v') >= 0
         var numeros = modo === 'quiz' || modo === 'identificacao' || modo === 'hidrofone'
+        // Sem nenhuma tecla de modo, a área fica com uma frase e nada mais:
+        // uma grade de botões apagados só faria o operador procurar o que
+        // apertar numa cena em que não há nada pra apertar.
+        var semTeclas = modo === 'ativacao' || modo === 'mergulho'
+        $('modo-cabecalho').textContent =
+          numeros && temVF ? 'verdadeiro ou falso' : NOME_DO_MODO[modo] || modo
+        $('bloco-vazio').classList.toggle('oculto', !semTeclas)
+        $('modo-cabecalho').classList.toggle('oculto', semTeclas)
         $('bloco-apresentacao').classList.toggle('oculto', modo !== 'apresentacao')
         $('bloco-numeros').classList.toggle('oculto', !numeros)
         $('bloco-combate').classList.toggle('oculto', modo !== 'combate')
         $('bloco-emergencia').classList.toggle('oculto', modo !== 'emergencia')
-        $('bloco-vf').classList.toggle(
-          'oculto',
-          !(e.teclasDisponiveis || []).some(function (t) { return t === 'v' }),
-        )
+        $('bloco-vf').classList.toggle('oculto', !temVF)
 
-        // Botão fora da lista fica APAGADO, não some: layout que pula faz o
-        // dedo errar o alvo no escuro.
-        var disponiveis = e.teclasDisponiveis || []
         Array.prototype.forEach.call(document.querySelectorAll('[data-tecla]'), function (b) {
-          b.disabled = disponiveis.indexOf(b.getAttribute('data-tecla')) < 0
+          b.disabled = teclas.indexOf(b.getAttribute('data-tecla')) < 0
         })
 
         if (e.combate) {
@@ -616,7 +871,7 @@
           $('barra-casco').style.width = Math.round(e.combate.casco * 100) + '%'
           $('barra-contato').style.width = Math.round(e.combate.contato * 100) + '%'
           ;[1, 2, 3].forEach(function (n) {
-            $('setor-' + n).classList.toggle('tecla--ativa', e.combate.setor === n)
+            $('setor-' + n).classList.toggle('tecla--contato', e.combate.setor === n)
           })
         }
         if (e.emergencia) {
@@ -627,8 +882,7 @@
       }
 
       // A recarga anda sozinha entre um `estado` e outro: a barra do celular
-      // conta o tempo local a partir do ultimo valor recebido, em vez de
-      // congelar por 2 s num numero de 1,2 s atras.
+      // conta o tempo local a partir do último valor recebido.
       var recargaBase = 0
       var tRecarga = 0
       var quadroRecarga = 0
@@ -640,6 +894,10 @@
 
       // ---------- envio ----------
       var ultimoEnvio = {}
+      function piscar(botao) {
+        botao.classList.add('tecla--flash')
+        setTimeout(function () { botao.classList.remove('tecla--flash') }, MS_FLASH)
+      }
       function enviarTecla(tecla) {
         var agora = Date.now()
         if (agora - (ultimoEnvio[tecla] || 0) < MS_DEBOUNCE) return
@@ -653,9 +911,10 @@
       document.addEventListener('click', function (ev) {
         var alvo = ev.target.closest && ev.target.closest('[data-tecla]')
         if (!alvo || alvo.disabled || alvo.classList.contains('longa')) return
-        // O "/" NAO vai como tecla: abrir o console no Chromebook desliga o
-        // useTeclado de la, e o celular perderia ate o -> enquanto estivesse
-        // aberto. Aqui ele so abre o campo, que manda `comando`.
+        piscar(alvo)
+        // O "/" NÃO vai como tecla: abrir o console no Chromebook desliga o
+        // useTeclado de lá, e o celular perderia até o → enquanto estivesse
+        // aberto. Aqui ele só abre o campo, que manda `comando`.
         if (alvo.id === 'abrir-console') {
           var caixa = $('console')
           caixa.classList.toggle('oculto')
@@ -666,11 +925,11 @@
         enviarTecla(alvo.getAttribute('data-tecla'))
       })
 
-      // Toque longo com anel de progresso, pras duas teclas perigosas.
+      // Toque longo com barra de progresso, pras duas teclas perigosas.
       Array.prototype.forEach.call(document.querySelectorAll('.longa'), function (b) {
         var inicio = 0
         var quadro = 0
-        var barra = b.querySelector('i')
+        var barra = b.querySelector('u')
         function parar() {
           cancelAnimationFrame(quadro)
           quadro = 0
@@ -683,6 +942,8 @@
             parar()
             enviarTecla(b.getAttribute('data-tecla'))
             try { navigator.vibrate && navigator.vibrate([30, 40, 30]) } catch (e) {}
+            // Fecha no fim do toque: a gaveta cumpriu o papel dela.
+            fecharGaveta()
             return
           }
           quadro = requestAnimationFrame(andar)
@@ -697,7 +958,8 @@
         })
       })
 
-      function enviarComando() {
+      $('console').addEventListener('submit', function (ev) {
+        ev.preventDefault()
         var texto = $('texto-comando').value.trim()
         if (!texto) return
         try {
@@ -705,10 +967,6 @@
           navigator.vibrate && navigator.vibrate(15)
         } catch (e) {}
         $('texto-comando').value = ''
-      }
-      $('enviar-comando').onclick = enviarComando
-      $('texto-comando').addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') enviarComando()
       })
     </script>
   </body>

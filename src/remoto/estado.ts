@@ -113,6 +113,27 @@ function teclasDaCena(cena: Cena, modo: ModoRemoto): string[] {
   return [...new Set(teclas)]
 }
 
+/**
+ * O estado publicado ENQUANTO a tela de ativação está no ar.
+ *
+ * Existe pra o celular poder conectar antes de a apresentação começar: o PIN
+ * aparece nessa tela, e seria esquisito o operador digitar o código e o
+ * celular dizer que não achou ninguém. Sem teclas de propósito — o gesto que
+ * libera o áudio tem que ser físico, no Chromebook (ver `aceitaTeclas` no
+ * useRemoto).
+ */
+export function estadoDeAtivacao(turma: string): EstadoRemoto {
+  return {
+    turma,
+    cenaId: 'ativacao',
+    cenaTitulo: 'ATIVAÇÃO',
+    proximaTitulo: 'início da expedição',
+    instrucao: 'Aperte qualquer tecla NO TECLADO do Chromebook pra liberar o áudio',
+    teclasDisponiveis: [],
+    modo: 'ativacao',
+  }
+}
+
 export type DadosDoEstado = {
   turma: string
   cena: Cena

@@ -23,6 +23,9 @@ export type Pong = { id: string; turma: string; cenaId: string }
 
 /** Em que "tela" o celular deve se desenhar. Sai do tipo da cena. */
 export type ModoRemoto =
+  /** Antes do gesto inicial: o canal já está aberto, mas quem age é o teclado
+   *  do Chromebook — o celular não tem nada pra fazer ainda. */
+  | 'ativacao'
   | 'apresentacao'
   | 'quiz'
   | 'identificacao'
