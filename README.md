@@ -505,14 +505,14 @@ Quatro coisas acontecem em volta das três perguntas:
 3. **Sonar vazio.** Entre um acerto e o retorno o mostrador fica sem nada por
    2 a 3 s. É a única vez na cena em que não há o que fazer, e é ela que faz a
    próxima aparição valer.
-4. **Fake-out.** Depois do terceiro acerto a trilha corta, dois segundos de
-   silêncio, um retorno solto aparece na borda oposta e some.
-5. **A despedida.** A trilha faz um fade de 3 s até zero — não um corte — e
-   **por cima dele** entra o `rugido`, uma gravação tratada pra soar longe: o
-   volume cai 22 dB ao longo dos 5 s e o agudo some antes do grave, que é o
-   que a água faz mesmo com a distância. Os últimos 1,6 s ficam só com ele,
-   já fraco. A cena só vira `neutralizado` quando o rugido acaba: a IA dizer
-   "ameaça neutralizada" por cima dele diria o contrário do que se ouve.
+4. **O rugido.** No terceiro acerto — no golpe, não depois dele — a trilha
+   **recua 14 dB** e o `rugido` entra sozinho na frente por 3,2 s. Só quando
+   ele já está caindo é que a IA comenta o acerto. A ordem importa: com a
+   fala antes, os dois brigam e nenhum chega à quadra.
+5. **Fake-out.** Dois segundos de silêncio, um retorno solto aparece na borda
+   oposta e some.
+6. **A saída.** A trilha faz um fade de 3 s até zero — não um corte — e só
+   então vem o `neutralizado`.
 
 Os sons do combate têm **lado**: o whoosh grave de cada aparição é
 panoramizado pelo setor do contato (proa no centro, os outros abrindo pros
@@ -626,11 +626,17 @@ saturada — a arma), `impacto` (transiente + o casco respondendo grave),
 esteira que fica depois).
 
 `rugido` é gravação, não síntese: o mp3 original foi cortado no ataque (o
-primeiro segundo era só respiração subindo), passado por um passa-baixa, um
-eco de abismo e um decaimento exponencial, e normalizado pro mesmo pico dos
-outros efeitos gravados (−2,2 dBFS, ao lado dos −2,9 do canto da baleia).
-Existe um sintetizado de reserva, mas ele só entra se a gravação não estiver
-embutida.
+primeiro segundo era só respiração subindo), passado por um passa-baixa em
+4,2 kHz e um eco de abismo, e normalizado pro pico dos outros efeitos gravados
+— **−1,15 dBFS**, o mesmo do `impacto`, com RMS de −13,3, o mesmo do canto da
+baleia. Existe um sintetizado de reserva, mas ele só entra se a gravação não
+estiver embutida.
+
+> A primeira versão dele era bem mais discreta: decaía 22 dB pra soar
+> "indo embora", e tocava por baixo do fade da trilha, no fim da cena. **Não
+> dava pra ouvir.** Som que é acontecimento precisa de três coisas ao mesmo
+> tempo — estar alto, estar no momento do acontecimento, e ter o palco vazio.
+> Faltavam as três.
 
 > Ele toca **sem panorâmico**, e isso não é descuido: `tocarSfx` manda pro
 > caminho sintético todo efeito com `pan`, porque um `<audio>` não tem pra onde

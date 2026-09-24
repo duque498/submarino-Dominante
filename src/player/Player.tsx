@@ -349,14 +349,20 @@ const MS_FAKEOUT_RETORNO = 1800
 /** Despedida da trilha depois do fake-out, antes de a IA voltar a falar. */
 const MS_FADE_NEUTRALIZADO = 3000
 /**
- * O rugido de saída, tocado POR CIMA do fade da trilha.
+ * O rugido do último golpe: quanto tempo ele fica SOZINHO na frente.
  *
- * Dura mais que o fade de propósito: os últimos segundos ficam só com ele, já
- * fraco e escuro, e é aí que a plateia entende que o bicho foi embora em vez de
- * ter sumido num corte. A cena só vira quando ele acaba — a IA dizer "ameaça
- * neutralizada" por cima do rugido diria o contrário do que se ouve.
+ * A gravação tem 4,4 s. Em 3,2 s o corpo dela já passou e ela está caindo, que
+ * é onde a fala do acerto pode entrar sem disputar. A primeira versão disto
+ * tocava o rugido por baixo do fade da trilha, no fim da cena, e não dava pra
+ * ouvir: ele estava longe, fraco e com a música ainda por cima. Som que é
+ * acontecimento precisa do palco vazio.
  */
-const MS_RUGIDO_SAIDA = 4600
+const MS_RUGIDO_NA_FRENTE = 3200
+/**
+ * O quanto a trilha recua pro rugido passar. −14 dB é recuo, não corte: a
+ * música continua ali embaixo, e é ela que segura a cena enquanto o bicho vai.
+ */
+const DB_DUCK_RUGIDO = -14
 /** O HUD se firmando depois que a energia volta. */
 const MS_GLITCH_VOLTA = 520
 
@@ -1341,6 +1347,21 @@ export function Player({
       }
       quadro = requestAnimationFrame(empurrar)
 
+      // O ÚLTIMO golpe ganha o rugido, e ele vem antes de qualquer fala: a
+      // música recua, o bicho ruge indo embora, e só quando ele está caindo é
+      // que a IA comenta. Trocada a ordem, a fala e o rugido brigam e nenhum
+      // dos dois chega à quadra.
+      //
+      // Sem panorâmico, e isso não é descuido: `tocarSfx` manda pro caminho
+      // SINTÉTICO todo efeito com pan, porque um `<audio>` não tem pra onde
+      // apontar — com lado, tocaria a imitação em vez da gravação.
+      if (acertos >= total) {
+        engine.nivelDaTrilha(DB_DUCK_RUGIDO, 250)
+        engine.tocarSfx('rugido')
+        await esperarSeguro(MS_RUGIDO_NA_FRENTE)
+        if (cancelado) return
+      }
+
       await dizer(sortear(roteiro.falas.acerto, roteiro.audio.acerto))
       if (cancelado) return
 
@@ -1417,16 +1438,7 @@ export function Player({
       // A cena só vira DEPOIS que o fade termina, pra a fala do `neutralizado`
       // não começar por cima da música morrendo.
       engine.pararTrilha(false, MS_FADE_NEUTRALIZADO)
-      // Junto com o fade, não depois: o rugido tem que sair de dentro da
-      // música, como quem vira e vai embora enquanto ela morre.
-      //
-      // Sem panorâmico, e isso não é descuido: `tocarSfx` manda pro caminho
-      // SINTÉTICO todo efeito com pan, porque um `<audio>` não tem pra onde
-      // apontar. Com pan, a gravação não tocaria — tocaria a imitação dela. E
-      // centralizado é o que um som que se afasta faz mesmo: ele não passa por
-      // um lado, ele fica longe.
-      engine.tocarSfx('rugido')
-      await esperarSeguro(MS_RUGIDO_SAIDA)
+      await esperarSeguro(MS_FADE_NEUTRALIZADO)
       if (cancelado) return
       setCombate((e) => (e ? { ...e, fase: 'fim' } : e))
       avancar()
