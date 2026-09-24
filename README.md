@@ -1887,6 +1887,22 @@ por desenho** e não é segredo — ela está no HTML que qualquer um baixa. Que
 protege a sessão é o código de 4 dígitos, que muda a cada carregamento e só
 aparece na tela do Chromebook.
 
+### O canal abre antes de a apresentação começar
+
+O receptor entra no canal assim que a página carrega — **antes** da tela
+PRESSIONE QUALQUER TECLA, junto com o PIN que ela mostra. Enquanto ela está no
+ar, o Chromebook publica um estado de ativação e o celular já diz
+`CONECTADO · 2A · ATIVAÇÃO`, com todos os botões apagados e uma única frase na
+tela: *"Aperte qualquer tecla NO TECLADO do Chromebook pra liberar o áudio"*.
+
+Esse passo é no Chromebook e não dá pra terceirizar pro celular: o Chrome só
+libera o áudio depois de um gesto de verdade, e uma tecla criada por script
+(`isTrusted: false`) **não conta**. Se ela disparasse a ativação, o
+`AudioContext` ficaria suspenso e a voz da IA não sairia a apresentação
+inteira, sem nenhum aviso. Então o `cmd` que chegar durante a ativação é
+ignorado de propósito — em dois lugares, no receptor e no próprio listener da
+tela.
+
 ### O código de 4 dígitos
 
 Aparece em dois lugares:
@@ -1949,17 +1965,32 @@ No celular:
 
 Durante:
 
-- O botão grande **→ AVANÇAR** é 90% da apresentação.
-- Os botões mudam sozinhos conforme a cena: no quiz aparecem 1–4, no combate os
-  três setores com as barras de casco e recarga, na pane as luzes dos
-  subsistemas. Tecla que não serve na cena atual fica **apagada, não some** —
+A tela é sempre a mesma, de cima pra baixo: uma linha fina de conexão, o nome
+da cena com a colinha em letra grande (e a próxima cena embaixo, apagada), a
+área do modo, e o rodapé. O rodapé **nunca muda de lugar**: em qualquer modo, o
+polegar acha o → AVANÇAR no mesmo ponto.
+
+- O botão **→ AVANÇAR** é 90% da apresentação, então é o maior elemento da
+  página e mora na zona do polegar. `←` e `espaço` ficam logo acima, num par de
+  botões baixos, claramente secundários.
+- A área do meio muda sozinha conforme a cena — no quiz 1–4, no combate os três
+  setores com as barras de recarga, casco e contato, na pane as luzes dos
+  subsistemas — e **rola por dentro** se precisar, sem nunca empurrar o
+  avançar. Tecla que não serve na cena atual fica **apagada, no mesmo lugar**:
   assim o dedo não erra o alvo quando o layout muda.
-- **P PANE** e **R REINICIAR** exigem o dedo parado **2 segundos** (tem um anel
-  de progresso). São as duas que estragariam a apresentação se alguém
-  encostasse sem querer.
-- Se a faixa de cima ficar âmbar, o Chromebook está há mais de 6 s sem dar
-  notícia. Aos 12 s aparece uma tarja vermelha. **Os botões continuam
-  funcionando** — pode ser só o `estado` que atrasou.
+- Cada tecla tem o mesmo desenho: a tecla grande em cima, a função embaixo.
+- A cor do cabeçalho do modo diz o tom da cena: neutra na apresentação, âmbar
+  nas dinâmicas, vermelha no combate, vermelha piscando devagar na pane.
+- Nas cenas em que não há o que fazer (ativação, mergulho) a área do meio
+  mostra só *"nada a fazer — aguarde"*, em vez de uma grade de botões apagados.
+- **P PANE** e **R REINICIAR** não ficam à vista: estão no **···** do canto
+  superior direito, numa gaveta, e ainda exigem o dedo parado **2 segundos**
+  (com barra de progresso). São as duas que estragariam a apresentação se
+  alguém encostasse sem querer.
+- Se aparecer uma tarja fina âmbar embaixo do topo ("sem estado há 7s"), o
+  Chromebook está há mais de 6 s sem dar notícia. Aos 12 s ela fica vermelha.
+  **Os botões continuam funcionando** — pode ser só o `estado` que atrasou, e a
+  tarja some sozinha quando ele volta.
 
 ### Duas coisas que podem dar errado
 

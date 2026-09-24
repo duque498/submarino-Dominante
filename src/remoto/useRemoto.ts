@@ -28,8 +28,30 @@ export type OpcoesUseRemoto = {
   lerEstado: () => EstadoRemoto | null
   /** Executa uma linha de console, como se digitada depois do `/`. */
   aoComando: (texto: string) => void
-  /** Ligado só depois do gesto inicial: antes disso não há o que controlar. */
+  /** Liga o receptor. Precisa de uma turma escolhida pra saber o canal. */
   ativo: boolean
+  /**
+   * O `cmd` do celular vira tecla de verdade?
+   *
+   * Falso na tela de ativação, e por um motivo de navegador, não de gosto: um
+   * KeyboardEvent construído por script tem `isTrusted: false` e NÃO conta
+   * como user activation no Chrome. Se ele disparasse o gesto inicial, o
+   * `AudioContext` ficaria suspenso e a voz da IA não sairia a apresentação
+   * inteira — uma falha silenciosa e irrecuperável sem recarregar. Enquanto
+   * isso o canal segue no ar, publicando o estado de ativação.
+   */
+  aceitaTeclas: boolean
+}
+
+/** O que o resto do app usa pra falar com o receptor. */
+export type ConexaoRemota = {
+  status: StatusRemoto
+  /** Publica o estado agora, sem esperar o tique de 2 s. */
+  publicar: () => void
+  /** Quem sabe montar o estado da cena atual (o Player, quando existe). */
+  registrarLeitor: (ler: () => EstadoRemoto | null) => void
+  /** Quem sabe executar uma linha de console. */
+  registrarComando: (executar: (texto: string) => void) => void
 }
 
 /**
@@ -50,6 +72,8 @@ export function useRemoto(opcoes: OpcoesUseRemoto): {
   refLer.current = opcoes.lerEstado
   refComando.current = opcoes.aoComando
   const refPublicar = useRef<() => void>(() => {})
+  const refAceita = useRef(opcoes.aceitaTeclas)
+  refAceita.current = opcoes.aceitaTeclas
 
   const { turma, codigo, ativo } = opcoes
 
@@ -58,7 +82,9 @@ export function useRemoto(opcoes: OpcoesUseRemoto): {
     const receptor = criarReceptor({
       turma,
       codigo,
-      aoCmd: digitarRemoto,
+      aoCmd: (tecla) => {
+        if (refAceita.current) digitarRemoto(tecla)
+      },
       aoComando: (texto) => refComando.current(texto),
       lerEstado: () => refLer.current(),
       aoStatus: setStatus,

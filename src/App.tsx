@@ -11,6 +11,9 @@ import { AudioEngine } from './player/AudioEngine'
 import { Player } from './player/Player'
 import { useTeclado } from './player/useTeclado'
 import { gerarCodigo } from './remoto/config'
+import { estadoDeAtivacao } from './remoto/estado'
+import type { EstadoRemoto, StatusRemoto } from './remoto/protocolo'
+import { useRemoto, type ConexaoRemota } from './remoto/useRemoto'
 import { Hud } from './ui/Hud'
 import { QTD_PONTOS } from './ui/Orbe'
 
@@ -116,6 +119,42 @@ export default function App() {
     setAtivado(true)
   }, [resultado, carregando, engine])
 
+  // O receptor mora AQUI e não no Player de propósito: ele precisa estar no ar
+  // antes do gesto inicial, junto com o PIN que a tela de ativação mostra. O
+  // Player, quando monta, só empresta a ele quem sabe ler a cena.
+  const refLeitor = useRef<(() => EstadoRemoto | null) | null>(null)
+  const refComandoRemoto = useRef<((texto: string) => void) | null>(null)
+
+  const { status: statusRemoto, publicar: publicarRemoto } = useRemoto({
+    turma: turma ?? '',
+    codigo,
+    ativo: turma !== null,
+    aceitaTeclas: ativado,
+    aoComando: (texto) => refComandoRemoto.current?.(texto),
+    lerEstado: () =>
+      refLeitor.current ? refLeitor.current() : estadoDeAtivacao(turma ?? ''),
+  })
+
+  const remoto = useMemo<ConexaoRemota>(
+    () => ({
+      status: statusRemoto,
+      publicar: publicarRemoto,
+      registrarLeitor: (ler) => {
+        refLeitor.current = ler
+      },
+      registrarComando: (executar) => {
+        refComandoRemoto.current = executar
+      },
+    }),
+    [statusRemoto, publicarRemoto],
+  )
+
+  // Sair da ativação é uma troca de estado que o celular precisa ver na hora:
+  // é o instante em que os botões dele deixam de estar apagados.
+  useEffect(() => {
+    publicarRemoto()
+  }, [publicarRemoto, ativado])
+
   if (!turma) return <TelaSelecao aoEscolher={setTurma} />
 
   if (resultado && resultado.problemas.length > 0) {
@@ -123,9 +162,18 @@ export default function App() {
   }
 
   if (!ativado)
-    return <TelaAtivacao carregando={carregando} aoAtivar={ativar} codigo={codigo} />
+    return (
+      <TelaAtivacao
+        carregando={carregando}
+        aoAtivar={ativar}
+        codigo={codigo}
+        remoto={statusRemoto}
+      />
+    )
 
-  return <Player roteiro={resultado!.roteiro!} engine={engine} codigo={codigo} />
+  return (
+    <Player roteiro={resultado!.roteiro!} engine={engine} codigo={codigo} remoto={remoto} />
+  )
 }
 
 /** Sem ?turma= na URL: o operador escolhe a turma no teclado (1, 2, 3). */
@@ -168,15 +216,25 @@ function TelaAtivacao({
   carregando,
   aoAtivar,
   codigo,
+  remoto,
 }: {
   carregando: boolean
   aoAtivar: () => void
   /** Código do controle remoto desta sessão, pra digitar no celular. */
   codigo: string
+  remoto: StatusRemoto
 }) {
   useEffect(() => {
     if (carregando) return
-    const disparar = () => aoAtivar()
+    // `isTrusted` separa o dedo de uma pessoa de um evento feito por script. O
+    // Chrome só libera o áudio no primeiro; um evento sintético aqui gastaria
+    // a tela de ativação SEM desbloquear o AudioContext, e a voz não sairia
+    // mais. O celular é barrado antes disso (ver `aceitaTeclas`), e esta linha
+    // é a garantia local: quem lê este listener não precisa confiar no outro.
+    const disparar = (evento: Event) => {
+      if (!evento.isTrusted) return
+      aoAtivar()
+    }
     window.addEventListener('keydown', disparar)
     window.addEventListener('pointerdown', disparar)
     return () => {
@@ -186,7 +244,7 @@ function TelaAtivacao({
   }, [carregando, aoAtivar])
 
   return (
-    <Hud rota="STANDBY" sonar="DESLIGADO" rodapeEsquerda="submarino domi">
+    <Hud rota="STANDBY" sonar="DESLIGADO" rodapeEsquerda="submarino domi" remoto={remoto}>
       <div className="centro">
         {carregando ? (
           <p className="chamada">carregando sistemas de bordo...</p>
