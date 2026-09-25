@@ -378,7 +378,14 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
       cliente =
         cliente ??
         fabrica(SUPABASE_URL, SUPABASE_KEY, {
-          realtime: { params: { eventsPerSecond: 20 } },
+          realtime: {
+            // `params` viram query string do websocket. `log_level` e lido
+            // pelo SERVIDOR: com ele o Realtime registra conexao e join nos
+            // logs do projeto, que e onde da pra ver se o join foi recusado
+            // quando daqui so se ve "nao conectou". Nao e segredo nenhum —
+            // vai na URL, junto com a chave publishable.
+            params: { eventsPerSecond: 20, log_level: 'info' },
+          },
         })
 
       const anterior = canal

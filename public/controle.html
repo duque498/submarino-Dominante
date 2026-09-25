@@ -992,7 +992,10 @@
 
         try {
           cliente = cliente || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-            realtime: { params: { eventsPerSecond: 20 } },
+            // Mesmos params do src/remoto/receptor.ts. `log_level` e lido
+            // pelo servidor: faz o Realtime registrar conexao e join nos
+            // logs do projeto.
+            realtime: { params: { eventsPerSecond: 20, log_level: 'info' } },
           })
           canal = cliente.channel(canalIda, { config: { broadcast: { self: false } } })
 
