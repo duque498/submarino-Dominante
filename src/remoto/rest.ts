@@ -44,24 +44,49 @@ const alvo = (busca: string) => `${REST_SINAIS}?${busca}`
 /**
  * O maior id que este canal já tem.
  *
- * Chamado UMA vez, ao entrar no modo REST, e o motivo é concreto: sem
- * ele o Chromebook leria a tabela do zero e reexecutaria todo comando
- * de uma sessão anterior — a apresentação pularia sozinha até o fim nos
- * primeiros 400 ms. Devolve 0 quando não há nada (ou quando a leitura
- * falha, que dá no mesmo: começar do zero numa tabela vazia).
+ * Chamado UMA vez, ao entrar no modo REST, e faz dois trabalhos. O
+ * primeiro é o marcador: sem ele o Chromebook leria a tabela do zero e
+ * reexecutaria todo comando de uma sessão anterior — a apresentação
+ * pularia sozinha até o fim nos primeiros 400 ms. O segundo é ser a
+ * CONFERÊNCIA de que a tabela existe: é a primeira coisa que o REST faz,
+ * e se ninguém rodou o SQL é aqui que se descobre.
  */
-export async function ultimoId(canal: string): Promise<number> {
+export async function ultimoId(canal: string): Promise<{ id: number; motivo?: string }> {
   try {
     const r = await fetch(
       alvo(`canal=eq.${encodeURIComponent(canal)}&select=id&order=id.desc&limit=1`),
       { headers: cabecalhos() },
     )
-    if (!r.ok) return 0
+    if (!r.ok) return { id: 0, motivo: porQue(r.status) }
     const linhas = (await r.json()) as Array<{ id?: number }>
-    return Number(linhas?.[0]?.id ?? 0) || 0
+    return { id: Number(linhas?.[0]?.id ?? 0) || 0 }
   } catch {
-    return 0
+    return { id: 0, motivo: 'a tabela não respondeu' }
   }
+}
+
+/**
+ * Por que a tabela não atendeu, em português e já acionável.
+ *
+ * Esta é a mensagem que mais importa do arquivo inteiro: a tabela só
+ * existe se alguém rodou o SQL no painel, e esquecer isso é o erro mais
+ * fácil de cometer e o mais difícil de adivinhar. "não respondeu" mandaria
+ * o operador procurar problema no wi-fi da escola às sete da manhã.
+ */
+export const MOTIVO_SEM_TABELA = 'tabela sinais não existe — rodar docs/sinais.sql'
+
+/**
+ * O PostgREST devolve 404 quando a tabela não está no schema cache. Não há
+ * como confundir com "endereço errado": a URL é montada aqui, de uma
+ * constante, e é sempre a mesma.
+ */
+function porQue(status: number): string {
+  if (status === 404) return MOTIVO_SEM_TABELA
+  if (status === 401 || status === 403) {
+    // RLS de pé sem policy, ou o `grant` que faltou. Também é SQL não rodado.
+    return 'tabela sinais recusou a chave — conferir as policies do SQL'
+  }
+  return `a tabela respondeu ${status}`
 }
 
 /** O que uma leitura devolveu, junto com o tempo que ela levou. */
@@ -70,6 +95,8 @@ export type Leitura = {
   /** Ida e volta em ms. É isto que vira o "rest · 420ms" do overlay H. */
   ms: number
   ok: boolean
+  /** Só quando `ok` é false: o que dizer pro operador. */
+  motivo?: string
 }
 
 /** As linhas deste canal com id maior que `depoisDe`, em ordem. */
@@ -84,7 +111,7 @@ export async function ler(canal: string, depoisDe: number): Promise<Leitura> {
       { headers: cabecalhos() },
     )
     const ms = Math.round(performance.now() - comeco)
-    if (!r.ok) return { linhas: [], ms, ok: false }
+    if (!r.ok) return { linhas: [], ms, ok: false, motivo: porQue(r.status) }
     const cru = (await r.json()) as Array<{
       id?: number
       evento?: string
@@ -95,7 +122,15 @@ export async function ler(canal: string, depoisDe: number): Promise<Leitura> {
       .map((l) => ({ id: l.id as number, evento: l.evento as string, payload: l.payload ?? {} }))
     return { linhas, ms, ok: true }
   } catch {
-    return { linhas: [], ms: Math.round(performance.now() - comeco), ok: false }
+    // Nem chegou a ter resposta: sem rede, DNS, proxy. Não dá pra culpar a
+    // tabela — e dizer que ela não existe seria mandar o operador rodar um
+    // SQL que já está rodado.
+    return {
+      linhas: [],
+      ms: Math.round(performance.now() - comeco),
+      ok: false,
+      motivo: 'a tabela não respondeu',
+    }
   }
 }
 
@@ -108,7 +143,7 @@ export async function enviar(
   canal: string,
   evento: string,
   payload: unknown,
-): Promise<boolean> {
+): Promise<string | null> {
   try {
     const r = await fetch(REST_SINAIS, {
       method: 'POST',
@@ -118,9 +153,9 @@ export async function enviar(
       }),
       body: JSON.stringify({ canal, evento, payload }),
     })
-    return r.ok
+    return r.ok ? null : porQue(r.status)
   } catch {
-    return false
+    return 'a tabela não respondeu'
   }
 }
 

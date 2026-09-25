@@ -2000,12 +2000,40 @@ Aparece em dois lugares:
 - na tela `PRESSIONE QUALQUER TECLA` e no **standby**, antes de começar;
 - no overlay de ajuda, tecla **H**, junto com o estado da conexão.
 
-O overlay `H` tem uma linha embaixo do estado que diz o que está acontecendo
-com o canal. Com ele de pé, ela é discreta e diz **qual transporte** está
-valendo: `canal: realtime` ou `canal: rest · 420ms`. Com ele fora, ela fica
-âmbar e diz **por quê**, com o texto cru que o próprio `subscribe()` devolveu —
-`canal: CHANNEL_ERROR: Invalid API key`, `canal: TIMED_OUT`,
-`canal: rest: a tabela não respondeu`. Serve pra distinguir coisas que, sem
+O overlay `H` mostra **sempre duas linhas** sobre o canal, funcionando ou não:
+
+```
+canal: realtime · há 3m12s
+rest: —
+
+canal: rest 420ms · há 47s
+realtime: timeout 12s
+
+canal: rest · há 8s · tabela sinais não existe — rodar docs/sinais.sql
+realtime: transport failed (CHANNEL_ERROR)
+```
+
+A de cima é quem está entregando, há quanto tempo, e — quando é ele que está
+quebrado — o que houve. A de baixo é **o último erro do outro transporte**,
+guardado mesmo enquanto o de cima funciona. É a de baixo que responde a
+pergunta do dia da feira: *estou no rest, o realtime falhou por quê?* Ela só
+serve se estiver lá **antes** de alguém precisar, e por isso está sempre.
+
+As duas são discretas com o canal de pé e âmbar quando ele está fora — `rest`
+funcionando é informação, não alarme. E um problema da tabela sobe pra linha
+de cima, porque aí o que interessa é o que **fazer**, não a latência:
+
+| a linha diz | o que aconteceu |
+|---|---|
+| `tabela sinais não existe — rodar docs/sinais.sql` | ninguém rodou o SQL no painel |
+| `tabela sinais recusou a chave — conferir as policies do SQL` | o SQL rodou pela metade (falta policy ou `grant`) |
+| `rest: a tabela respondeu 503` | o projeto está fora do ar |
+| `rest: a tabela não respondeu` | sem rede nenhuma |
+
+A segunda linha é a mais traiçoeira e por isso está na tela: sem o `grant` da
+sequência o Chromebook **lê** a tabela perfeitamente e não consegue escrever
+nela. Por fora é saúde — ponto verde, latência boa — e o celular fica dizendo
+que nenhum submarino respondeu. Serve pra distinguir coisas que, sem
 ela, são todas a mesma tela parada: **sem internet**, **projeto pausado ou
 chave errada** (o servidor respondeu e recusou) e **wi-fi da escola bloqueando
 websocket** (aí o transporte vira `rest` sozinho).
@@ -2136,7 +2164,8 @@ tabela no Supabase onde um lado insere e o outro lê de tempos em tempos. Mais
 lento, mais feio, e melhor do que a apresentação sem controle.
 
 **Antes da feira, uma vez só:** abra o SQL Editor do painel do Supabase e rode
-o `docs/sinais.sql` inteiro. Não precisa do CLI, não precisa de migration —
+o `docs/sinais.sql` inteiro. O REST confere a tabela na primeira coisa que
+faz; se ela não existir, o `H` diz o nome do arquivo a rodar. Não precisa do CLI, não precisa de migration —
 é uma tabela e três policies. Sem isso o plano B não existe, e você só vai
 descobrir no dia.
 
@@ -2144,10 +2173,19 @@ A troca é automática e não pede nada do operador:
 
 | o que acontece | o que o app faz |
 |---|---|
-| o canal não sobe em **4 s** | troca pro REST |
+| o canal não sobe em **6 s** | refaz a inscrição, sem trocar de transporte |
+| o canal não sobe em **12 s** | troca pro REST |
 | o canal cai com `CHANNEL_ERROR`/`TIMED_OUT` | troca pro REST |
 | o `supabase-js` nem carregou | troca pro REST (ele não precisa da lib) |
 | o celular só alcança o REST | o Chromebook percebe e vai junto |
+
+**Por que 12 s e não 4.** Quando as três turmas abrem os Chromebooks ao mesmo
+tempo, o join do Realtime demora mais que quatro segundos e o app caía pro
+REST sem precisar — conexão boa, descartada por pressa. Doze segundos é longo
+pra uma tela, mas a tela não fica muda: ela diz o que está tentando, e o
+teclado físico funciona o tempo todo. A inscrição refeita aos 6 s existe
+porque um join perdido no aperto não volta sozinho — o canal fica pendurado
+até o prazo estourar, e uma segunda tentativa custa uma mensagem.
 
 O Chromebook lê a tabela a cada 400 ms e o celular a cada 600 ms, e cada um
 apaga o que passou de 10 minutos. Na prática a tecla do celular demora uns
@@ -2155,10 +2193,29 @@ apaga o que passou de 10 minutos. Na prática a tecla do celular demora uns
 selo **`rest`** no topo. Se ele aparecer, avise o operador: **aperte uma vez e
 espere.** Apertar de novo manda o comando duas vezes.
 
-Uma vez no REST, o app fica nele até o fim da apresentação. Voltar pro Realtime
-seria uma segunda janela de silêncio no meio da feira pra ganhar meio segundo,
-e não vale. A única exceção é quando o REST **também** está fora: aí não há o
-que preservar e ele volta a tentar os dois.
+**Voltar pro Realtime.** Estando no REST, o Chromebook tenta o Realtime de
+novo a cada 30 s, e volta pra ele quando conseguir — o operador vê
+`canal: realtime` outra vez no `H`. Quando isso acontece, o Chromebook avisa o
+celular pela própria tabela, e o celular refaz a conexão junto; se o Realtime
+não servir pro celular, ele cai pro REST de novo sozinho e o Chromebook vai
+atrás.
+
+Se o REST estiver fora **também** — wi-fi que piscou e levou os dois — a
+tentativa passa a ser a cada 5 s em vez de 30: não há transporte bom pra
+proteger, e aí pressa vale mais que cautela.
+
+**Quando o Realtime sobe e cai em segundos**, duas vezes seguidas, o
+Chromebook para de tentar e fica no REST até o fim. Isso é o sintoma de uma
+rede que só deixa passar uma ou duas conexões WebSocket ao mesmo tempo: cada
+Chromebook que tenta voltar **rouba o socket de outro**, os três se revezam e
+nenhum funciona direito. O REST não tem esse problema — ele é HTTP comum, e
+os três usam ao mesmo tempo sem se atrapalhar.
+
+Só há um caso em que ele **para** de tentar: quando quem o trouxe pro REST foi
+o celular (o Chromebook conseguia Realtime, o celular não). Aí voltar não
+resolve nada — o celular puxaria de volta na escuta seguinte, e o único efeito
+seria uma janelinha fora do transporte bom a cada 30 s pelo resto da
+apresentação.
 
 > O que a tabela expõe: quem tiver a chave publishable (que é pública, está no
 > HTML) pode ler e inserir linhas nela. É a mesma exposição que o `broadcast`

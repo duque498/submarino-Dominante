@@ -30,13 +30,17 @@ import {
   MS_ESTADO,
   MS_LIMPEZA,
   MS_POLL_REST,
+  MS_REALTIME_ESTAVEL,
   MS_RECONEXAO,
+  MS_RETENTAR_REALTIME,
+  MS_RETENTAR_SUBSCRIBE,
   nomeDoCanal,
+  PROMOCOES_ANTES_DE_DESISTIR,
   SUPABASE_KEY,
   SUPABASE_URL,
 } from './config'
 import * as rest from './rest'
-import type { EstadoRemoto, StatusRemoto, Transporte } from './protocolo'
+import type { EstadoRemoto, InfoCanal, StatusRemoto, Transporte } from './protocolo'
 
 type ClienteSupabase = {
   channel: (nome: string, opcoes?: unknown) => CanalSupabase
@@ -58,6 +62,8 @@ declare global {
 export type Receptor = {
   /** Publica o estado agora (usado na troca de cena). */
   publicar: () => void
+  /** Foto do canal AGORA. Lida pelo overlay H enquanto ele está aberto. */
+  info: () => InfoCanal
   /** Desliga tudo. Idempotente. */
   parar: () => void
 }
@@ -72,13 +78,11 @@ export type OpcoesReceptor = {
   /** Lido na hora de publicar. Devolve null enquanto a cena não está pronta. */
   lerEstado: () => EstadoRemoto | null
   /**
-   * `motivo` é o texto cru que o transporte devolveu. Com o canal de pé ele
-   * diz QUAL transporte está valendo (`realtime`, `rest · 420ms`); com o canal
-   * fora, diz por quê (`CHANNEL_ERROR: Invalid API key`). Vai pro overlay H
-   * sem tradução nenhuma — quem precisa dele é quem está depurando às sete da
-   * manhã do dia da feira, e nessa hora "não deu" não ajuda ninguém.
+   * Só o pontinho do HUD. O detalhe (transporte, idade, erro de cada lado)
+   * sai pelo `info()`, que é getter: ele muda a cada segundo, e virar estado
+   * do React faria a árvore renderizar de 2 em 2 s no meio da apresentação.
    */
-  aoStatus: (status: StatusRemoto, motivo?: string) => void
+  aoStatus: (status: StatusRemoto) => void
 }
 
 /** O corpo da mensagem de broadcast, com o formato que o supabase-js entrega. */
@@ -100,7 +104,17 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
   let timerPoll = 0
   let timerLimpeza = 0
   let status: StatusRemoto = 'desligado'
-  let motivo: string | undefined
+  /** Desde quando o transporte atual está valendo. */
+  let desde = Date.now()
+  /**
+   * O último erro de CADA lado, guardado mesmo enquanto o outro funciona.
+   *
+   * É essa memória que responde à pergunta do dia da feira: "estou no rest —
+   * o realtime falhou por quê?". Sem ela o motivo some no instante em que o
+   * plano B assume, que é justamente quando alguém vai querer saber.
+   */
+  let erroRealtime: string | undefined
+  let erroRest: string | undefined
 
   let transporte: Transporte | null = null
   /** O maior id que já lemos do canal de ida. Sobe a cada linha processada. */
@@ -119,19 +133,38 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
   let lendo = false
   let falhasSeguidas = 0
   const amostras: number[] = []
+  let timerRetentarSub = 0
+  /**
+   * Quem nos trouxe pro REST: a nossa própria falha, ou o outro lado?
+   *
+   * Muda o que fazer depois. Se o nosso Realtime caiu, vale tentar de novo —
+   * pode ter sido o aperto de todo mundo abrindo junto. Se foi o celular que
+   * só alcança o REST, voltar pro Realtime não ajuda ninguém: ele nos puxa de
+   * volta na escuta de resgate, e o único efeito é uma janelinha sem polling
+   * a cada tentativa.
+   */
+  let quedaFoiNossa = true
+  /** Quando a última volta pro Realtime deu certo. Ver `MS_REALTIME_ESTAVEL`. */
+  let promovidoEm = 0
+  let promocoesRuins = 0
+  /** Com qual intervalo a tentativa de volta foi marcada. Ver abaixo. */
+  let intervaloArmado = MS_RETENTAR_REALTIME
 
-  const mudarStatus = (novo: StatusRemoto, porque?: string) => {
-    // O motivo entra na comparação: o status pode continuar 'reconectando' e a
-    // RAZÃO mudar (de TIMED_OUT pra CHANNEL_ERROR, por exemplo), e é justamente
-    // essa mudança que conta a história pra quem está olhando o H.
-    if (status === novo && motivo === porque) return
+  const mudarStatus = (novo: StatusRemoto) => {
+    if (status === novo) return
     status = novo
-    motivo = porque
     try {
-      opcoes.aoStatus(novo, porque)
+      opcoes.aoStatus(novo)
     } catch {
       /* o indicador do HUD não pode derrubar a conexão */
     }
+  }
+
+  /** Trocar de transporte reinicia o relógio que o H mostra. */
+  const trocarTransporte = (novo: Transporte | null) => {
+    if (transporte === novo) return
+    transporte = novo
+    desde = Date.now()
   }
 
   /** Mediana das últimas idas e voltas. Mediana, não média: um pico de wi-fi
@@ -142,11 +175,40 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
     return ordenadas[Math.floor(ordenadas.length / 2)]
   }
 
-  const rotuloRest = () => `rest · ${medianaMs()}ms`
+  /** A foto que o overlay H lê. Getter, não estado: ver `aoStatus`. */
+  const info = (): InfoCanal => ({
+    transporte,
+    desde,
+    ms: transporte === 'rest' ? medianaMs() : undefined,
+    erroRealtime,
+    erroRest,
+  })
 
   // ------------------------------------------------------------------
   // Eventos, iguais para os dois transportes
   // ------------------------------------------------------------------
+
+  /**
+   * Escreve na tabela e NÃO engole a falha.
+   *
+   * O caso concreto: o SQL rodado sem o `grant` da sequência deixa o
+   * Chromebook lendo perfeitamente e sem conseguir inserir nada. Por fora
+   * parece saúde — ponto verde, latência boa — e o celular fica dizendo que
+   * nenhum submarino respondeu. Sem esta linha, não há como descobrir isso
+   * de dentro do ginásio.
+   */
+  const escrever = (nome: string, evento: string, payload: unknown) => {
+    void rest.enviar(nome, evento, payload).then((falha) => {
+      if (parado || transporte !== 'rest') return
+      if (falha) {
+        erroRest = falha
+        mudarStatus('reconectando')
+      } else if (erroRest) {
+        erroRest = undefined
+        mudarStatus('ligado')
+      }
+    })
+  }
 
   const responderPing = (id: unknown) => {
     const estado = opcoes.lerEstado()
@@ -156,7 +218,7 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
       cenaId: estado?.cenaId ?? '',
     }
     if (transporte === 'rest') {
-      void rest.enviar(canalVolta, 'pong', pong)
+      escrever(canalVolta, 'pong', pong)
     } else {
       try {
         void canal?.send({ type: 'broadcast', event: 'pong', payload: pong })
@@ -187,7 +249,7 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
     const estado = opcoes.lerEstado()
     if (!estado) return
     if (transporte === 'rest') {
-      void rest.enviar(canalVolta, 'estado', estado)
+      escrever(canalVolta, 'estado', estado)
       return
     }
     if (!canal) return
@@ -220,14 +282,18 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
       if (parado) return 0
       if (!leitura.ok) {
         falhasSeguidas += 1
-        // Uma falha isolada é wi-fi de escola; três seguidas já é o servidor
-        // fora, e aí o operador precisa saber que o celular não vale mais.
-        if (falhasSeguidas >= 3 && transporte === 'rest') {
-          mudarStatus('reconectando', 'rest: a tabela não respondeu')
+        // "Tabela não existe" não é falha intermitente: aparece na primeira,
+        // porque é acionável e não vai melhorar esperando. As outras esperam
+        // três seguidas — uma isolada é wi-fi de escola.
+        const agora = leitura.motivo === rest.MOTIVO_SEM_TABELA
+        if ((agora || falhasSeguidas >= 3) && transporte === 'rest') {
+          erroRest = leitura.motivo
+          mudarStatus('reconectando')
         }
         return 0
       }
       falhasSeguidas = 0
+      erroRest = undefined
       amostras.push(leitura.ms)
       if (amostras.length > 7) amostras.shift()
       if (soEspiar) return leitura.linhas.length
@@ -245,45 +311,75 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
     if (parado) return
     void puxar().then(() => {
       if (parado || transporte !== 'rest') return
-      if (status !== 'ligado' && falhasSeguidas === 0) {
-        mudarStatus('ligado', rotuloRest())
-      }
-      talvezVoltarAoRealtime()
+      if (status !== 'ligado' && falhasSeguidas === 0) mudarStatus('ligado')
+      agendarVoltaAoRealtime()
       timerPoll = window.setTimeout(cicloRest, MS_POLL_REST)
     })
   }
 
   /**
-   * Volta a tentar o Realtime — SÓ quando o REST também está fora.
+   * Volta a tentar o Realtime de tempos em tempos, estando no REST.
    *
-   * Com o REST funcionando a gente fica nele de propósito: trocar de
-   * transporte no meio da apresentação é uma janela de silêncio, e a
-   * latência do REST já é boa o bastante. Mas quando os dois estão fora não
-   * há nada a preservar, e insistir só no caminho que já falhou é escolher
-   * não voltar nunca de um piscar do wi-fi.
+   * O REST custa uns 600 ms por tecla; se o aperto que nos derrubou passou,
+   * vale voltar. A guarda é `quedaFoiNossa`: quando quem nos trouxe pro REST
+   * foi o outro lado, o Realtime não resolve nada — ele nos puxaria de volta
+   * na próxima escuta de resgate, e o único efeito seria uma janelinha fora
+   * do transporte bom a cada 30 s pelo resto da apresentação.
    */
-  const talvezVoltarAoRealtime = () => {
-    if (parado || transporte !== 'rest' || falhasSeguidas < 3) return
-    if (timerReconexao || !window.supabase?.createClient) return
+  const agendarVoltaAoRealtime = () => {
+    if (parado || transporte !== 'rest') return
+    if (!quedaFoiNossa || !window.supabase?.createClient) return
+    // Com o REST fora também, não há transporte bom pra proteger: aí a
+    // pressa vale mais que a cautela, e a tentativa é a cada 5 s. É esse o
+    // caso do wi-fi que piscou e levou tudo junto.
+    const quanto = falhasSeguidas >= 3 ? MS_RECONEXAO : MS_RETENTAR_REALTIME
+    if (timerReconexao) {
+      // Já tem tentativa marcada, mas pro intervalo errado: o REST caiu
+      // depois que ela foi agendada. Remarca pra perto.
+      if (intervaloArmado <= quanto) return
+      window.clearTimeout(timerReconexao)
+    }
+    intervaloArmado = quanto
     timerReconexao = window.setTimeout(() => {
       timerReconexao = 0
-      if (parado || transporte !== 'rest' || falhasSeguidas < 3) return
+      if (parado || transporte !== 'rest') return
       conectar()
-    }, MS_RECONEXAO)
+      agendarVoltaAoRealtime()
+    }, quanto)
   }
 
   /**
    * Troca pro REST. Só acontece uma vez: `transporte === 'rest'` é porta de
    * saída em todo lugar que poderia chamar isto de novo.
    */
-  const irParaRest = async (porque: string) => {
+  const irParaRest = async (porque: string, foiNossa = true) => {
     if (parado || transporte === 'rest') return
-    transporte = 'rest'
+    // Voltamos pro Realtime há pouco e já estamos caindo de novo? Então a
+    // volta não vingou. Duas dessas e paramos de tentar: numa rede que só
+    // deixa passar uma conexão, cada tentativa nossa derruba a de outro
+    // Chromebook, e o revezamento é pior que ficar no REST.
+    if (foiNossa && promovidoEm && Date.now() - promovidoEm < MS_REALTIME_ESTAVEL) {
+      promocoesRuins += 1
+      if (promocoesRuins >= PROMOCOES_ANTES_DE_DESISTIR) {
+        quedaFoiNossa = false
+        porque = `${porque} — cai em segundos, ficando no rest`
+      }
+    }
+    promovidoEm = 0
+    trocarTransporte('rest')
+    // Saímos do Realtime: o porquê é o erro DELE, e fica guardado mesmo
+    // depois que o REST assumir.
+    erroRealtime = porque
+    // Uma vez que o outro lado se mostrou preso no REST, nunca mais voltamos
+    // a tentar — ele nos puxaria de novo, e de novo.
+    if (!foiNossa) quedaFoiNossa = false
     window.clearTimeout(timerEsperaRealtime)
+    window.clearTimeout(timerRetentarSub)
     window.clearTimeout(timerReconexao)
     window.clearTimeout(timerPoll)
     window.clearInterval(timerLimpeza)
     timerEsperaRealtime = 0
+    timerRetentarSub = 0
     timerReconexao = 0
     timerPoll = 0
     timerLimpeza = 0
@@ -297,14 +393,22 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
     }
     canal = null
 
-    mudarStatus('reconectando', `${porque} — indo pro rest`)
+    mudarStatus('reconectando')
 
     // Só pergunta onde a tabela está se ainda não sabemos: a escuta de resgate
     // pode já ter espiado linhas, e voltar pro fim aqui perderia justamente o
     // ping que nos trouxe pra cá.
     if (!marcadorPronto) {
-      marcador = await rest.ultimoId(canalIda)
+      // Primeira coisa que o REST faz, e é ela que descobre se alguém rodou
+      // o SQL. Falhou aqui, o H já diz o que fazer antes de qualquer polling.
+      const inicio = await rest.ultimoId(canalIda)
+      if (parado) return
+      marcador = inicio.id
       marcadorPronto = true
+      if (inicio.motivo) {
+        erroRest = inicio.motivo
+        mudarStatus('reconectando')
+      }
     }
     if (parado) return
 
@@ -316,15 +420,18 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
         if (linha.id > marcador) marcador = linha.id
         aplicarEvento(linha.evento, linha.payload)
       }
-      mudarStatus('ligado', rotuloRest())
+      erroRest = undefined
+      mudarStatus('ligado')
       publicar()
     } else {
-      mudarStatus('reconectando', 'rest: a tabela não respondeu')
+      erroRest = primeira.motivo
+      mudarStatus('reconectando')
     }
 
     timerPoll = window.setTimeout(cicloRest, MS_POLL_REST)
     timerLimpeza = window.setInterval(() => void rest.apagarAntigas(canalIda), MS_LIMPEZA)
     void rest.apagarAntigas(canalIda)
+    agendarVoltaAoRealtime()
   }
 
   /**
@@ -336,7 +443,7 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
     void puxar(true).then((quantas) => {
       if (parado || transporte !== 'realtime') return
       if (quantas > 0) {
-        void irParaRest('o celular só alcança o rest')
+        void irParaRest('o celular só alcança o rest', false)
         return
       }
       timerPoll = window.setTimeout(escutarResgate, MS_ESCUTA_RESGATE)
@@ -357,7 +464,8 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
    */
   const agendarReconexao = (semBiblioteca = false, porque?: string) => {
     if (parado || timerReconexao || transporte === 'rest') return
-    mudarStatus(semBiblioteca ? 'desligado' : 'reconectando', porque)
+    erroRealtime = porque
+    mudarStatus(semBiblioteca ? 'desligado' : 'reconectando')
     timerReconexao = window.setTimeout(() => {
       timerReconexao = 0
       conectar()
@@ -402,15 +510,35 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
         }
       }
 
-      // O relógio dos 4 s. Cobre o caso que mais dói e que NENHUM callback
-      // reporta: o WebSocket que abre, não recebe resposta e fica pendurado.
-      // Sem ele, "conectando..." era pra sempre.
-      window.clearTimeout(timerEsperaRealtime)
-      timerEsperaRealtime = window.setTimeout(() => {
-        timerEsperaRealtime = 0
-        if (parado || transporte === 'rest') return
-        void irParaRest(`realtime não subiu em ${MS_ESPERA_REALTIME / 1000}s`)
-      }, MS_ESPERA_REALTIME)
+      // Os relógios. Só na tentativa de estreia: quando isto é a volta
+      // periódica lá do REST, uma tentativa que não vinga simplesmente não
+      // vinga — a gente já está no transporte que funciona.
+      // `!timerEsperaRealtime` quer dizer "não há ciclo em andamento". Sem
+      // essa guarda, a nova inscrição dos 6 s chamaria `conectar` e o prazo
+      // dos 12 s seria rearmado do zero a cada 6 — o prazo nunca venceria e
+      // a tela ficaria tentando pra sempre, que é exatamente o que ele
+      // existe pra impedir.
+      if (transporte !== 'rest' && !timerEsperaRealtime) {
+        // Aos 6 s, refazer a inscrição em vez de continuar esperando. Um join
+        // perdido no aperto de todo mundo abrindo junto não volta sozinho: o
+        // canal fica pendurado até o prazo estourar.
+        timerRetentarSub = window.setTimeout(() => {
+          timerRetentarSub = 0
+          if (parado || transporte === 'rest' || status === 'ligado') return
+          erroRealtime = 'demorou — refazendo o subscribe aos 6s'
+          mudarStatus('reconectando')
+          conectar()
+        }, MS_RETENTAR_SUBSCRIBE)
+
+        // Os 12 s. Cobrem o caso que mais dói e que NENHUM callback reporta:
+        // o WebSocket que abre, não recebe resposta e fica pendurado. Sem
+        // eles, "conectando..." era pra sempre.
+        timerEsperaRealtime = window.setTimeout(() => {
+          timerEsperaRealtime = 0
+          if (parado || transporte === 'rest') return
+          void irParaRest(`timeout ${MS_ESPERA_REALTIME / 1000}s`)
+        }, MS_ESPERA_REALTIME)
+      }
 
       canal
         .on('broadcast', { event: 'cmd' }, (m) => aplicarEvento('cmd', corpo(m)))
@@ -424,23 +552,38 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
           if (parado) return
           if (estadoDoCanal === 'SUBSCRIBED') {
             window.clearTimeout(timerEsperaRealtime)
+            window.clearTimeout(timerRetentarSub)
+            window.clearTimeout(timerPoll)
             timerEsperaRealtime = 0
+            timerRetentarSub = 0
             // Se viemos do REST, o ciclo de polling se desliga sozinho no
             // próximo tique (ele checa o transporte), mas a limpeza é um
             // setInterval e precisa ser cortada na mão.
             window.clearInterval(timerLimpeza)
             timerLimpeza = 0
             falhasSeguidas = 0
-            transporte = 'realtime'
-            mudarStatus('ligado', 'realtime')
+            const voltandoDoRest = transporte === 'rest'
+            if (voltandoDoRest) promovidoEm = Date.now()
+            trocarTransporte('realtime')
+            erroRealtime = undefined
+            mudarStatus('ligado')
+            // Avisa o celular pela tabela que aqui voltou a dar Realtime.
+            // Sem este recado ele ficaria no REST sozinho, escrevendo num
+            // canal que ninguém lê mais — e a escuta de resgate nos puxaria
+            // de volta, desfazendo a volta que acabou de dar certo.
+            if (voltandoDoRest) void rest.enviar(canalVolta, 'transporte', { via: 'realtime' })
             publicar()
             // A escuta de resgate só faz sentido depois que sabemos onde a
             // tabela está — senão ela leria a sessão inteira de ontem.
             if (!marcadorPronto) {
-              void rest.ultimoId(canalIda).then((id) => {
+              void rest.ultimoId(canalIda).then((inicio) => {
                 if (parado || transporte !== 'realtime') return
-                marcador = id
+                marcador = inicio.id
                 marcadorPronto = true
+                // Estando no Realtime isto não derruba nada — mas já registra
+                // que a tabela não existe, e o H mostra o erro do OUTRO
+                // transporte antes de precisar dele.
+                if (inicio.motivo) erroRest = inicio.motivo
                 timerPoll = window.setTimeout(escutarResgate, MS_ESCUTA_RESGATE)
               })
             } else {
@@ -452,7 +595,12 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
           // Seguir no REST é o certo — e o motivo na tela continua sendo o
           // da tabela, que é o transporte que está valendo.
           if (transporte === 'rest') return
-          const detalhe = erro?.message ? `${estadoDoCanal}: ${erro.message}` : estadoDoCanal
+          // Com mensagem, ela vai literal — é a pista real. Sem mensagem, o
+          // status sozinho ("CHANNEL_ERROR") não diz nada pra quem está
+          // olhando a tela, então vira a frase que descreve o que houve.
+          const detalhe = erro?.message
+            ? `${estadoDoCanal}: ${erro.message}`
+            : `transport failed (${estadoDoCanal})`
           if (
             estadoDoCanal === 'CLOSED' ||
             estadoDoCanal === 'CHANNEL_ERROR' ||
@@ -463,7 +611,8 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
             void irParaRest(detalhe)
           } else {
             // JOINING e afins: ainda não é falha, mas já é informação.
-            mudarStatus('reconectando', detalhe)
+            erroRealtime = detalhe
+            mudarStatus('reconectando')
           }
         })
     } catch (erro) {
@@ -476,12 +625,15 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
     // O número do overlay H anda aqui, a cada 2 s, e não a cada leitura: um
     // texto que muda 2,5 vezes por segundo no canto da tela é ruído, e cada
     // mudança é um render do React durante a apresentação.
-    if (transporte === 'rest' && status === 'ligado') mudarStatus('ligado', rotuloRest())
+    // A latência e a idade NÃO passam mais por aqui: o H lê por getter, e
+    // um setState de 2 em 2 s renderizaria a árvore inteira durante a
+    // apresentação só pra mexer num número que quase ninguém está olhando.
   }, MS_ESTADO)
   conectar()
 
   return {
     publicar,
+    info,
     parar() {
       if (parado) return
       parado = true
@@ -490,7 +642,8 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
       window.clearTimeout(timerReconexao)
       window.clearTimeout(timerEsperaRealtime)
       window.clearTimeout(timerPoll)
-      mudarStatus('desligado', undefined)
+      trocarTransporte(null)
+      mudarStatus('desligado')
       try {
         canal?.unsubscribe()
         if (cliente && canal) cliente.removeChannel(canal)

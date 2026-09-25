@@ -187,7 +187,7 @@ export default function App() {
 
   const {
     status: statusRemoto,
-    motivo: motivoRemoto,
+    lerInfo: lerInfoRemoto,
     publicar: publicarRemoto,
   } = useRemoto({
     turma: turma ?? '',
@@ -206,7 +206,7 @@ export default function App() {
   const remoto = useMemo<ConexaoRemota>(
     () => ({
       status: statusRemoto,
-      motivo: motivoRemoto,
+      lerInfo: lerInfoRemoto,
       publicar: publicarRemoto,
       registrarLeitor: (ler) => {
         refLeitor.current = ler
@@ -215,7 +215,7 @@ export default function App() {
         refComandoRemoto.current = executar
       },
     }),
-    [statusRemoto, motivoRemoto, publicarRemoto],
+    [statusRemoto, lerInfoRemoto, publicarRemoto],
   )
 
   // Os instantes em que o celular precisa saber na hora: quando alguém ativa o

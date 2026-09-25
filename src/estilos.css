@@ -3950,3 +3950,11 @@ body {
 .ajuda__motivo--calmo {
   color: #7fb2c8;
 }
+
+/* A linha do outro transporte: está sempre lá, e quase sempre não importa.
+   Fica apagada pra não competir com a de cima, e legível quando alguém for
+   procurar. */
+.ajuda__motivo--secundario {
+  color: #6e8794;
+  margin-top: 0;
+}

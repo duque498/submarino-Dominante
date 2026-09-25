@@ -82,3 +82,27 @@ export type StatusRemoto = 'desligado' | 'reconectando' | 'ligado'
  * acima é o MESMO nos dois; muda só o encanamento.
  */
 export type Transporte = 'realtime' | 'rest'
+
+/**
+ * O que o overlay H precisa saber sobre a conexão, a qualquer momento.
+ *
+ * É lido por getter (não por estado do React) de propósito: a idade muda a
+ * cada segundo e a latência a cada leitura, e virar `setState` faria a
+ * árvore inteira renderizar de 2 em 2 segundos durante a apresentação. Só o
+ * `StatusRemoto` — que muda raramente — vale um render.
+ */
+export type InfoCanal = {
+  /** Quem está entregando agora. `null` enquanto nenhum está de pé. */
+  transporte: Transporte | null
+  /** Desde quando. O H mostra "há 3m12s". */
+  desde: number
+  /** Ida e volta mediana. Só faz sentido no REST. */
+  ms?: number
+  /**
+   * O último erro de CADA transporte, guardado mesmo quando o outro está
+   * funcionando. É essa memória que responde a pergunta do dia da feira:
+   * "estou no rest — o realtime falhou por quê?".
+   */
+  erroRealtime?: string
+  erroRest?: string
+}
