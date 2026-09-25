@@ -17,7 +17,9 @@ type Props = {
   codigo?: string
   remoto?: 'ligado' | 'reconectando' | 'desligado'
   /**
-   * O que o supabase-js devolveu, cru: o status do canal e a mensagem do erro.
+   * Com o canal de pé, QUAL transporte está valendo (`realtime`,
+   * `rest · 420ms`). Com o canal fora, por que ele não subiu
+   * (`CHANNEL_ERROR: ...`). Cru, dos dois jeitos.
    *
    * Fica só AQUI, e não na cena de espera, porque a cena de espera está no
    * projetor: "CHANNEL_ERROR: ..." na frente da plateia não ajuda ninguém. O H
@@ -115,9 +117,21 @@ export function Ajuda({
           {ESTADO_REMOTO[remoto ?? 'desligado']}
         </p>
       )}
-      {/* Sem tradução e sem enfeite: é o texto que o supabase-js devolveu.
-          Traduzir aqui só apagaria a pista de que o operador precisa. */}
-      {motivoRemoto && <p className="ajuda__motivo">canal: {motivoRemoto}</p>}
+      {/* Sem tradução e sem enfeite: é o texto que o transporte devolveu.
+          Traduzir aqui só apagaria a pista de que o operador precisa.
+          A cor segue o status e não o texto: com o canal de pé esta linha
+          informa (discreta), com o canal fora ela avisa (âmbar). `rest` de pé
+          é uma informação, não um problema — e não pode parecer alarme no
+          meio da apresentação. */}
+      {motivoRemoto && (
+        <p
+          className={
+            'ajuda__motivo' + (remoto === 'ligado' ? ' ajuda__motivo--calmo' : '')
+          }
+        >
+          canal: {motivoRemoto}
+        </p>
+      )}
       <p className="ajuda__estado">
         cena: <strong>{cena}</strong> · forma: <strong>{forma}</strong> · escala:{' '}
         <strong>{Math.round(escala * 100)}%</strong>

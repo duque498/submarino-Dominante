@@ -2000,14 +2000,15 @@ Aparece em dois lugares:
 - na tela `PRESSIONE QUALQUER TECLA` e no **standby**, antes de começar;
 - no overlay de ajuda, tecla **H**, junto com o estado da conexão.
 
-Quando o canal **não** abre, o overlay `H` ganha uma linha âmbar embaixo do
-estado — `canal: CHANNEL_ERROR: Invalid API key`, `canal: TIMED_OUT`, ou
-`canal: supabase-js não carregou (sem rede ou CDN bloqueada)`. É o `status` e o
-`Error` que o próprio `subscribe()` devolve, sem tradução. Com o canal aberto a
-linha não aparece. Serve pra distinguir três coisas que, sem ela, são todas
-"abrindo o canal...": **sem internet** (a biblioteca não carregou), **projeto
-pausado ou chave errada** (o servidor respondeu e recusou) e **wi-fi da escola
-bloqueando websocket** (dá timeout).
+O overlay `H` tem uma linha embaixo do estado que diz o que está acontecendo
+com o canal. Com ele de pé, ela é discreta e diz **qual transporte** está
+valendo: `canal: realtime` ou `canal: rest · 420ms`. Com ele fora, ela fica
+âmbar e diz **por quê**, com o texto cru que o próprio `subscribe()` devolveu —
+`canal: CHANNEL_ERROR: Invalid API key`, `canal: TIMED_OUT`,
+`canal: rest: a tabela não respondeu`. Serve pra distinguir coisas que, sem
+ela, são todas a mesma tela parada: **sem internet**, **projeto pausado ou
+chave errada** (o servidor respondeu e recusou) e **wi-fi da escola bloqueando
+websocket** (aí o transporte vira `rest` sozinho).
 
 Recarregar a página do Chromebook sorteia um código novo e derruba o celular
 (ele fica no canal antigo, sozinho). Se isso acontecer no meio da
@@ -2126,6 +2127,44 @@ do join, e de quebra reconhece o formato `sb_publishable_`/`sb_secret_` (a
 > ponta. As duas versões carregam e expõem a mesma API; a diferença medida é o
 > conteúdo do join. Se ainda assim não conectar no dia, a linha `canal:` do
 > overlay `H` mostra o motivo real.
+
+### Quando o wi-fi da escola derruba o WebSocket
+
+A rede da escola bloqueia `wss://` mas deixa HTTPS passar. Nesse caso o
+Realtime nunca sobe, e o controle pelo celular tem um **segundo caminho**: uma
+tabela no Supabase onde um lado insere e o outro lê de tempos em tempos. Mais
+lento, mais feio, e melhor do que a apresentação sem controle.
+
+**Antes da feira, uma vez só:** abra o SQL Editor do painel do Supabase e rode
+o `docs/sinais.sql` inteiro. Não precisa do CLI, não precisa de migration —
+é uma tabela e três policies. Sem isso o plano B não existe, e você só vai
+descobrir no dia.
+
+A troca é automática e não pede nada do operador:
+
+| o que acontece | o que o app faz |
+|---|---|
+| o canal não sobe em **4 s** | troca pro REST |
+| o canal cai com `CHANNEL_ERROR`/`TIMED_OUT` | troca pro REST |
+| o `supabase-js` nem carregou | troca pro REST (ele não precisa da lib) |
+| o celular só alcança o REST | o Chromebook percebe e vai junto |
+
+O Chromebook lê a tabela a cada 400 ms e o celular a cada 600 ms, e cada um
+apaga o que passou de 10 minutos. Na prática a tecla do celular demora uns
+**0,6 s** a mais pra fazer efeito no projetor — por isso o celular mostra um
+selo **`rest`** no topo. Se ele aparecer, avise o operador: **aperte uma vez e
+espere.** Apertar de novo manda o comando duas vezes.
+
+Uma vez no REST, o app fica nele até o fim da apresentação. Voltar pro Realtime
+seria uma segunda janela de silêncio no meio da feira pra ganhar meio segundo,
+e não vale. A única exceção é quando o REST **também** está fora: aí não há o
+que preservar e ele volta a tentar os dois.
+
+> O que a tabela expõe: quem tiver a chave publishable (que é pública, está no
+> HTML) pode ler e inserir linhas nela. É a mesma exposição que o `broadcast`
+> já tinha, com a diferença de que aqui a mensagem fica gravada por 10 minutos
+> em vez de passar e sumir. Não vai nada ali além de tecla, nome de cena e a
+> colinha. Quem protege a sessão continua sendo o código de 4 dígitos.
 
 ### Duas coisas que podem dar errado
 

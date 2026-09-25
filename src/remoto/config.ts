@@ -67,3 +67,56 @@ export function gerarCodigo(): string {
 export const MS_RECONEXAO = 5000
 /** De quanto em quanto tempo o estado é republicado, mesmo sem mudança. */
 export const MS_ESTADO = 2000
+
+/* ===================================================================
+ * Fase 6.3 — o segundo transporte, por REST puro.
+ *
+ * Na rede da escola o `wss://` é derrubado ("transport failed") mas o
+ * HTTPS pro Supabase passa. Então existe um caminho B: uma tabela
+ * (`docs/sinais.sql`) onde um lado INSERE e o outro lê por polling. É
+ * mais lento e mais feio, e é melhor que a apresentação sem controle.
+ *
+ * Continua sem dependência nova: PostgREST é HTTP com header, e `fetch`
+ * já vem no navegador. O supabase-js só é usado pelo Realtime — se ele
+ * nem carregar, o caminho B ainda funciona.
+ * =================================================================== */
+
+/** A tabela do fallback. Ver `docs/sinais.sql`. */
+export const REST_SINAIS = `${SUPABASE_URL}/rest/v1/sinais`
+
+/**
+ * Quanto o Realtime tem pra chegar em SUBSCRIBED antes de desistirmos.
+ *
+ * Quatro segundos é escolhido pra caber no aperto: o operador aperta uma
+ * tecla, olha pro projetor, e não pode ficar numa tela indefinida. Um
+ * canal que vai subir sobe em menos de um segundo; o que passa de quatro
+ * quase sempre não sobe nunca.
+ */
+export const MS_ESPERA_REALTIME = 4000
+
+/** De quanto em quanto tempo o Chromebook lê a tabela, no modo REST. */
+export const MS_POLL_REST = 400
+
+/**
+ * De quanto em quanto tempo o Chromebook lê a tabela ENQUANTO está no
+ * Realtime.
+ *
+ * Não é desperdício: cobre o caso torto em que o WebSocket do Chromebook
+ * passa e o do celular não (celular no 4G da operadora, Chromebook no
+ * wi-fi da escola, ou o contrário). Sem esta escuta, os dois ficam cada
+ * um no seu transporte esperando o outro pra sempre, sem nenhum erro na
+ * tela. Se cair uma linha aqui, o celular só alcança o REST — e o
+ * Chromebook muda de transporte pra encontrar ele.
+ */
+export const MS_ESCUTA_RESGATE = 2000
+
+/** De quanto em quanto tempo o Chromebook apaga as linhas velhas do próprio canal. */
+export const MS_LIMPEZA = 60000
+
+/** Idade a partir da qual uma linha pode ser apagada. Bate com a policy do SQL. */
+export const MINUTOS_RETENCAO = 10
+
+/** O sufixo do canal de volta: o Chromebook escreve aqui, o celular lê. */
+export function canalDeResposta(canal: string): string {
+  return `${canal}:resp`
+}
