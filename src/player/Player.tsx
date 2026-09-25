@@ -348,6 +348,21 @@ const MS_FAKEOUT_SILENCIO = 2000
 const MS_FAKEOUT_RETORNO = 1800
 /** Despedida da trilha depois do fake-out, antes de a IA voltar a falar. */
 const MS_FADE_NEUTRALIZADO = 3000
+/**
+ * O rugido do último golpe: quanto tempo ele fica SOZINHO na frente.
+ *
+ * A gravação tem 4,4 s. Em 3,2 s o corpo dela já passou e ela está caindo, que
+ * é onde a fala do acerto pode entrar sem disputar. A primeira versão disto
+ * tocava o rugido por baixo do fade da trilha, no fim da cena, e não dava pra
+ * ouvir: ele estava longe, fraco e com a música ainda por cima. Som que é
+ * acontecimento precisa do palco vazio.
+ */
+const MS_RUGIDO_NA_FRENTE = 3200
+/**
+ * O quanto a trilha recua pro rugido passar. −14 dB é recuo, não corte: a
+ * música continua ali embaixo, e é ela que segura a cena enquanto o bicho vai.
+ */
+const DB_DUCK_RUGIDO = -14
 /** O HUD se firmando depois que a energia volta. */
 const MS_GLITCH_VOLTA = 520
 
@@ -1331,6 +1346,21 @@ export function Player({
         if (f < 1) quadro = requestAnimationFrame(empurrar)
       }
       quadro = requestAnimationFrame(empurrar)
+
+      // O ÚLTIMO golpe ganha o rugido, e ele vem antes de qualquer fala: a
+      // música recua, o bicho ruge indo embora, e só quando ele está caindo é
+      // que a IA comenta. Trocada a ordem, a fala e o rugido brigam e nenhum
+      // dos dois chega à quadra.
+      //
+      // Sem panorâmico, e isso não é descuido: `tocarSfx` manda pro caminho
+      // SINTÉTICO todo efeito com pan, porque um `<audio>` não tem pra onde
+      // apontar — com lado, tocaria a imitação em vez da gravação.
+      if (acertos >= total) {
+        engine.nivelDaTrilha(DB_DUCK_RUGIDO, 250)
+        engine.tocarSfx('rugido')
+        await esperarSeguro(MS_RUGIDO_NA_FRENTE)
+        if (cancelado) return
+      }
 
       await dizer(sortear(roteiro.falas.acerto, roteiro.audio.acerto))
       if (cancelado) return

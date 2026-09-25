@@ -19,6 +19,7 @@ export type Sfx =
   | 'presenca'
   | 'whoosh'
   | 'agua'
+  | 'rugido'
 
 /**
  * Estado do visor externo. Nasce `"ok"`, e o 3A o quebra: a pressao da zona

@@ -505,9 +505,14 @@ Quatro coisas acontecem em volta das três perguntas:
 3. **Sonar vazio.** Entre um acerto e o retorno o mostrador fica sem nada por
    2 a 3 s. É a única vez na cena em que não há o que fazer, e é ela que faz a
    próxima aparição valer.
-4. **Fake-out.** Depois do terceiro acerto a trilha corta, dois segundos de
-   silêncio, um retorno solto aparece na borda oposta e some. Só então vem o
-   `neutralizado`.
+4. **O rugido.** No terceiro acerto — no golpe, não depois dele — a trilha
+   **recua 14 dB** e o `rugido` entra sozinho na frente por 3,2 s. Só quando
+   ele já está caindo é que a IA comenta o acerto. A ordem importa: com a
+   fala antes, os dois brigam e nenhum chega à quadra.
+5. **Fake-out.** Dois segundos de silêncio, um retorno solto aparece na borda
+   oposta e some.
+6. **A saída.** A trilha faz um fade de 3 s até zero — não um corte — e só
+   então vem o `neutralizado`.
 
 Os sons do combate têm **lado**: o whoosh grave de cada aparição é
 panoramizado pelo setor do contato (proa no centro, os outros abrindo pros
@@ -619,6 +624,39 @@ declara `"ameacas": false` pra voltar à superfície limpa.
 saturada — a arma), `impacto` (transiente + o casco respondendo grave),
 `whoosh` (a massa de água que ele empurra, com Doppler barato) e `agua` (a
 esteira que fica depois).
+
+`rugido` é gravação, não síntese: o mp3 original foi cortado no ataque (o
+primeiro segundo era só respiração subindo), passado por um passa-baixa em
+4,2 kHz e um eco de abismo, e normalizado pro pico dos outros efeitos gravados
+— **−1,15 dBFS**, o mesmo do `impacto`, com RMS de −13,3, o mesmo do canto da
+baleia. Existe um sintetizado de reserva, mas ele só entra se a gravação não
+estiver embutida.
+
+> A primeira versão dele era bem mais discreta: decaía 22 dB pra soar
+> "indo embora", e tocava por baixo do fade da trilha, no fim da cena. **Não
+> dava pra ouvir.** Som que é acontecimento precisa de três coisas ao mesmo
+> tempo — estar alto, estar no momento do acontecimento, e ter o palco vazio.
+> Faltavam as três.
+
+O sintetizado de reserva também já esteve quebrado, e de um jeito que vale
+registrar: ele usava o `envelope()` dos outros efeitos, que é **percussivo** —
+uma rampa exponencial de 74 dB até quase zero. Numa pancada de 0,2 s isso é
+certo; num rugido de 4 s, a curva passa quase todo o tempo perto do fundo.
+Medido num render offline: **−16 dB aos 0,5 s e −45 dB aos 2 s** — o comecinho
+e mais nada. Agora o ganho é escrito à mão, com corpo declarado: ataque em
+0,3 s, sustentação até 2,6 s caindo só 3 dB, e a saída em dois trechos (uma
+rampa direta pro zero despenca 20 dB no primeiro quarto do caminho, e o que se
+ouve é um corte). Medido de novo: **−10,5 dB aos 0,5 s, −13,8 aos 2,5 s,
+−27,6 aos 3,5 s**.
+
+> **Quando a reserva entra?** Quando a gravação não está embutida no
+> `audios.js` — e aí ela entra pra TODOS os efeitos gravados, não só pro
+> rugido. É mais um motivo pro `audios.js` estar versionado.
+
+> Ele toca **sem panorâmico**, e isso não é descuido: `tocarSfx` manda pro
+> caminho sintético todo efeito com `pan`, porque um `<audio>` não tem pra onde
+> apontar. Com lado, tocaria a imitação em vez da gravação — e centralizado é o
+> que um som que se afasta faz mesmo: ele não passa por um lado, fica longe.
 
 E `presenca`, o do olho: **infrassom de verdade**, 28 Hz de fundamental, abaixo
 do que a maioria das caixas reproduz como nota. O que chega à plateia não é um
@@ -1861,7 +1899,8 @@ somar acima de 1 e distorcer.
 O **→** que inicia a apresentação já dá um **bipe duplo** de confirmação. Se
 esse bipe não sai, o problema é o áudio da máquina, não o app.
 
-Pra um teste completo, `/` e depois `som`: toca os efeitos em sequência e
+Pra um teste completo, `/` e depois `som`: toca os efeitos em sequência —
+inclusive o `rugido`, que fora dali só aparece se a turma vencer o combate — e
 escreve no log o estado do `AudioContext`. `running` significa que o navegador
 liberou o áudio.
 
