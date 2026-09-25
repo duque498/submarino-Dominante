@@ -44,23 +44,24 @@ const alvo = (busca: string) => `${REST_SINAIS}?${busca}`
 /**
  * O maior id que este canal já tem.
  *
- * Chamado UMA vez, ao entrar no modo REST, e o motivo é concreto: sem
- * ele o Chromebook leria a tabela do zero e reexecutaria todo comando
- * de uma sessão anterior — a apresentação pularia sozinha até o fim nos
- * primeiros 400 ms. Devolve 0 quando não há nada (ou quando a leitura
- * falha, que dá no mesmo: começar do zero numa tabela vazia).
+ * Chamado UMA vez, ao entrar no modo REST, e faz dois trabalhos. O
+ * primeiro é o marcador: sem ele o Chromebook leria a tabela do zero e
+ * reexecutaria todo comando de uma sessão anterior — a apresentação
+ * pularia sozinha até o fim nos primeiros 400 ms. O segundo é ser a
+ * CONFERÊNCIA de que a tabela existe: é a primeira coisa que o REST faz,
+ * e se ninguém rodou o SQL é aqui que se descobre.
  */
-export async function ultimoId(canal: string): Promise<number> {
+export async function ultimoId(canal: string): Promise<{ id: number; motivo?: string }> {
   try {
     const r = await fetch(
       alvo(`canal=eq.${encodeURIComponent(canal)}&select=id&order=id.desc&limit=1`),
       { headers: cabecalhos() },
     )
-    if (!r.ok) return 0
+    if (!r.ok) return { id: 0, motivo: porQue(r.status) }
     const linhas = (await r.json()) as Array<{ id?: number }>
-    return Number(linhas?.[0]?.id ?? 0) || 0
+    return { id: Number(linhas?.[0]?.id ?? 0) || 0 }
   } catch {
-    return 0
+    return { id: 0, motivo: 'a tabela não respondeu' }
   }
 }
 
@@ -72,7 +73,7 @@ export async function ultimoId(canal: string): Promise<number> {
  * fácil de cometer e o mais difícil de adivinhar. "não respondeu" mandaria
  * o operador procurar problema no wi-fi da escola às sete da manhã.
  */
-export const MOTIVO_SEM_TABELA = 'tabela sinais não existe — rodar SQL no dashboard'
+export const MOTIVO_SEM_TABELA = 'tabela sinais não existe — rodar docs/sinais.sql'
 
 /**
  * O PostgREST devolve 404 quando a tabela não está no schema cache. Não há
@@ -85,7 +86,7 @@ function porQue(status: number): string {
     // RLS de pé sem policy, ou o `grant` que faltou. Também é SQL não rodado.
     return 'tabela sinais recusou a chave — conferir as policies do SQL'
   }
-  return `rest: a tabela respondeu ${status}`
+  return `a tabela respondeu ${status}`
 }
 
 /** O que uma leitura devolveu, junto com o tempo que ela levou. */
@@ -128,7 +129,7 @@ export async function ler(canal: string, depoisDe: number): Promise<Leitura> {
       linhas: [],
       ms: Math.round(performance.now() - comeco),
       ok: false,
-      motivo: 'rest: a tabela não respondeu',
+      motivo: 'a tabela não respondeu',
     }
   }
 }
@@ -154,7 +155,7 @@ export async function enviar(
     })
     return r.ok ? null : porQue(r.status)
   } catch {
-    return 'rest: a tabela não respondeu'
+    return 'a tabela não respondeu'
   }
 }
 

@@ -2000,23 +2000,32 @@ Aparece em dois lugares:
 - na tela `PRESSIONE QUALQUER TECLA` e no **standby**, antes de começar;
 - no overlay de ajuda, tecla **H**, junto com o estado da conexão.
 
-O overlay `H` tem uma linha embaixo do estado que diz o que está acontecendo
-com o canal. Com ele de pé, ela é discreta e diz **qual transporte** está
-valendo: `canal: realtime` ou `canal: rest · 420ms`. Com ele fora, ela fica
-âmbar e diz **por quê**, com o texto cru que o próprio `subscribe()` devolveu —
-`canal: CHANNEL_ERROR: Invalid API key`, `canal: TIMED_OUT`.
+O overlay `H` mostra **sempre duas linhas** sobre o canal, funcionando ou não:
 
-No REST ela carrega também **o motivo da queda**, porque sem ele `rest` parece
-uma escolha em vez de uma queda: `canal: rest · 420ms · timeout 12s`,
-`canal: rest · 380ms · transport failed (CHANNEL_ERROR)`,
-`canal: rest · 410ms · o celular só alcança o rest`.
+```
+canal: realtime · há 3m12s
+rest: —
 
-E um problema da tabela apaga o resto, porque aí o que interessa é o que
-**fazer**, não a latência:
+canal: rest 420ms · há 47s
+realtime: timeout 12s
+
+canal: rest · há 8s · tabela sinais não existe — rodar docs/sinais.sql
+realtime: transport failed (CHANNEL_ERROR)
+```
+
+A de cima é quem está entregando, há quanto tempo, e — quando é ele que está
+quebrado — o que houve. A de baixo é **o último erro do outro transporte**,
+guardado mesmo enquanto o de cima funciona. É a de baixo que responde a
+pergunta do dia da feira: *estou no rest, o realtime falhou por quê?* Ela só
+serve se estiver lá **antes** de alguém precisar, e por isso está sempre.
+
+As duas são discretas com o canal de pé e âmbar quando ele está fora — `rest`
+funcionando é informação, não alarme. E um problema da tabela sobe pra linha
+de cima, porque aí o que interessa é o que **fazer**, não a latência:
 
 | a linha diz | o que aconteceu |
 |---|---|
-| `tabela sinais não existe — rodar SQL no dashboard` | ninguém rodou o `docs/sinais.sql` |
+| `tabela sinais não existe — rodar docs/sinais.sql` | ninguém rodou o SQL no painel |
 | `tabela sinais recusou a chave — conferir as policies do SQL` | o SQL rodou pela metade (falta policy ou `grant`) |
 | `rest: a tabela respondeu 503` | o projeto está fora do ar |
 | `rest: a tabela não respondeu` | sem rede nenhuma |
@@ -2155,7 +2164,8 @@ tabela no Supabase onde um lado insere e o outro lê de tempos em tempos. Mais
 lento, mais feio, e melhor do que a apresentação sem controle.
 
 **Antes da feira, uma vez só:** abra o SQL Editor do painel do Supabase e rode
-o `docs/sinais.sql` inteiro. Não precisa do CLI, não precisa de migration —
+o `docs/sinais.sql` inteiro. O REST confere a tabela na primeira coisa que
+faz; se ela não existir, o `H` diz o nome do arquivo a rodar. Não precisa do CLI, não precisa de migration —
 é uma tabela e três policies. Sem isso o plano B não existe, e você só vai
 descobrir no dia.
 
@@ -2193,6 +2203,13 @@ atrás.
 Se o REST estiver fora **também** — wi-fi que piscou e levou os dois — a
 tentativa passa a ser a cada 5 s em vez de 30: não há transporte bom pra
 proteger, e aí pressa vale mais que cautela.
+
+**Quando o Realtime sobe e cai em segundos**, duas vezes seguidas, o
+Chromebook para de tentar e fica no REST até o fim. Isso é o sintoma de uma
+rede que só deixa passar uma ou duas conexões WebSocket ao mesmo tempo: cada
+Chromebook que tenta voltar **rouba o socket de outro**, os três se revezam e
+nenhum funciona direito. O REST não tem esse problema — ele é HTTP comum, e
+os três usam ao mesmo tempo sem se atrapalhar.
 
 Só há um caso em que ele **para** de tentar: quando quem o trouxe pro REST foi
 o celular (o Chromebook conseguia Realtime, o celular não). Aí voltar não

@@ -141,3 +141,16 @@ export const MINUTOS_RETENCAO = 10
 export function canalDeResposta(canal: string): string {
   return `${canal}:resp`
 }
+
+/**
+ * Quanto tempo o Realtime precisa ficar de pé pra a volta contar como boa.
+ *
+ * Existe por causa do caso da Fase 6.4: se a rede da escola só deixa passar
+ * uma ou duas conexões WebSocket ao mesmo tempo, cada Chromebook que tenta
+ * voltar ROUBA o socket de outro — os três ficam se revezando e nenhum
+ * funciona direito. Uma conexão que sobe e morre em menos de um minuto é
+ * sinal disso, e depois de duas o receptor para de tentar e fica no REST,
+ * que é o transporte que funciona pra todo mundo ao mesmo tempo.
+ */
+export const MS_REALTIME_ESTAVEL = 60000
+export const PROMOCOES_ANTES_DE_DESISTIR = 2

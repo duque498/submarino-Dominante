@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import type { InfoCanal } from '../remoto/protocolo'
 import { OBJETOS_ENIGMA } from '../paineis/PainelEnigma'
 
 type Props = {
@@ -17,15 +19,82 @@ type Props = {
   codigo?: string
   remoto?: 'ligado' | 'reconectando' | 'desligado'
   /**
-   * Com o canal de pé, QUAL transporte está valendo (`realtime`,
-   * `rest · 420ms`). Com o canal fora, por que ele não subiu
-   * (`CHANNEL_ERROR: ...`). Cru, dos dois jeitos.
+   * Lê o estado do canal AGORA: transporte, desde quando, e o último erro de
+   * cada lado. É getter porque a idade anda a cada segundo — só este overlay
+   * olha pra ela, e só enquanto está aberto.
    *
    * Fica só AQUI, e não na cena de espera, porque a cena de espera está no
    * projetor: "CHANNEL_ERROR: ..." na frente da plateia não ajuda ninguém. O H
    * é a tela particular do operador, e é nela que um recado técnico serve.
    */
-  motivoRemoto?: string
+  lerInfoRemoto?: () => InfoCanal
+}
+
+/** "3m12s", "47s". Curto porque divide a linha com o resto. */
+function idade(desde: number): string {
+  const s = Math.max(0, Math.round((Date.now() - desde) / 1000))
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`
+}
+
+/**
+ * As duas linhas do canal no overlay H.
+ *
+ * Sempre as duas, mesmo quando está tudo bem: a de cima diz quem está
+ * entregando e há quanto tempo, a de baixo diz o que o OUTRO transporte
+ * respondeu da última vez. É a segunda que responde a pergunta do dia da
+ * feira — "estou no rest, o realtime falhou por quê?" —, e ela só serve se
+ * estiver lá antes de alguém precisar.
+ *
+ * O relógio de 1 s vive aqui dentro, e não no estado do app, porque este
+ * componente só existe enquanto o H está aberto.
+ */
+function LinhasDoCanal({ ler, calmo }: { ler?: () => InfoCanal; calmo: boolean }) {
+  const [, redesenhar] = useState(0)
+  useEffect(() => {
+    if (!ler) return
+    const t = window.setInterval(() => redesenhar((n) => n + 1), 1000)
+    return () => window.clearInterval(t)
+  }, [ler])
+  if (!ler) return null
+
+  const info = ler()
+  const ativo = info.transporte
+    ? `${info.transporte}${info.ms ? ` ${info.ms}ms` : ''}`
+    : 'abrindo...'
+  // O erro do transporte ATIVO sobe pra primeira linha: se o que está
+  // entregando é justamente o que quebrou, isso não pode ficar na linha de
+  // baixo, que é a linha de quem não está em uso.
+  const erroAtivo =
+    info.transporte === 'rest'
+      ? info.erroRest
+      : info.transporte === 'realtime'
+        ? info.erroRealtime
+        : undefined
+  // Embaixo, o último erro do OUTRO lado. Sem transporte de pé, os dois.
+  const outros: Array<[string, string | undefined]> =
+    info.transporte === 'rest'
+      ? [['realtime', info.erroRealtime]]
+      : info.transporte === 'realtime'
+        ? [['rest', info.erroRest]]
+        : [
+            ['realtime', info.erroRealtime],
+            ['rest', info.erroRest],
+          ]
+
+  const classe = 'ajuda__motivo' + (calmo ? ' ajuda__motivo--calmo' : '')
+  return (
+    <>
+      <p className={classe}>
+        canal: {ativo} · há {idade(info.desde)}
+        {erroAtivo ? ` · ${erroAtivo}` : ''}
+      </p>
+      {outros.map(([nome, erro]) => (
+        <p key={nome} className="ajuda__motivo ajuda__motivo--secundario">
+          {nome}: {erro ?? '—'}
+        </p>
+      ))}
+    </>
+  )
 }
 
 const ATALHOS: Array<[string, string]> = [
@@ -78,7 +147,7 @@ export function Ajuda({
   aceitos,
   codigo,
   remoto,
-  motivoRemoto,
+  lerInfoRemoto,
 }: Props) {
   return (
     <div className="ajuda">
@@ -119,19 +188,11 @@ export function Ajuda({
       )}
       {/* Sem tradução e sem enfeite: é o texto que o transporte devolveu.
           Traduzir aqui só apagaria a pista de que o operador precisa.
-          A cor segue o status e não o texto: com o canal de pé esta linha
-          informa (discreta), com o canal fora ela avisa (âmbar). `rest` de pé
-          é uma informação, não um problema — e não pode parecer alarme no
-          meio da apresentação. */}
-      {motivoRemoto && (
-        <p
-          className={
-            'ajuda__motivo' + (remoto === 'ligado' ? ' ajuda__motivo--calmo' : '')
-          }
-        >
-          canal: {motivoRemoto}
-        </p>
-      )}
+          A cor segue o status e não o texto: com o canal de pé estas linhas
+          informam (discretas), com o canal fora elas avisam (âmbar). `rest`
+          de pé é uma informação, não um problema — e não pode parecer alarme
+          no meio da apresentação. */}
+      <LinhasDoCanal ler={lerInfoRemoto} calmo={remoto === 'ligado'} />
       <p className="ajuda__estado">
         cena: <strong>{cena}</strong> · forma: <strong>{forma}</strong> · escala:{' '}
         <strong>{Math.round(escala * 100)}%</strong>

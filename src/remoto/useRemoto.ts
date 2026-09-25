@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { criarReceptor } from './receptor'
-import type { EstadoRemoto, StatusRemoto } from './protocolo'
+import type { EstadoRemoto, InfoCanal, StatusRemoto } from './protocolo'
 
 /**
  * Entrega a tecla do celular pelo MESMO caminho da tecla física.
@@ -45,8 +45,12 @@ export type OpcoesUseRemoto = {
 /** O que o resto do app usa pra falar com o receptor. */
 export type ConexaoRemota = {
   status: StatusRemoto
-  /** O que o supabase-js disse, cru. Só aparece no overlay H. */
-  motivo?: string
+  /**
+   * Foto do canal AGORA: transporte, desde quando, e o último erro de cada
+   * lado. Getter e não estado — a idade muda a cada segundo, e só o overlay
+   * H olha pra ela, quando está aberto.
+   */
+  lerInfo: () => InfoCanal
   /** Publica o estado agora, sem esperar o tique de 2 s. */
   publicar: () => void
   /** Quem sabe montar o estado da cena atual (o Player, quando existe). */
@@ -54,6 +58,8 @@ export type ConexaoRemota = {
   /** Quem sabe executar uma linha de console. */
   registrarComando: (executar: (texto: string) => void) => void
 }
+
+const INFO_PARADA: InfoCanal = { transporte: null, desde: Date.now() }
 
 /**
  * Liga o controle remoto e devolve o status pro pontinho do HUD.
@@ -63,11 +69,11 @@ export type ConexaoRemota = {
  */
 export function useRemoto(opcoes: OpcoesUseRemoto): {
   status: StatusRemoto
-  motivo?: string
+  lerInfo: () => InfoCanal
   publicar: () => void
 } {
   const [status, setStatus] = useState<StatusRemoto>('desligado')
-  const [motivo, setMotivo] = useState<string | undefined>(undefined)
+  const refInfo = useRef<() => InfoCanal>(() => INFO_PARADA)
   // Em refs: o receptor é montado UMA vez e não pode ser derrubado só porque o
   // Player renderizou de novo.
   const refLer = useRef(opcoes.lerEstado)
@@ -90,17 +96,16 @@ export function useRemoto(opcoes: OpcoesUseRemoto): {
       },
       aoComando: (texto) => refComando.current(texto),
       lerEstado: () => refLer.current(),
-      aoStatus: (novo, porque) => {
-        setStatus(novo)
-        setMotivo(porque)
-      },
+      aoStatus: (novo) => setStatus(novo),
     })
     refPublicar.current = receptor.publicar
+    refInfo.current = receptor.info
     return () => {
       refPublicar.current = () => {}
+      refInfo.current = () => INFO_PARADA
       receptor.parar()
     }
   }, [turma, codigo, ativo])
 
-  return { status, motivo, publicar: () => refPublicar.current() }
+  return { status, lerInfo: () => refInfo.current(), publicar: () => refPublicar.current() }
 }
