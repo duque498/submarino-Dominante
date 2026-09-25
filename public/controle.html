@@ -728,9 +728,12 @@
       // Sem lib nova: PostgREST é HTTP com header, e fetch já vem no
       // navegador. O supabase-js só serve pro Realtime.
       var REST_SINAIS = SUPABASE_URL + '/rest/v1/sinais'
-      // Quanto o Realtime tem pra subir antes de desistirmos. Mesmo
-      // valor do MS_ESPERA_REALTIME do src/remoto/config.ts.
-      var MS_ESPERA_REALTIME = 4000
+      // Quanto o Realtime tem pra subir antes de desistirmos, e o
+      // segundo subscribe no meio do caminho. Mesmos valores do
+      // src/remoto/config.ts — se o Chromebook espera 12 s e o celular
+      // desiste aos 4, o celular arrasta os dois pro REST sem precisar.
+      var MS_ESPERA_REALTIME = 12000
+      var MS_RETENTAR_SUBSCRIBE = 6000
       // O celular lê mais devagar que o Chromebook (600 contra 400 ms):
       // ele só espera `estado`, que sai de 2 em 2 s, enquanto o
       // Chromebook espera tecla, que precisa parecer instantânea.
@@ -763,6 +766,12 @@
       var canalVolta = null
       var marcador = 0
       var timerEspera = 0
+      var timerRetentarSub = 0
+      // Instante em que o Realtime perde a vez. Precisa ser um horario e nao
+      // um timer: `conectar()` limpa os timers, e a nova inscricao dos 6 s
+      // passa por ele — com um timer, o prazo se rearmaria de 6 em 6 s e
+      // nunca venceria.
+      var prazoRealtime = 0
       var timerPoll = 0
       var lendo = false
       var msRest = 0
@@ -909,6 +918,22 @@
         } else if (evento === 'estado') {
           ultimoRecebido = Date.now()
           aplicarEstado(p)
+        } else if (evento === 'transporte' && p.via === 'realtime') {
+          // O Chromebook voltou pro Realtime e avisou pela tabela. Se a
+          // gente ficasse no REST, escreveria num canal que ninguém lê
+          // mais — e a escuta de resgate dele o traria de volta, desfazendo
+          // a volta que acabou de dar certo. Refazer a conexão do zero
+          // tenta o Realtime e, se não der aqui, cai pro REST de novo
+          // sozinho: é o mesmo caminho de sempre, sem regra nova.
+          // Um tique depois de propósito: estamos DENTRO do laço que lê a
+          // tabela, e reconectar aqui deixaria o ciclo de polling rearmar
+          // por cima do que o `sair()` acabou de limpar — dois laços vivos,
+          // cada tecla contada duas vezes.
+          if (transporte === 'rest') {
+            setTimeout(function () {
+              if (transporte === 'rest') conectar(turmaEscolhida, codigoEscolhido)
+            }, 0)
+          }
         }
       }
 
@@ -929,6 +954,7 @@
         if (aguardandoPong) { clearTimeout(aguardandoPong); aguardandoPong = null }
         if (relogioMudo) { clearInterval(relogioMudo); relogioMudo = 0 }
         if (timerEspera) { clearTimeout(timerEspera); timerEspera = 0 }
+        if (timerRetentarSub) { clearTimeout(timerRetentarSub); timerRetentarSub = 0 }
         if (timerPoll) { clearTimeout(timerPoll); timerPoll = 0 }
         try { if (cliente && canal) cliente.removeChannel(canal) } catch (e) {}
         canal = null
@@ -948,6 +974,7 @@
       function irParaRest(recado) {
         if (transporte === 'rest') return
         if (timerEspera) { clearTimeout(timerEspera); timerEspera = 0 }
+        if (timerRetentarSub) { clearTimeout(timerRetentarSub); timerRetentarSub = 0 }
         // Dois transportes vivos ao mesmo tempo seria tecla duplicada.
         try { if (cliente && canal) cliente.removeChannel(canal) } catch (e) {}
         canal = null
@@ -973,8 +1000,9 @@
         sair()
       }
 
-      function conectar(turma, codigo) {
+      function conectar(turma, codigo, manterPrazo) {
         sair()
+        if (!manterPrazo) prazoRealtime = Date.now() + MS_ESPERA_REALTIME
         turmaEscolhida = turma
         codigoEscolhido = codigo
         canalIda = 'domi:' + turma + ':' + codigo
@@ -999,13 +1027,26 @@
           })
           canal = cliente.channel(canalIda, { config: { broadcast: { self: false } } })
 
-          // O relógio dos 4 s. Cobre o caso que mais dói e que nenhum
-          // callback reporta: o WebSocket que abre, não recebe resposta
-          // e fica pendurado.
+          // Aos 6 s, refazer a inscrição em vez de seguir esperando: um
+          // join perdido no aperto de todo mundo abrindo junto não volta
+          // sozinho, o canal fica pendurado até o prazo estourar.
+          timerRetentarSub = setTimeout(function () {
+            timerRetentarSub = 0
+            if (transporte || Date.now() >= prazoRealtime) return
+            $('recado').textContent = 'demorando — tentando de novo...'
+            conectar(turma, codigo, true)
+          }, MS_RETENTAR_SUBSCRIBE)
+
+          // Os 12 s. Cobrem o caso que mais dói e que nenhum callback
+          // reporta: o WebSocket que abre, não recebe resposta e fica
+          // pendurado.
           timerEspera = setTimeout(function () {
             timerEspera = 0
+            // Sem jargao aqui: `recado` e o que o operador le no celular.
+            // O "timeout 12s" e do overlay H do Chromebook, que e a tela
+            // de quem esta depurando.
             irParaRest()
-          }, MS_ESPERA_REALTIME)
+          }, Math.max(500, prazoRealtime - Date.now()))
 
           canal
             .on('broadcast', { event: 'pong' }, function (m) {

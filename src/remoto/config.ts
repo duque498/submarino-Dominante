@@ -87,12 +87,33 @@ export const REST_SINAIS = `${SUPABASE_URL}/rest/v1/sinais`
 /**
  * Quanto o Realtime tem pra chegar em SUBSCRIBED antes de desistirmos.
  *
- * Quatro segundos é escolhido pra caber no aperto: o operador aperta uma
- * tecla, olha pro projetor, e não pode ficar numa tela indefinida. Um
- * canal que vai subir sobe em menos de um segundo; o que passa de quatro
- * quase sempre não sobe nunca.
+ * Eram 4 s, e 4 s estavam derrubando conexão boa: quando as três turmas
+ * abrem os Chromebooks ao mesmo tempo, o join demora mais que isso e o
+ * app caía pro REST sem precisar. Doze segundos é longo pra uma tela,
+ * mas a tela não fica parada — ela mostra o que está tentando, e o
+ * teclado físico funciona o tempo todo.
  */
-export const MS_ESPERA_REALTIME = 4000
+export const MS_ESPERA_REALTIME = 12000
+
+/**
+ * Na metade do caminho, um segundo `subscribe` no lugar de esperar.
+ *
+ * Um join que se perdeu no aperto não volta sozinho: o canal fica
+ * pendurado até o prazo estourar. Refazer a inscrição aos 6 s custa uma
+ * mensagem e às vezes ganha os outros 6 s inteiros.
+ */
+export const MS_RETENTAR_SUBSCRIBE = 6000
+
+/**
+ * De quanto em quanto tempo o REST tenta voltar pro Realtime.
+ *
+ * Voltar vale a pena: o REST custa uns 600 ms por tecla. Mas cada
+ * tentativa é uma janelinha fora do transporte que está funcionando, e
+ * por isso ela para de vez assim que o outro lado nos puxa de volta — se
+ * o celular não alcança o Realtime, insistir a cada 30 s só atrapalha os
+ * dois. Ver `quedaFoiNossa` no receptor.
+ */
+export const MS_RETENTAR_REALTIME = 30000
 
 /** De quanto em quanto tempo o Chromebook lê a tabela, no modo REST. */
 export const MS_POLL_REST = 400
