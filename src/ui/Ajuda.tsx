@@ -16,6 +16,14 @@ type Props = {
   /** Código do controle pelo celular, e se o canal está de pé. */
   codigo?: string
   remoto?: 'ligado' | 'reconectando' | 'desligado'
+  /**
+   * O que o supabase-js devolveu, cru: o status do canal e a mensagem do erro.
+   *
+   * Fica só AQUI, e não na cena de espera, porque a cena de espera está no
+   * projetor: "CHANNEL_ERROR: ..." na frente da plateia não ajuda ninguém. O H
+   * é a tela particular do operador, e é nela que um recado técnico serve.
+   */
+  motivoRemoto?: string
 }
 
 const ATALHOS: Array<[string, string]> = [
@@ -61,7 +69,15 @@ const ESTADO_REMOTO: Record<string, string> = {
   desligado: 'sem conexão — use o teclado',
 }
 
-export function Ajuda({ cena, forma, escala, aceitos, codigo, remoto }: Props) {
+export function Ajuda({
+  cena,
+  forma,
+  escala,
+  aceitos,
+  codigo,
+  remoto,
+  motivoRemoto,
+}: Props) {
   return (
     <div className="ajuda">
       {/* Só aqui, nunca na tela da plateia: pôr o nome do objeto no painel
@@ -99,6 +115,9 @@ export function Ajuda({ cena, forma, escala, aceitos, codigo, remoto }: Props) {
           {ESTADO_REMOTO[remoto ?? 'desligado']}
         </p>
       )}
+      {/* Sem tradução e sem enfeite: é o texto que o supabase-js devolveu.
+          Traduzir aqui só apagaria a pista de que o operador precisa. */}
+      {motivoRemoto && <p className="ajuda__motivo">canal: {motivoRemoto}</p>}
       <p className="ajuda__estado">
         cena: <strong>{cena}</strong> · forma: <strong>{forma}</strong> · escala:{' '}
         <strong>{Math.round(escala * 100)}%</strong>

@@ -3243,6 +3243,7 @@ export function Player({
           escala={escala}
           codigo={codigo}
           remoto={statusRemoto}
+          motivoRemoto={remoto.motivo}
           aceitos={
             cena.tipo === 'identificacao' && ident
               ? {

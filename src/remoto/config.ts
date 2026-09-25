@@ -19,9 +19,32 @@ export const SUPABASE_KEY = 'sb_publishable_OuSu06JQOJv-yuNlzJk0Ww_o_JeIGlp'
  *
  * Pinada e não `@2`: o app é aberto de um arquivo no dia da feira, e uma
  * versão nova publicada na véspera não pode mudar nada. O mesmo endereço está
- * no `public/controle.html` — os dois lados precisam falar o mesmo protocolo.
+ * no `index.html` e no `public/controle.html` — os três precisam bater, senão
+ * o celular e o Chromebook falam protocolos diferentes.
+ *
+ * SAIU DA 2.45.4 POR UM MOTIVO MEDIDO, não por higiene. Subindo um servidor
+ * websocket local e lendo o quadro `phx_join` que cada versão manda, com a
+ * nossa chave:
+ *
+ *     2.45.4  (vsn=1.0.0)  payload.access_token = "sb_publishable_..."
+ *     2.117.2 (vsn=2.0.0)  sem access_token — autentica só pelo ?apikey=
+ *
+ * O Realtime valida o `access_token` do join COMO JWT. A chave `anon` antiga
+ * era um JWT e passava; uma `sb_publishable_` não é, então o join é recusado e
+ * o subscribe() morre em CHANNEL_ERROR sem chegar em SUBSCRIBED. De quebra, a
+ * 2.117.2 reconhece o formato (`startsWith('sb_publishable_')`) e a 2.45.4 não
+ * tem a string no bundle.
+ *
+ * O que NÃO é motivo, pra não virar lenda: as duas carregam igual por
+ * `<script src>` e expõem a mesma API de canal; nenhuma das duas emite warning
+ * com essa chave; o segundo arquivo do UMD da 2.45.4 (`591.supabase.js`) nunca
+ * chega a ser pedido. A diferença é o conteúdo do join, só.
+ *
+ * Ressalva: daqui não dá pra alcançar o host do Supabase, então a recusa do
+ * servidor é dedução do que o cliente manda, não medição ponta a ponta. Se
+ * ainda assim não conectar, a linha `canal:` do overlay H mostra o motivo real.
  */
-export const VERSAO_SUPABASE = '2.45.4'
+export const VERSAO_SUPABASE = '2.117.2'
 export const CDN_SUPABASE =
   `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@${VERSAO_SUPABASE}/dist/umd/supabase.js`
 

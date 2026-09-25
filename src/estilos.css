@@ -3935,3 +3935,13 @@ body {
   letter-spacing: 0.12em;
   color: #ffc24d;
 }
+
+/* O motivo cru do canal remoto, no overlay H (Fase 6, correção). Âmbar e
+   pequeno: é recado técnico pro operador, não parte da apresentação. */
+.ajuda__motivo {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #ffc24d;
+  overflow-wrap: anywhere;
+}

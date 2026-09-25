@@ -45,6 +45,8 @@ export type OpcoesUseRemoto = {
 /** O que o resto do app usa pra falar com o receptor. */
 export type ConexaoRemota = {
   status: StatusRemoto
+  /** O que o supabase-js disse, cru. Só aparece no overlay H. */
+  motivo?: string
   /** Publica o estado agora, sem esperar o tique de 2 s. */
   publicar: () => void
   /** Quem sabe montar o estado da cena atual (o Player, quando existe). */
@@ -61,9 +63,11 @@ export type ConexaoRemota = {
  */
 export function useRemoto(opcoes: OpcoesUseRemoto): {
   status: StatusRemoto
+  motivo?: string
   publicar: () => void
 } {
   const [status, setStatus] = useState<StatusRemoto>('desligado')
+  const [motivo, setMotivo] = useState<string | undefined>(undefined)
   // Em refs: o receptor é montado UMA vez e não pode ser derrubado só porque o
   // Player renderizou de novo.
   const refLer = useRef(opcoes.lerEstado)
@@ -86,7 +90,10 @@ export function useRemoto(opcoes: OpcoesUseRemoto): {
       },
       aoComando: (texto) => refComando.current(texto),
       lerEstado: () => refLer.current(),
-      aoStatus: setStatus,
+      aoStatus: (novo, porque) => {
+        setStatus(novo)
+        setMotivo(porque)
+      },
     })
     refPublicar.current = receptor.publicar
     return () => {
@@ -95,5 +102,5 @@ export function useRemoto(opcoes: OpcoesUseRemoto): {
     }
   }, [turma, codigo, ativo])
 
-  return { status, publicar: () => refPublicar.current() }
+  return { status, motivo, publicar: () => refPublicar.current() }
 }

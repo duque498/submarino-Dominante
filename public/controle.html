@@ -683,7 +683,12 @@
       </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <!-- Mesma versão PINADA do src/remoto/config.ts e do index.html: mudou uma,
+         mude as três. A 2.45.4 mandava a chave como `access_token` no
+         `phx_join`, e o Realtime valida esse campo como JWT — uma chave
+         `sb_publishable_` não é JWT, então o join era recusado. Esta autentica
+         só pelo `?apikey=`. O porquê completo está no config.ts. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
     <script>
       'use strict'
       // As mesmas credenciais do src/remoto/config.ts. A chave é publishable:
