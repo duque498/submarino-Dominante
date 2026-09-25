@@ -154,6 +154,16 @@
       .badge--mudo {
         color: var(--ambar);
       }
+      /* Ambar porque e uma ressalva, nao um erro: funciona, so que mais
+         devagar. `flex: 0 0 auto` pra ele nunca ser o que encolhe. */
+      .transporte {
+        flex: 0 0 auto;
+        padding: 0.1rem 0.3rem;
+        color: var(--ambar);
+        border: 1px solid var(--ambar);
+        border-radius: 2px;
+        font-size: 0.62rem;
+      }
       .topo button {
         padding: 0.35rem 0.5rem;
         font-family: inherit;
@@ -569,6 +579,11 @@
       <!-- zona 1 -->
       <div class="topo">
         <span class="badge" id="badge">conectando...</span>
+        <!-- Fora do #badge de proposito: o badge tem ellipsis e corta pela
+             direita, que e exatamente onde o marcador ficaria. Quem some
+             tem que ser o nome da turma, nao o aviso de que a tecla vai
+             demorar mais. -->
+        <span class="transporte" id="transporte" hidden>rest</span>
         <button id="mais" aria-label="mais opções">···</button>
         <button id="trocar">trocar turma</button>
       </div>
@@ -706,6 +721,21 @@
       // aqui porque o `estado` chega a cada 2 s e a recarga dura 1,2 s.
       var MS_COOLDOWN = 1200
 
+      // --- Fase 6.3: o segundo transporte, por REST puro --------------
+      // Na rede da escola o wss:// é derrubado mas o HTTPS passa. Quando
+      // o Realtime não sobe, os dois lados passam a conversar por uma
+      // tabela (docs/sinais.sql): um INSERE, o outro lê por polling.
+      // Sem lib nova: PostgREST é HTTP com header, e fetch já vem no
+      // navegador. O supabase-js só serve pro Realtime.
+      var REST_SINAIS = SUPABASE_URL + '/rest/v1/sinais'
+      // Quanto o Realtime tem pra subir antes de desistirmos. Mesmo
+      // valor do MS_ESPERA_REALTIME do src/remoto/config.ts.
+      var MS_ESPERA_REALTIME = 4000
+      // O celular lê mais devagar que o Chromebook (600 contra 400 ms):
+      // ele só espera `estado`, que sai de 2 em 2 s, enquanto o
+      // Chromebook espera tecla, que precisa parecer instantânea.
+      var MS_POLL_REST = 600
+
       var NOME_DO_MODO = {
         ativacao: 'ativação',
         espera: 'em espera',
@@ -722,10 +752,20 @@
       var cliente = null
       var canal = null
       var turmaEscolhida = null
+      var codigoEscolhido = null
       var ultimoEstado = null
       var ultimoRecebido = 0
       var aguardandoPong = null
       var relogioMudo = 0
+      // 'realtime', 'rest' ou null enquanto ninguém venceu ainda.
+      var transporte = null
+      var canalIda = null
+      var canalVolta = null
+      var marcador = 0
+      var timerEspera = 0
+      var timerPoll = 0
+      var lendo = false
+      var msRest = 0
 
       // ---------- tela 1 ----------
       TURMAS.forEach(function (t) {
@@ -781,70 +821,239 @@
         if (id === 'tela-seletor') fecharGaveta()
       }
 
+      // ================================================================
+      // Transporte B: REST puro
+      //
+      // Cinco funções sem estado próprio. Nenhuma delas rejeita: toda
+      // falha vira null/lista vazia. Um transporte de emergência que
+      // explode no meio da apresentação não é um transporte de
+      // emergência.
+      // ================================================================
+
+      // A chave vai em DOIS headers de propósito: `apikey` é o que o
+      // PostgREST usa pra achar o projeto, `Authorization` é o que
+      // define o papel (anon) na hora de avaliar a RLS. Só um dos dois
+      // dá 401 com uma mensagem que não ajuda.
+      function cabecalhos(extra) {
+        var h = { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+        for (var k in extra || {}) h[k] = extra[k]
+        return h
+      }
+
+      // O maior id que o canal de volta já tem. Chamado UMA vez, ao
+      // entrar no REST: sem ele o celular leria a tabela do zero e
+      // aplicaria o `estado` de uma sessão anterior antes do atual
+      // chegar — a tela piscaria numa cena errada.
+      function restUltimoId(nome, pronto) {
+        fetch(REST_SINAIS + '?canal=eq.' + encodeURIComponent(nome) +
+              '&select=id&order=id.desc&limit=1', { headers: cabecalhos() })
+          .then(function (r) { return r.ok ? r.json() : [] })
+          .then(function (linhas) { pronto((linhas[0] && linhas[0].id) || 0) })
+          .catch(function () { pronto(0) })
+      }
+
+      function restEnviar(nome, evento, payload) {
+        return fetch(REST_SINAIS, {
+          method: 'POST',
+          headers: cabecalhos({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+          body: JSON.stringify({ canal: nome, evento: evento, payload: payload }),
+        }).catch(function () { return null })
+      }
+
+      // Uma passada de leitura do canal de volta.
+      function restPuxar(pronto) {
+        if (lendo) { pronto(0); return }
+        lendo = true
+        var comeco = Date.now()
+        fetch(REST_SINAIS + '?canal=eq.' + encodeURIComponent(canalVolta) +
+              '&id=gt.' + marcador + '&select=id,evento,payload&order=id.asc',
+              { headers: cabecalhos() })
+          .then(function (r) { return r.ok ? r.json() : null })
+          .then(function (linhas) {
+            lendo = false
+            msRest = Date.now() - comeco
+            if (!linhas || !linhas.length) { pronto(0); return }
+            for (var i = 0; i < linhas.length; i++) {
+              var l = linhas[i]
+              if (l.id > marcador) marcador = l.id
+              aoEvento(l.evento, l.payload || {})
+            }
+            pronto(linhas.length)
+          })
+          .catch(function () { lendo = false; pronto(0) })
+      }
+
+      function cicloRest() {
+        if (transporte !== 'rest') return
+        restPuxar(function () {
+          if (transporte !== 'rest') return
+          timerPoll = setTimeout(cicloRest, MS_POLL_REST)
+        })
+      }
+
+      // ================================================================
+      // O ponto único por onde todo evento entra, venha de onde vier.
+      // Realtime e REST entregam exatamente os mesmos eventos.
+      // ================================================================
+      var meuPing = ''
+      function aoEvento(evento, p) {
+        if (evento === 'pong') {
+          if (p.id !== meuPing) return
+          if (aguardandoPong) { clearTimeout(aguardandoPong); aguardandoPong = null }
+          try {
+            localStorage.setItem('domi-remoto',
+              JSON.stringify({ turma: turmaEscolhida, codigo: codigoEscolhido }))
+          } catch (e) {}
+          ultimoRecebido = Date.now()
+          abrirControle(turmaEscolhida)
+        } else if (evento === 'estado') {
+          ultimoRecebido = Date.now()
+          aplicarEstado(p)
+        }
+      }
+
+      // Manda um evento pelo transporte que estiver valendo. Todo envio
+      // do app passa por aqui — e é por isso que nenhum botão precisa
+      // saber que existem dois caminhos.
+      function enviarEvento(evento, payload) {
+        if (transporte === 'rest') {
+          restEnviar(canalIda, evento, payload)
+          return
+        }
+        try {
+          canal && canal.send({ type: 'broadcast', event: evento, payload: payload })
+        } catch (e) {}
+      }
+
       function sair() {
         if (aguardandoPong) { clearTimeout(aguardandoPong); aguardandoPong = null }
         if (relogioMudo) { clearInterval(relogioMudo); relogioMudo = 0 }
+        if (timerEspera) { clearTimeout(timerEspera); timerEspera = 0 }
+        if (timerPoll) { clearTimeout(timerPoll); timerPoll = 0 }
         try { if (cliente && canal) cliente.removeChannel(canal) } catch (e) {}
         canal = null
+        transporte = null
+        marcador = 0
+        lendo = false
         ultimoEstado = null
       }
 
-      function conectar(turma, codigo) {
-        if (!window.supabase) {
-          $('recado').textContent =
-            'a biblioteca não carregou — confira a internet do celular e recarregue'
-          return
-        }
+      // Desiste do Realtime e vai pro REST. Só acontece uma vez por
+      // tentativa de conexão.
+      // `recado` existe porque o mesmo caminho serve a duas histórias bem
+      // diferentes: o WS que falhou (aí é a rede da escola, e dizer isso
+      // ajuda) e o pong que não veio (aí pode ser só código errado, e
+      // culpar o wi-fi mandaria o operador procurar o problema no lugar
+      // errado).
+      function irParaRest(recado) {
+        if (transporte === 'rest') return
+        if (timerEspera) { clearTimeout(timerEspera); timerEspera = 0 }
+        // Dois transportes vivos ao mesmo tempo seria tecla duplicada.
+        try { if (cliente && canal) cliente.removeChannel(canal) } catch (e) {}
+        canal = null
+        transporte = 'rest'
+        $('recado').textContent = recado || 'wi-fi bloqueando tempo real — tentando pelo caminho lento...'
+        restUltimoId(canalVolta, function (id) {
+          if (transporte !== 'rest') return
+          marcador = id
+          restEnviar(canalIda, 'ping', { id: meuPing })
+          if (aguardandoPong) clearTimeout(aguardandoPong)
+          aguardandoPong = setTimeout(semResposta, MS_PONG)
+          cicloRest()
+        })
+      }
+
+      function semResposta() {
+        aguardandoPong = null
+        $('conectar').disabled = false
+        revalidar()
+        $('recado').textContent =
+          'Nenhum submarino respondeu em ' + turmaEscolhida + ' com o código ' +
+          codigoEscolhido + ' — confira o código na tela do Chromebook'
         sair()
+      }
+
+      function conectar(turma, codigo) {
+        sair()
+        turmaEscolhida = turma
+        codigoEscolhido = codigo
+        canalIda = 'domi:' + turma + ':' + codigo
+        canalVolta = canalIda + ':resp'
+        meuPing = String(Date.now())
         $('recado').textContent = 'procurando o submarino...'
         $('conectar').disabled = true
+
+        // Sem a biblioteca não há Realtime — mas o REST não precisa
+        // dela. Então isto deixou de ser o fim da linha.
+        if (!window.supabase) {
+          irParaRest()
+          return
+        }
+
         try {
           cliente = cliente || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
             realtime: { params: { eventsPerSecond: 20 } },
           })
-          canal = cliente.channel('domi:' + turma + ':' + codigo, {
-            config: { broadcast: { self: false } },
-          })
-          var meuPing = String(Date.now())
+          canal = cliente.channel(canalIda, { config: { broadcast: { self: false } } })
+
+          // O relógio dos 4 s. Cobre o caso que mais dói e que nenhum
+          // callback reporta: o WebSocket que abre, não recebe resposta
+          // e fica pendurado.
+          timerEspera = setTimeout(function () {
+            timerEspera = 0
+            irParaRest()
+          }, MS_ESPERA_REALTIME)
+
           canal
             .on('broadcast', { event: 'pong' }, function (m) {
-              var p = (m && m.payload) || {}
-              if (p.id !== meuPing) return
-              if (aguardandoPong) { clearTimeout(aguardandoPong); aguardandoPong = null }
-              try {
-                localStorage.setItem('domi-remoto', JSON.stringify({ turma: turma, codigo: codigo }))
-              } catch (e) {}
-              ultimoRecebido = Date.now()
-              abrirControle(turma)
+              aoEvento('pong', (m && m.payload) || {})
             })
             .on('broadcast', { event: 'estado' }, function (m) {
-              ultimoRecebido = Date.now()
-              aplicarEstado((m && m.payload) || null)
+              aoEvento('estado', (m && m.payload) || {})
             })
             .subscribe(function (status) {
-              if (status !== 'SUBSCRIBED') return
-              canal.send({ type: 'broadcast', event: 'ping', payload: { id: meuPing } })
-              aguardandoPong = setTimeout(function () {
-                aguardandoPong = null
-                $('conectar').disabled = false
-                revalidar()
-                $('recado').textContent =
-                  'Nenhum submarino respondeu em ' + turma + ' com o código ' + codigo +
-                  ' — confira o código na tela do Chromebook'
-                sair()
-              }, MS_PONG)
+              if (status === 'SUBSCRIBED') {
+                if (timerEspera) { clearTimeout(timerEspera); timerEspera = 0 }
+                transporte = 'realtime'
+                enviarEvento('ping', { id: meuPing })
+                if (aguardandoPong) clearTimeout(aguardandoPong)
+                // Silêncio aqui NÃO é mais "não existe submarino": pode
+                // ser um Chromebook que só alcança o REST. Por isso o
+                // estouro do pong tenta o outro caminho antes de
+                // desistir, em vez de mandar o operador conferir um
+                // código que está certo.
+                aguardandoPong = setTimeout(function () {
+                  irParaRest('ainda procurando — tentando pelo caminho lento...')
+                }, MS_PONG)
+                return
+              }
+              if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                irParaRest()
+              }
             })
         } catch (e) {
-          $('conectar').disabled = false
-          revalidar()
-          $('recado').textContent = 'não deu pra conectar: ' + e.message
+          irParaRest()
         }
+      }
+
+      // O topo mostra o transporte porque a diferença é sentida, não
+      // vista: no REST a tecla demora uns 600 ms a mais pra fazer efeito
+      // no projetor. Sem esse aviso o operador aperta de novo achando
+      // que falhou — e manda o comando duas vezes.
+      function rotuloBadge(turma) {
+        var rest = transporte === 'rest'
+        $('transporte').hidden = !rest
+        // Com o marcador na tela o topo fica apertado num celular de
+        // 360 px, e alguma coisa tem que sair. Sai "conectado": a cor do
+        // badge ja diz isso, e a turma nao pode sumir — e ela que o
+        // operador confere quando pega o celular de outra pessoa.
+        return rest ? turma : 'conectado · ' + turma
       }
 
       function abrirControle(turma) {
         $('recado').textContent = ''
         $('conectar').disabled = false
-        $('badge').textContent = 'conectado · ' + turma
+        $('badge').textContent = rotuloBadge(turma)
         mostrar('tela-controle')
         if (relogioMudo) clearInterval(relogioMudo)
         relogioMudo = setInterval(vigiar, 1000)
@@ -870,7 +1079,7 @@
         ultimoEstado = e
         var modo = e.modo || 'apresentacao'
         $('tela-controle').setAttribute('data-modo', modo)
-        $('badge').textContent = 'conectado · ' + e.turma
+        $('badge').textContent = rotuloBadge(e.turma)
         $('badge').classList.remove('badge--mudo')
         $('tarja').classList.remove('tarja--visivel', 'tarja--morta')
         $('cena-titulo').textContent = e.cenaTitulo || ''
@@ -950,9 +1159,7 @@
         if (agora - (ultimoEnvio[tecla] || 0) < MS_DEBOUNCE) return
         ultimoEnvio[tecla] = agora
         try { navigator.vibrate && navigator.vibrate(15) } catch (e) {}
-        try {
-          canal && canal.send({ type: 'broadcast', event: 'cmd', payload: { tecla: tecla } })
-        } catch (e) {}
+        enviarEvento('cmd', { tecla: tecla })
       }
 
       document.addEventListener('click', function (ev) {
@@ -1009,10 +1216,8 @@
         ev.preventDefault()
         var texto = $('texto-comando').value.trim()
         if (!texto) return
-        try {
-          canal && canal.send({ type: 'broadcast', event: 'comando', payload: { texto: texto } })
-          navigator.vibrate && navigator.vibrate(15)
-        } catch (e) {}
+        enviarEvento('comando', { texto: texto })
+        try { navigator.vibrate && navigator.vibrate(15) } catch (e) {}
         $('texto-comando').value = ''
       })
     </script>

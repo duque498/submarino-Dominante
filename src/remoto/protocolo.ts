@@ -72,3 +72,13 @@ export type EstadoRemoto = {
 
 /** Estado da conexão, pro pontinho no rodapé do HUD. */
 export type StatusRemoto = 'desligado' | 'reconectando' | 'ligado'
+
+/**
+ * Por onde a mensagem anda.
+ *
+ * `realtime` é o WebSocket do Supabase, que é o caminho bom. `rest` é o plano
+ * B da Fase 6.3: a tabela `sinais` lida por polling, pra rede que derruba
+ * `wss://` mas deixa HTTPS passar — a da escola, por exemplo. O protocolo
+ * acima é o MESMO nos dois; muda só o encanamento.
+ */
+export type Transporte = 'realtime' | 'rest'
