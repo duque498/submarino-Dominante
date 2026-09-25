@@ -31,7 +31,7 @@ type ClienteSupabase = {
 }
 type CanalSupabase = {
   on: (tipo: string, filtro: unknown, aoReceber: (mensagem: unknown) => void) => CanalSupabase
-  subscribe: (aoMudar: (status: string) => void) => CanalSupabase
+  subscribe: (aoMudar: (status: string, erro?: Error) => void) => CanalSupabase
   send: (mensagem: unknown) => unknown
   unsubscribe: () => unknown
 }
@@ -58,7 +58,13 @@ export type OpcoesReceptor = {
   aoComando: (texto: string) => void
   /** Lido na hora de publicar. Devolve null enquanto a cena não está pronta. */
   lerEstado: () => EstadoRemoto | null
-  aoStatus: (status: StatusRemoto) => void
+  /**
+   * `motivo` é o texto cru que o supabase-js devolveu: o status do canal e,
+   * quando existe, a mensagem do erro. Vai pro overlay H sem tradução nenhuma
+   * — quem precisa dele é quem está depurando às sete da manhã do dia da
+   * feira, e nessa hora "não deu" não ajuda ninguém.
+   */
+  aoStatus: (status: StatusRemoto, motivo?: string) => void
 }
 
 /** O corpo da mensagem de broadcast, com o formato que o supabase-js entrega. */
@@ -75,11 +81,17 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
   let timerReconexao = 0
   let status: StatusRemoto = 'desligado'
 
-  const mudarStatus = (novo: StatusRemoto) => {
-    if (status === novo) return
+  let motivo: string | undefined
+
+  const mudarStatus = (novo: StatusRemoto, porque?: string) => {
+    // O motivo entra na comparação: o status pode continuar 'reconectando' e a
+    // RAZÃO mudar (de TIMED_OUT pra CHANNEL_ERROR, por exemplo), e é justamente
+    // essa mudança que conta a história pra quem está olhando o H.
+    if (status === novo && motivo === porque) return
     status = novo
+    motivo = porque
     try {
-      opcoes.aoStatus(novo)
+      opcoes.aoStatus(novo, porque)
     } catch {
       /* o indicador do HUD não pode derrubar a conexão */
     }
@@ -104,9 +116,9 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
    * tentativa em curso. Âmbar piscando a apresentação inteira num Chromebook
    * sem internet seria um alarme para nada, no projetor, na frente da plateia.
    */
-  const agendarReconexao = (semBiblioteca = false) => {
+  const agendarReconexao = (semBiblioteca = false, porque?: string) => {
     if (parado || timerReconexao) return
-    mudarStatus(semBiblioteca ? 'desligado' : 'reconectando')
+    mudarStatus(semBiblioteca ? 'desligado' : 'reconectando', porque)
     timerReconexao = window.setTimeout(() => {
       timerReconexao = 0
       conectar()
@@ -119,7 +131,7 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
     if (!fabrica) {
       // A biblioteca não carregou (sem rede, CDN fora, script bloqueado). Sem
       // drama: tenta de novo daqui a pouco e o app segue normal.
-      agendarReconexao(true)
+      agendarReconexao(true, 'supabase-js não carregou (sem rede ou CDN bloqueada)')
       return
     }
     try {
@@ -172,23 +184,31 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
           // até 2 s numa tela vazia.
           publicar()
         })
-        .subscribe((estadoDoCanal) => {
+        // O segundo argumento é o erro, e ele é a única coisa que diz POR QUE
+        // um canal não sobe. Ignorá-lo (como esta chamada fazia) transformava
+        // chave recusada, projeto pausado e wi-fi da escola na mesma tela:
+        // "abrindo o canal do celular...", pra sempre.
+        .subscribe((estadoDoCanal, erro) => {
           if (parado) return
           if (estadoDoCanal === 'SUBSCRIBED') {
             mudarStatus('ligado')
             publicar()
             return
           }
+          const detalhe = erro?.message ? `${estadoDoCanal}: ${erro.message}` : estadoDoCanal
           if (
             estadoDoCanal === 'CLOSED' ||
             estadoDoCanal === 'CHANNEL_ERROR' ||
             estadoDoCanal === 'TIMED_OUT'
           ) {
-            agendarReconexao()
+            agendarReconexao(false, detalhe)
+          } else {
+            // JOINING e afins: ainda não é falha, mas já é informação.
+            mudarStatus('reconectando', detalhe)
           }
         })
-    } catch {
-      agendarReconexao()
+    } catch (erro) {
+      agendarReconexao(false, erro instanceof Error ? erro.message : String(erro))
     }
   }
 
@@ -202,7 +222,7 @@ export function criarReceptor(opcoes: OpcoesReceptor): Receptor {
       parado = true
       window.clearInterval(timerEstado)
       window.clearTimeout(timerReconexao)
-      mudarStatus('desligado')
+      mudarStatus('desligado', undefined)
       try {
         canal?.unsubscribe()
         if (cliente && canal) cliente.removeChannel(canal)

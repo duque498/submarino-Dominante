@@ -1993,12 +1993,21 @@ Chrome e pode não chegar na página. Não é problema: um clique na tela també
 passa da tela 1, e o standby não avança com clique. **A receita do dia é uma
 frase: abriu, apertou uma tecla, esperou a turma, →.**
 
-### O código de 4 dígitos### O código de 4 dígitos
+### O código de 4 dígitos
 
 Aparece em dois lugares:
 
 - na tela `PRESSIONE QUALQUER TECLA` e no **standby**, antes de começar;
 - no overlay de ajuda, tecla **H**, junto com o estado da conexão.
+
+Quando o canal **não** abre, o overlay `H` ganha uma linha âmbar embaixo do
+estado — `canal: CHANNEL_ERROR: Invalid API key`, `canal: TIMED_OUT`, ou
+`canal: supabase-js não carregou (sem rede ou CDN bloqueada)`. É o `status` e o
+`Error` que o próprio `subscribe()` devolve, sem tradução. Com o canal aberto a
+linha não aparece. Serve pra distinguir três coisas que, sem ela, são todas
+"abrindo o canal...": **sem internet** (a biblioteca não carregou), **projeto
+pausado ou chave errada** (o servidor respondeu e recusou) e **wi-fi da escola
+bloqueando websocket** (dá timeout).
 
 Recarregar a página do Chromebook sorteia um código novo e derruba o celular
 (ele fica no canal antigo, sozinho). Se isso acontecer no meio da
@@ -2088,6 +2097,35 @@ polegar acha o → AVANÇAR no mesmo ponto.
   Chromebook está há mais de 6 s sem dar notícia. Aos 12 s ela fica vermelha.
   **Os botões continuam funcionando** — pode ser só o `estado` que atrasou, e a
   tarja some sozinha quando ele volta.
+
+### A versão do supabase-js está pinada (e por quê)
+
+Os três lugares que carregam a biblioteca — `src/remoto/config.ts`,
+`index.html` e `public/controle.html` — apontam para a **mesma** versão fixa,
+hoje `2.117.2`. Mudou uma, mude as três.
+
+Não é só higiene de dependência: a versão velha (`2.45.4`) **não funciona com
+uma chave `sb_publishable_`**. Medido aqui, subindo um servidor websocket local
+e lendo o quadro `phx_join` que cada versão manda:
+
+| versão | protocolo | `access_token` no `phx_join` |
+|---|---|---|
+| `2.45.4` | `vsn=1.0.0` | manda a chave como `access_token` |
+| `2.117.2` | `vsn=2.0.0` | não manda — autentica só pelo `?apikey=` |
+
+O Realtime valida o `access_token` do join **como JWT**. A chave `anon` antiga
+era um JWT, então passava; uma `sb_publishable_` não é, então o join é recusado
+e o `subscribe()` para em `CHANNEL_ERROR` sem nunca chegar em `SUBSCRIBED` —
+exatamente o "abrindo o canal..." que não terminava. A `2.117.2` tirou a chave
+do join, e de quebra reconhece o formato `sb_publishable_`/`sb_secret_` (a
+`2.45.4` não tem nenhuma menção a ele no bundle).
+
+> **Ressalva honesta:** o contêiner onde isso foi escrito não alcança nem a
+> jsDelivr nem o host do Supabase (o proxy recusa), então a recusa do
+> *servidor* é dedução a partir do que o cliente manda, não medição de ponta a
+> ponta. As duas versões carregam e expõem a mesma API; a diferença medida é o
+> conteúdo do join. Se ainda assim não conectar no dia, a linha `canal:` do
+> overlay `H` mostra o motivo real.
 
 ### Duas coisas que podem dar errado
 
