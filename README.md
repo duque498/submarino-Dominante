@@ -2027,8 +2027,9 @@ de cima, porque aí o que interessa é o que **fazer**, não a latência:
 |---|---|
 | `tabela sinais não existe — rodar docs/sinais.sql` | ninguém rodou o SQL no painel |
 | `tabela sinais recusou a chave — conferir as policies do SQL` | o SQL rodou pela metade (falta policy ou `grant`) |
-| `rest: a tabela respondeu 503` | o projeto está fora do ar |
-| `rest: a tabela não respondeu` | sem rede nenhuma |
+| `a tabela respondeu 503` | o projeto está fora do ar |
+| `a tabela não respondeu` | sem rede nenhuma |
+| `supabase-js não carregou` | o vendor **e** a reserva falharam (copiar a pasta `vendor/` junto do `index.html`) |
 
 A segunda linha é a mais traiçoeira e por isso está na tela: sem o `grant` da
 sequência o Chromebook **lê** a tabela perfeitamente e não consegue escrever
@@ -2129,9 +2130,17 @@ polegar acha o → AVANÇAR no mesmo ponto.
 
 ### A versão do supabase-js está pinada (e por quê)
 
-Os três lugares que carregam a biblioteca — `src/remoto/config.ts`,
-`index.html` e `public/controle.html` — apontam para a **mesma** versão fixa,
-hoje `2.117.2`. Mudou uma, mude as três.
+Desde a Fase 6.5 a biblioteca vem **junto com o app**: o arquivo
+`public/vendor/supabase.js` é o UMD da versão pinada, commitado byte a byte
+como o npm o publica (sha e procedência no `public/vendor/README.md`). Por
+`file://` e no Pages, carregar o controle remoto custa **zero rede** — que é
+o único jeito de confiar nele no wi-fi da escola. A jsDelivr continua nas
+duas páginas só como **reserva**, se a pasta `vendor/` não vier junto.
+
+A versão fixa — hoje `2.117.2` — está em quatro lugares:
+`src/remoto/config.ts`, `index.html`, `public/controle.html` e o próprio
+arquivo do vendor. Mudou uma, mude as quatro (o passo a passo está no README
+do vendor).
 
 Não é só higiene de dependência: a versão velha (`2.45.4`) **não funciona com
 uma chave `sb_publishable_`**. Medido aqui, subindo um servidor websocket local

@@ -18,9 +18,13 @@ export const SUPABASE_KEY = 'sb_publishable_OuSu06JQOJv-yuNlzJk0Ww_o_JeIGlp'
  * Versão PINADA do supabase-js.
  *
  * Pinada e não `@2`: o app é aberto de um arquivo no dia da feira, e uma
- * versão nova publicada na véspera não pode mudar nada. O mesmo endereço está
- * no `index.html` e no `public/controle.html` — os três precisam bater, senão
- * o celular e o Chromebook falam protocolos diferentes.
+ * versão nova publicada na véspera não pode mudar nada. Desde a Fase 6.5 o
+ * primeiro candidato é o arquivo LOCAL `public/vendor/supabase.js`
+ * (commitado; sha e procedência no README de lá) — zero rede pra carregar.
+ * Esta URL da CDN é a RESERVA, injetada só se o local falhar. A versão está
+ * em quatro lugares: aqui, no `index.html`, no `public/controle.html` e no
+ * próprio arquivo do vendor — os quatro precisam bater, senão o celular e o
+ * Chromebook falam protocolos diferentes.
  *
  * SAIU DA 2.45.4 POR UM MOTIVO MEDIDO, não por higiene. Subindo um servidor
  * websocket local e lendo o quadro `phx_join` que cada versão manda, com a

@@ -30,24 +30,39 @@
     </script>
     <!--
       Biblioteca do controle remoto (Fase 6). Mesma tática do audios.js: script
-      clássico injetado por JS, versão PINADA, e falha em silêncio. A versão
-      tem que bater com a de src/remoto/config.ts e a do public/controle.html —
-      ela está escrita aqui à mão porque este é um script clássico, que não
-      importa nada do TypeScript. Sem rede,
-      sem CDN ou com o script bloqueado, `window.supabase` simplesmente não
-      existe e o app roda idêntico ao que era antes — o controle pelo celular é
-      um extra, nunca um requisito.
+      clássico injetado por JS, versão PINADA, e falha em silêncio. O primeiro
+      candidato é o arquivo LOCAL (public/vendor/supabase.js, commitado): por
+      file:// e no Pages ele viaja junto com o app e carregar a biblioteca
+      custa zero rede — que é o único jeito de confiar nela no dia da feira. A
+      jsDelivr fica só de reserva, pra quando alguém copiar o index.html sem a
+      pasta vendor/ do lado. A versão da URL de reserva tem que bater com a de
+      src/remoto/config.ts, a do public/controle.html e a do arquivo em
+      public/vendor/ (o sha e a procedência estão no README de lá). Sem
+      nenhum dos dois, `window.supabase` simplesmente não existe e o app roda
+      idêntico ao que era antes — o controle pelo celular é um extra, nunca um
+      requisito.
     -->
     <script>
       ;(function () {
-        var tag = document.createElement('script')
-        tag.src =
-          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js'
-        tag.async = false
-        tag.onerror = function () {
-          console.warn('[remoto] supabase-js não carregou — o controle pelo celular fica off')
+        var candidatos = [
+          './vendor/supabase.js',
+          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js',
+        ]
+        function tentar(i) {
+          if (i >= candidatos.length) {
+            console.warn('[remoto] supabase-js não carregou — o controle pelo celular fica off')
+            return
+          }
+          var tag = document.createElement('script')
+          tag.src = candidatos[i]
+          tag.async = false
+          tag.onerror = function () {
+            tag.remove()
+            tentar(i + 1)
+          }
+          document.head.appendChild(tag)
         }
-        document.head.appendChild(tag)
+        tentar(0)
       })()
     </script>
     <script type="module" src="/src/main.tsx"></script>
