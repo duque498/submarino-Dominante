@@ -698,12 +698,35 @@
       </div>
     </div>
 
-    <!-- Mesma versão PINADA do src/remoto/config.ts e do index.html: mudou uma,
-         mude as três. A 2.45.4 mandava a chave como `access_token` no
-         `phx_join`, e o Realtime valida esse campo como JWT — uma chave
-         `sb_publishable_` não é JWT, então o join era recusado. Esta autentica
-         só pelo `?apikey=`. O porquê completo está no config.ts. -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+    <!-- Biblioteca do Realtime, com o arquivo LOCAL primeiro (./vendor/,
+         commitado e servido junto pelo Pages): carregar custa zero rede. A
+         jsDelivr é só reserva, se a pasta não vier junto. Versão PINADA, a
+         mesma do src/remoto/config.ts, do index.html e do arquivo em
+         public/vendor/ (sha e procedência no README de lá): mudou uma, mude
+         as quatro. O porquê da 2.117.2 está no config.ts — a 2.45.4 mandava
+         a chave como `access_token` no `phx_join`, e o Realtime valida esse
+         campo como JWT; uma `sb_publishable_` não é JWT e o join era
+         recusado. Esta autentica só pelo `?apikey=`. -->
+    <script>
+      ;(function () {
+        var candidatos = [
+          './vendor/supabase.js',
+          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js',
+        ]
+        function tentar(i) {
+          if (i >= candidatos.length) return
+          var tag = document.createElement('script')
+          tag.src = candidatos[i]
+          tag.async = false
+          tag.onerror = function () {
+            tag.remove()
+            tentar(i + 1)
+          }
+          document.head.appendChild(tag)
+        }
+        tentar(0)
+      })()
+    </script>
     <script>
       'use strict'
       // As mesmas credenciais do src/remoto/config.ts. A chave é publishable:

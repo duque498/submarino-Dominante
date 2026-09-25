@@ -32,6 +32,17 @@ jobs:
           cp public/controle.html site/
           [ -f public/audios.js ] && cp public/audios.js site/app/ || true
           [ -d public/audio ] && cp -r public/audio site/app/audio || true
+          # A biblioteca vendorizada vai pros DOIS lugares: o app usa
+          # app/vendor/ e o controle.html, servido na raiz, usa ./vendor/.
+          # (O Vite já copia public/ pro dist, então app/vendor viria de
+          # graça — o cp explícito é pra quebra do site ser visível AQUI,
+          # e não como 404 silencioso no celular no dia da feira.)
+          # `vendor/.` e não `vendor`: o dist já traz app/vendor (o Vite
+          # copia public/), e `cp -r vendor` num destino que existe criaria
+          # app/vendor/vendor — o 404 silencioso de novo, só que pior.
+          mkdir -p site/app/vendor site/vendor
+          cp -r public/vendor/. site/app/vendor/
+          cp -r public/vendor/. site/vendor/
           touch site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
