@@ -6,10 +6,9 @@ escola em 2026, rodando offline num Chromebook gerenciado ligado ao projetor
 — uma voz sintetizada narra a expedição, e um aluno-operador conduz tudo pelo
 teclado ou pelo celular.
 
-![Cena de apresentação do Submarino DOMI](docs/midia/hero.gif)
+![Combate ao Otodus megalodon: o operador dispara o pulso acústico pelo setor que a plateia grita](docs/midia/hero.gif)
 
-*(capturas em `docs/midia/` — enquanto `hero.gif` não é commitado, este
-espaço fica esperando por ele)*
+*A cena de combate do 3ºA — mais capturas em [`docs/midia/`](docs/midia/).*
 
 **Ao vivo:** [app](https://duque498.github.io/submarino-Dominante/app/) ·
 [controle do celular](https://duque498.github.io/submarino-Dominante/controle.html)
